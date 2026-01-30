@@ -24,11 +24,11 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-[9999] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-[9999] w-full border-b bg-primary">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-neutral-800 p-1">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-neutral-900 p-1">
               <img 
                 src={namcLogo} 
                 alt="NAMC NorCal Logo" 
@@ -37,8 +37,8 @@ export function Header() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight" data-testid="text-org-name">NAMC NorCal</span>
-              <span className="text-xs text-muted-foreground leading-tight">General Membership</span>
+              <span className="text-lg font-bold leading-tight text-primary-foreground" data-testid="text-org-name">NAMC NorCal</span>
+              <span className="text-xs text-primary-foreground/70 leading-tight">General Membership</span>
             </div>
           </div>
 
@@ -48,6 +48,7 @@ export function Header() {
                 key={link.href}
                 variant="ghost"
                 size="sm"
+                className="text-primary-foreground hover:bg-primary-foreground/10"
                 onClick={() => scrollToSection(link.href)}
                 data-testid={`link-nav-${link.label.toLowerCase().replace(" ", "-")}`}
               >
@@ -61,7 +62,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden text-primary-foreground hover:bg-primary-foreground/10"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
             >
@@ -71,13 +72,13 @@ export function Header() {
         </div>
 
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t">
+          <nav className="md:hidden py-4 border-t border-primary-foreground/20">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Button
                   key={link.href}
                   variant="ghost"
-                  className="justify-start"
+                  className="justify-start text-primary-foreground hover:bg-primary-foreground/10"
                   onClick={() => scrollToSection(link.href)}
                   data-testid={`link-mobile-${link.label.toLowerCase().replace(" ", "-")}`}
                 >
