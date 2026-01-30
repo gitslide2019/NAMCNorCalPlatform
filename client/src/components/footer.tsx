@@ -34,16 +34,6 @@ export function Footer() {
                 <span>977 66th Ave<br />Oakland, CA 94621</span>
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0" />
-                <a 
-                  href="tel:1-800-340-4436" 
-                  className="underline-offset-2 hover:underline"
-                  data-testid="link-phone-main"
-                >
-                  1-800-340-4436
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 shrink-0" />
                 <a 
                   href="mailto:info@namcnorcal.org" 
