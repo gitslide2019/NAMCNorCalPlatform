@@ -50,5 +50,74 @@ export async function registerRoutes(
     }
   });
 
+  // CSV export endpoint for downloading applications
+  app.get("/api/membership-applications-export/csv", async (req, res) => {
+    try {
+      const applications = await storage.getMembershipApplications();
+      
+      // CSV headers
+      const headers = [
+        "ID",
+        "Membership Category",
+        "Company Name",
+        "Contact Name",
+        "Title",
+        "Email",
+        "Phone",
+        "Address",
+        "City",
+        "State",
+        "ZIP Code",
+        "Website",
+        "Year Established",
+        "Number of Employees",
+        "Annual Revenue",
+        "Primary Services",
+        "Certifications",
+        "How Did You Hear",
+        "Accepted Terms",
+        "Submitted At"
+      ];
+
+      // Convert applications to CSV rows
+      const rows = applications.map(app => [
+        app.id,
+        app.membershipCategory,
+        app.companyName,
+        app.contactName,
+        app.title,
+        app.email,
+        app.phone,
+        app.address,
+        app.city,
+        app.state,
+        app.zipCode,
+        app.website || "",
+        app.yearEstablished || "",
+        app.numberOfEmployees || "",
+        app.annualRevenue || "",
+        (app.primaryServices || "").replace(/"/g, '""'),
+        (app.certifications || "").replace(/"/g, '""'),
+        app.howDidYouHear || "",
+        app.acceptedTerms ? "Yes" : "No",
+        app.createdAt ? new Date(app.createdAt).toISOString() : ""
+      ]);
+
+      // Build CSV content
+      const csvContent = [
+        headers.join(","),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      ].join("\n");
+
+      // Set response headers for file download
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=namc-membership-applications-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error("Error exporting membership applications:", error);
+      res.status(500).json({ message: "Failed to export applications" });
+    }
+  });
+
   return httpServer;
 }
