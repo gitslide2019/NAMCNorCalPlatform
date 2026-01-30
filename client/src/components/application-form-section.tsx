@@ -111,7 +111,6 @@ export function ApplicationFormSection() {
             </p>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>Questions? Contact us:</p>
-              <p>Phone: <a href="tel:1-800-340-4436" className="text-primary hover:underline">1-800-340-4436</a></p>
               <p>Email: <a href="mailto:info@namcnorcal.org" className="text-primary hover:underline">info@namcnorcal.org</a></p>
             </div>
             <Button className="mt-8" onClick={() => submitMutation.reset()} data-testid="button-submit-another">
@@ -482,8 +481,6 @@ export function ApplicationFormSection() {
         <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>Need assistance? Contact us:</p>
           <p className="mt-2">
-            <a href="tel:1-800-340-4436" className="text-primary hover:underline">1-800-340-4436</a>
-            {" "}&bull;{" "}
             <a href="mailto:info@namcnorcal.org" className="text-primary hover:underline">info@namcnorcal.org</a>
           </p>
         </div>

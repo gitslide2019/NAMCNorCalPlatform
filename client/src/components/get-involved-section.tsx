@@ -113,8 +113,8 @@ export function GetInvolvedSection() {
           <p className="text-muted-foreground">
             Members often choose to volunteer time and expertise by serving on one of our committees, 
             task forces or boards. Contact our office at{" "}
-            <a href="tel:1-800-340-4436" className="text-primary font-medium hover:underline">
-              1-800-340-4436
+            <a href="mailto:info@namcnorcal.org" className="text-primary font-medium hover:underline">
+              info@namcnorcal.org
             </a>{" "}
             for more information.
           </p>
