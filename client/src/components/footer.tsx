@@ -1,4 +1,5 @@
-import { Building2, Mail, Phone, MapPin, ExternalLink } from "lucide-react";
+import { Mail, Phone, MapPin, ExternalLink } from "lucide-react";
+import namcLogo from "@assets/NAMCNorCal_Logo_1769738259736.png";
 
 export function Footer() {
   return (
@@ -7,8 +8,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
-                <Building2 className="h-6 w-6 text-primary-foreground" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground p-1">
+                <img 
+                  src={namcLogo} 
+                  alt="NAMC NorCal Logo" 
+                  className="h-full w-full object-contain"
+                  data-testid="img-footer-logo"
+                />
               </div>
               <div>
                 <span className="font-bold" data-testid="text-footer-brand">NAMC NorCal</span>

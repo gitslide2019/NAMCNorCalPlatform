@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - NAMC NorCal Brand Colors */
+/* LIGHT MODE - NAMC NorCal Brand Colors (Gold/Black theme) */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -14,64 +14,64 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 0 0% 98%;
+  --background: 40 20% 97%;
 
-  --foreground: 222 47% 11%;
+  --foreground: 30 10% 10%;
 
-  --border: 214 20% 88%;
+  --border: 40 15% 85%;
 
   --card: 0 0% 100%;
 
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 30 10% 10%;
 
-  --card-border: 214 20% 90%;
+  --card-border: 40 15% 88%;
 
-  --sidebar: 210 40% 96%;
+  --sidebar: 40 20% 95%;
 
-  --sidebar-foreground: 222 47% 11%;
+  --sidebar-foreground: 30 10% 10%;
 
-  --sidebar-border: 214 20% 88%;
+  --sidebar-border: 40 15% 85%;
 
-  --sidebar-primary: 142 76% 36%;
+  --sidebar-primary: 43 96% 56%;
 
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary-foreground: 30 10% 10%;
 
-  --sidebar-accent: 142 76% 95%;
+  --sidebar-accent: 43 80% 92%;
 
-  --sidebar-accent-foreground: 142 76% 25%;
+  --sidebar-accent-foreground: 43 80% 25%;
 
-  --sidebar-ring: 142 76% 36%;
+  --sidebar-ring: 43 96% 56%;
 
   --popover: 0 0% 100%;
 
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 30 10% 10%;
 
-  --popover-border: 214 20% 88%;
+  --popover-border: 40 15% 85%;
 
-  --primary: 142 76% 36%;
+  --primary: 43 96% 56%;
 
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: 30 10% 10%;
 
-  --secondary: 210 40% 96%;
+  --secondary: 40 20% 92%;
 
-  --secondary-foreground: 222 47% 35%;
+  --secondary-foreground: 30 10% 25%;
 
-  --muted: 210 40% 96%;
+  --muted: 40 20% 94%;
 
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 30 10% 45%;
 
-  --accent: 142 76% 95%;
+  --accent: 43 80% 92%;
 
-  --accent-foreground: 142 76% 25%;
+  --accent-foreground: 43 80% 25%;
 
   --destructive: 0 84% 60%;
 
   --destructive-foreground: 0 0% 100%;
 
-  --input: 214 20% 82%;
-  --ring: 142 76% 36%;
-  --chart-1: 142 76% 36%;
-  --chart-2: 24 95% 53%;
+  --input: 40 15% 80%;
+  --ring: 43 96% 56%;
+  --chart-1: 43 96% 56%;
+  --chart-2: 0 0% 20%;
   --chart-3: 201 94% 40%;
   --chart-4: 262 83% 58%;
   --chart-5: 340 75% 55%;
@@ -132,65 +132,65 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 47% 7%;
+  --background: 0 0% 8%;
 
-  --foreground: 210 40% 98%;
+  --foreground: 40 20% 98%;
 
-  --border: 217 33% 17%;
+  --border: 0 0% 18%;
 
-  --card: 222 47% 10%;
+  --card: 0 0% 11%;
 
-  --card-foreground: 210 40% 98%;
+  --card-foreground: 40 20% 98%;
 
-  --card-border: 217 33% 20%;
+  --card-border: 0 0% 20%;
 
-  --sidebar: 222 47% 8%;
+  --sidebar: 0 0% 9%;
 
-  --sidebar-foreground: 210 40% 98%;
+  --sidebar-foreground: 40 20% 98%;
 
-  --sidebar-border: 217 33% 17%;
+  --sidebar-border: 0 0% 18%;
 
-  --sidebar-primary: 142 71% 45%;
+  --sidebar-primary: 43 96% 56%;
 
-  --sidebar-primary-foreground: 222 47% 7%;
+  --sidebar-primary-foreground: 0 0% 8%;
 
-  --sidebar-accent: 142 50% 15%;
+  --sidebar-accent: 43 50% 15%;
 
-  --sidebar-accent-foreground: 142 71% 75%;
+  --sidebar-accent-foreground: 43 80% 75%;
 
-  --sidebar-ring: 142 71% 45%;
+  --sidebar-ring: 43 96% 56%;
 
-  --popover: 222 47% 10%;
+  --popover: 0 0% 11%;
 
-  --popover-foreground: 210 40% 98%;
+  --popover-foreground: 40 20% 98%;
 
-  --popover-border: 217 33% 20%;
+  --popover-border: 0 0% 20%;
 
-  --primary: 142 71% 45%;
+  --primary: 43 96% 56%;
 
-  --primary-foreground: 222 47% 7%;
+  --primary-foreground: 0 0% 8%;
 
-  --secondary: 217 33% 17%;
+  --secondary: 0 0% 18%;
 
-  --secondary-foreground: 210 40% 90%;
+  --secondary-foreground: 40 20% 90%;
 
-  --muted: 217 33% 17%;
+  --muted: 0 0% 18%;
 
-  --muted-foreground: 215 20% 65%;
+  --muted-foreground: 40 10% 65%;
 
-  --accent: 142 50% 15%;
+  --accent: 43 50% 15%;
 
-  --accent-foreground: 142 71% 75%;
+  --accent-foreground: 43 80% 75%;
 
   --destructive: 0 62% 50%;
 
   --destructive-foreground: 0 0% 100%;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: 217 33% 25%;
-  --ring: 142 71% 45%;
-  --chart-1: 142 71% 45%;
-  --chart-2: 24 95% 60%;
+  --input: 0 0% 25%;
+  --ring: 43 96% 56%;
+  --chart-1: 43 96% 56%;
+  --chart-2: 0 0% 80%;
   --chart-3: 201 94% 50%;
   --chart-4: 262 83% 65%;
   --chart-5: 340 75% 60%;

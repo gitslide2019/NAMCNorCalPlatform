@@ -1,7 +1,8 @@
-import { Building2, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { useState } from "react";
+import namcLogo from "@assets/NAMCNorCal_Logo_1769738259736.png";
 
 const navLinks = [
   { href: "#why-join", label: "Why Join" },
@@ -27,8 +28,13 @@ export function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
-              <Building2 className="h-6 w-6 text-primary-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground p-1">
+              <img 
+                src={namcLogo} 
+                alt="NAMC NorCal Logo" 
+                className="h-full w-full object-contain"
+                data-testid="img-logo"
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold leading-tight" data-testid="text-org-name">NAMC NorCal</span>
