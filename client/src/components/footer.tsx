@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin, ExternalLink } from "lucide-react";
-import namcLogo from "@assets/NAMCNorCal_Logo_1769738259736.png";
+import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
 
 export function Footer() {
   return (
