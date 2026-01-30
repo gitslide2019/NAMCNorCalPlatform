@@ -28,7 +28,7 @@ export function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground p-1">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-neutral-800 p-1">
               <img 
                 src={namcLogo} 
                 alt="NAMC NorCal Logo" 

@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-foreground p-1">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-neutral-800 p-1">
                 <img 
                   src={namcLogo} 
                   alt="NAMC NorCal Logo" 
