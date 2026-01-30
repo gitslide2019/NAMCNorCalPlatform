@@ -24,7 +24,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-[9999] w-full border-b bg-primary">
+    <header className="sticky top-0 z-[9999] w-full border-b bg-white dark:bg-neutral-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -37,8 +37,8 @@ export function Header() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight text-primary-foreground" data-testid="text-org-name">NAMC NorCal</span>
-              <span className="text-xs text-primary-foreground/70 leading-tight">General Membership</span>
+              <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-white" data-testid="text-org-name">NAMC NorCal</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400 leading-tight">General Membership</span>
             </div>
           </div>
 
@@ -48,7 +48,7 @@ export function Header() {
                 key={link.href}
                 variant="ghost"
                 size="sm"
-                className="text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 onClick={() => scrollToSection(link.href)}
                 data-testid={`link-nav-${link.label.toLowerCase().replace(" ", "-")}`}
               >
@@ -62,7 +62,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-primary-foreground hover:bg-primary-foreground/10"
+              className="md:hidden text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
             >
@@ -72,13 +72,13 @@ export function Header() {
         </div>
 
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-primary-foreground/20">
+          <nav className="md:hidden py-4 border-t border-neutral-200 dark:border-neutral-700">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Button
                   key={link.href}
                   variant="ghost"
-                  className="justify-start text-primary-foreground hover:bg-primary-foreground/10"
+                  className="justify-start text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   onClick={() => scrollToSection(link.href)}
                   data-testid={`link-mobile-${link.label.toLowerCase().replace(" ", "-")}`}
                 >
