@@ -8,7 +8,7 @@ The site is a single-page application with sections for:
 - Hero/landing content explaining the organization
 - Why join benefits
 - Membership tier pricing (Small, Medium, Large, Government)
-- Annual events calendar
+- Member Spotlight featuring NAMC member companies (currently: Amir Jenkins / 5D Construction Containment Services)
 - Ways to get involved
 - Membership application form
 
