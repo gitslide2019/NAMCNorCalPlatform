@@ -433,6 +433,45 @@ function ProjectDetailView({
         </Card>
       )}
 
+      {!user?.isAdmin && project.bids && project.bids.length > 0 && (
+        <Card className="mt-6" data-testid="card-my-bids">
+          <CardHeader>
+            <CardTitle className="text-lg">Your Bids</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {project.bids.map((bid) => (
+              <div
+                key={bid.id}
+                className="border rounded-md p-4 space-y-2"
+                data-testid={`card-bid-${bid.id}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    {bid.amount}
+                  </p>
+                  <Badge
+                    className={
+                      bid.status === "accepted"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : bid.status === "rejected"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                    }
+                    data-testid={`badge-bid-status-${bid.id}`}
+                  >
+                    {bid.status}
+                  </Badge>
+                </div>
+                <p className="text-sm" data-testid={`text-bid-proposal-${bid.id}`}>
+                  {bid.proposal}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {user?.isAdmin && project.bids && project.bids.length > 0 && (
         <Card className="mt-6" data-testid="card-bids-list">
           <CardHeader>

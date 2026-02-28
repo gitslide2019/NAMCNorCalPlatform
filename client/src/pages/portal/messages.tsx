@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,16 +49,32 @@ export default function Messages() {
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
 
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
+
+  const { data: portalUsers } = useQuery<PortalUser[]>({
+    queryKey: ["/api/portal/users"],
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const toUserId = params.get("to");
+    if (toUserId && portalUsers) {
+      const validUser = portalUsers.find(u => String(u.id) === toUserId);
+      if (validUser) {
+        setRecipientId(toUserId);
+        setComposeOpen(true);
+      }
+      setLocation("/portal/messages", { replace: true });
+    }
+  }, [searchString, portalUsers, setLocation]);
+
   const { data: inboxMessages, isLoading: inboxLoading } = useQuery<MessageWithSender[]>({
     queryKey: ["/api/portal/messages"],
   });
 
   const { data: sentMessages, isLoading: sentLoading } = useQuery<MessageWithSender[]>({
     queryKey: ["/api/portal/messages/sent"],
-  });
-
-  const { data: portalUsers } = useQuery<PortalUser[]>({
-    queryKey: ["/api/portal/users"],
   });
 
   const sendMutation = useMutation({
