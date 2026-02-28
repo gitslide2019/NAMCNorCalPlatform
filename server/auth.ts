@@ -32,6 +32,10 @@ declare global {
 export function setupAuth(app: Express) {
   const PgSession = connectPgSimple(session);
 
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   const sessionSettings: session.SessionOptions = {
     store: new PgSession({
       conString: process.env.DATABASE_URL,
