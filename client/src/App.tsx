@@ -21,12 +21,14 @@ import Newsletters from "@/pages/portal/newsletters";
 import ToolLibrary from "@/pages/portal/tools";
 import Courses from "@/pages/portal/courses";
 import MemberDetail from "@/pages/portal/member-detail";
+import ResetPasswordPage from "@/pages/reset-password";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/portal">
         <ProtectedRoute><Dashboard /></ProtectedRoute>
       </Route>

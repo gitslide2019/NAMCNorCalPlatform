@@ -41,6 +41,8 @@ Portal sidebar is organized into sections:
 - Session-based auth using Passport.js with local strategy
 - Password hashing via scrypt
 - Sessions stored in PostgreSQL via connect-pg-simple
+- Forgot password flow: email-based reset via Resend integration
+- Reset password page at `/reset-password?token=xxx`
 
 ## User Preferences
 
@@ -87,6 +89,7 @@ The server provides:
 Current database tables:
 - `users` - User accounts with username, password, isAdmin flag, and memberApplicationId link
 - `membership_applications` - Submitted membership applications with company info, contact details, membership category, and status (pending/approved/rejected)
+- `password_reset_tokens` - Email-based password reset tokens (userId, token, expiresAt, usedAt)
 - `session` - Express session store (auto-created by connect-pg-simple)
 - `messages` - Direct messages between members (senderId, recipientId, subject, content, isRead)
 - `discussion_topics` - Discussion board topics (title, category, content, authorId, isPinned)
@@ -114,6 +117,8 @@ The `shared/` directory contains code used by both frontend and backend:
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/user` - Get current user
+- `POST /api/auth/forgot-password` - Request password reset email (by membership email)
+- `POST /api/auth/reset-password` - Reset password with token
 - `POST /api/membership-applications` - Submit application
 - `GET /api/membership-applications` - List all applications (admin)
 - `GET /api/membership-applications/:id` - Get single application (admin)

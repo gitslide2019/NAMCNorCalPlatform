@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { Loader2, CheckCircle } from "lucide-react";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
 
 const loginSchema = z.object({
@@ -30,7 +32,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const { user, loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -52,7 +54,7 @@ export default function AuthPage() {
             <p className="text-muted-foreground">Member Portal</p>
           </div>
 
-          {isLogin ? (
+          {mode === "login" ? (
             <LoginForm
               onSubmit={(data) => {
                 loginMutation.mutate(data, {
@@ -63,8 +65,9 @@ export default function AuthPage() {
                 });
               }}
               isPending={loginMutation.isPending}
+              onForgotPassword={() => setMode("forgot")}
             />
-          ) : (
+          ) : mode === "register" ? (
             <RegisterForm
               onSubmit={(data) => {
                 registerMutation.mutate({ username: data.username, password: data.password }, {
@@ -76,19 +79,23 @@ export default function AuthPage() {
               }}
               isPending={registerMutation.isPending}
             />
+          ) : (
+            <ForgotPasswordForm onBackToLogin={() => setMode("login")} />
           )}
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              className="text-primary font-medium hover:underline"
-              onClick={() => setIsLogin(!isLogin)}
-              data-testid="button-toggle-auth"
-            >
-              {isLogin ? "Register" : "Sign In"}
-            </button>
-          </p>
+          {mode !== "forgot" && (
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+              <button
+                type="button"
+                className="text-primary font-medium hover:underline"
+                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                data-testid="button-toggle-auth"
+              >
+                {mode === "login" ? "Register" : "Sign In"}
+              </button>
+            </p>
+          )}
         </div>
       </div>
 
@@ -121,7 +128,7 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm({ onSubmit, isPending }: { onSubmit: (data: LoginForm) => void; isPending: boolean }) {
+function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data: LoginForm) => void; isPending: boolean; onForgotPassword: () => void }) {
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { username: "", password: "" },
@@ -154,7 +161,17 @@ function LoginForm({ onSubmit, isPending }: { onSubmit: (data: LoginForm) => voi
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <button
+                      type="button"
+                      className="text-xs text-primary font-medium hover:underline"
+                      onClick={onForgotPassword}
+                      data-testid="button-forgot-password"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <FormControl>
                     <Input type="password" {...field} data-testid="input-password" />
                   </FormControl>
@@ -233,6 +250,93 @@ function RegisterForm({ onSubmit, isPending }: { onSubmit: (data: RegisterForm) 
             </Button>
           </form>
         </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+const forgotSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+type ForgotForm = z.infer<typeof forgotSchema>;
+
+function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => void }) {
+  const form = useForm<ForgotForm>({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: { email: "" },
+  });
+
+  const forgotMutation = useMutation({
+    mutationFn: async (data: ForgotForm) => {
+      const res = await apiRequest("POST", "/api/auth/forgot-password", data);
+      return res.json();
+    },
+  });
+
+  if (forgotMutation.isSuccess) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+          <h2 className="text-lg font-bold mb-2" data-testid="text-forgot-success">Check Your Email</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            If an account with that email exists, we've sent a password reset link. 
+            Please check your inbox and spam folder.
+          </p>
+          <Button variant="outline" onClick={onBackToLogin} data-testid="button-back-to-login">
+            Back to Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle data-testid="text-forgot-title">Forgot Password</CardTitle>
+        <CardDescription>
+          Enter the email address associated with your membership application and we'll send you a reset link.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {forgotMutation.isError && (
+          <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md mb-4" data-testid="text-forgot-error">
+            {(forgotMutation.error as Error)?.message || "Something went wrong. Please try again."}
+          </div>
+        )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => forgotMutation.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Address</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="you@company.com" {...field} data-testid="input-forgot-email" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={forgotMutation.isPending} data-testid="button-send-reset">
+              {forgotMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Send Reset Link
+            </Button>
+          </form>
+        </Form>
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          <button
+            type="button"
+            className="text-primary font-medium hover:underline"
+            onClick={onBackToLogin}
+            data-testid="button-back-to-signin"
+          >
+            Back to Sign In
+          </button>
+        </p>
       </CardContent>
     </Card>
   );
