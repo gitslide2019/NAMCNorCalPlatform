@@ -22,6 +22,7 @@ interface MemberDetail {
   primaryServices: string | null;
   certifications: string | null;
   membershipCategory: string;
+  isBoardMember: boolean;
   userId: string | null;
 }
 
@@ -95,6 +96,9 @@ export default function MemberDetailPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {member.isBoardMember && (
+                      <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
+                    )}
                     <Badge variant="secondary" className="capitalize" data-testid="text-member-category">
                       {member.membershipCategory}
                     </Badge>

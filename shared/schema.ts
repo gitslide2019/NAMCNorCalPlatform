@@ -35,6 +35,7 @@ export const membershipApplications = pgTable("membership_applications", {
   certifications: text("certifications"),
   howDidYouHear: text("how_did_you_hear"),
   acceptedTerms: boolean("accepted_terms").notNull().default(false),
+  isBoardMember: boolean("is_board_member").notNull().default(false),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -23,6 +23,7 @@ interface DirectoryMember {
   primaryServices: string | null;
   certifications: string | null;
   membershipCategory: string;
+  isBoardMember: boolean;
 }
 
 export default function Directory() {
@@ -122,9 +123,14 @@ export default function Directory() {
                         <h3 className="font-semibold text-lg">{member.companyName}</h3>
                         <p className="text-sm text-muted-foreground">{member.contactName} - {member.title}</p>
                       </div>
-                      <Badge variant="secondary" className="text-xs capitalize shrink-0 ml-2">
-                        {member.membershipCategory}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
+                        {member.isBoardMember && (
+                          <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board Member</Badge>
+                        )}
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {member.membershipCategory}
+                        </Badge>
+                      </div>
                     </div>
 
                     {member.primaryServices && (

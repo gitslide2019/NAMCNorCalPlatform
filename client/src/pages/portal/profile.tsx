@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe, Wrench, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import type { MembershipApplication } from "@shared/schema";
 
@@ -116,7 +117,12 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Membership Category</p>
-                  <p className="font-medium capitalize" data-testid="text-membership-category">{application.membershipCategory}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium capitalize" data-testid="text-membership-category">{application.membershipCategory}</p>
+                    {application.isBoardMember && (
+                      <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

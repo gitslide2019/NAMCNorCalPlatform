@@ -88,7 +88,7 @@ The server provides:
 
 Current database tables:
 - `users` - User accounts with username, password, isAdmin flag, and memberApplicationId link
-- `membership_applications` - Submitted membership applications with company info, contact details, membership category, and status (pending/approved/rejected)
+- `membership_applications` - Submitted membership applications with company info, contact details, membership category, board member flag, and status (pending/approved/rejected)
 - `password_reset_tokens` - Email-based password reset tokens (userId, token, expiresAt, usedAt)
 - `session` - Express session store (auto-created by connect-pg-simple)
 - `messages` - Direct messages between members (senderId, recipientId, subject, content, isRead)
@@ -185,7 +185,7 @@ The `shared/` directory contains code used by both frontend and backend:
 
 ### Real Accounts
 - **Chapter Admin**: `shannon.hickman` / `NamcAdmin2026!` — Shannon Hickman, NAMC NorCal (info@namcnorcal.org, has admin access)
-- **President (Large)**: `mario.wagner` / `NamcPresident2026!` — Mario Wagner, RF Contractors (mwagner@rfcontractors.com)
+- **President (Large)**: `mario.wagner` / `NamcPresident2026!` — Mario Wagner, RF Contractors (mwagner@rfcontractors.com, board member)
 
 ### Admin Access
 - Admin users see the Admin Panel in the portal sidebar

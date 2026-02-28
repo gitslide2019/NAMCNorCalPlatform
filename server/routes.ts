@@ -124,6 +124,7 @@ export async function registerRoutes(
         primaryServices: app.primaryServices,
         certifications: app.certifications,
         membershipCategory: app.membershipCategory,
+        isBoardMember: app.isBoardMember,
       }));
       res.json(directory);
     } catch (error) {
@@ -156,6 +157,7 @@ export async function registerRoutes(
         primaryServices: application.primaryServices,
         certifications: application.certifications,
         membershipCategory: application.membershipCategory,
+        isBoardMember: application.isBoardMember,
         userId: linkedUser?.id || null,
       });
     } catch (error) {
