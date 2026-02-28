@@ -132,6 +132,38 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/portal/directory/:id", requireAuth, async (req, res) => {
+    try {
+      const application = await storage.getMembershipApplication(req.params.id);
+      if (!application || application.status !== "approved") {
+        res.status(404).json({ message: "Member not found" });
+        return;
+      }
+      const allUsers = await storage.getAllUsers();
+      const linkedUser = allUsers.find(u => u.memberApplicationId === application.id);
+      res.json({
+        id: application.id,
+        companyName: application.companyName,
+        contactName: application.contactName,
+        title: application.title,
+        email: application.email,
+        phone: application.phone,
+        address: application.address,
+        city: application.city,
+        state: application.state,
+        zipCode: application.zipCode,
+        website: application.website,
+        primaryServices: application.primaryServices,
+        certifications: application.certifications,
+        membershipCategory: application.membershipCategory,
+        userId: linkedUser?.id || null,
+      });
+    } catch (error) {
+      console.error("Error fetching member:", error);
+      res.status(500).json({ message: "Failed to fetch member" });
+    }
+  });
+
   app.get("/api/portal/my-application", requireAuth, async (req, res) => {
     try {
       const user = req.user!;
@@ -175,8 +207,7 @@ export async function registerRoutes(
 
   app.post("/api/portal/link-application", requireAdmin, async (req, res) => {
     try {
-      const user = req.user!;
-      const { applicationId } = req.body;
+      const { applicationId, userId } = req.body;
       if (!applicationId) {
         res.status(400).json({ message: "Application ID is required" });
         return;
@@ -186,9 +217,10 @@ export async function registerRoutes(
         res.status(404).json({ message: "Application not found" });
         return;
       }
-      const updatedUser = await storage.updateUser(user.id, { memberApplicationId: applicationId });
+      const targetUserId = userId || req.user!.id;
+      const updatedUser = await storage.updateUser(targetUserId, { memberApplicationId: applicationId });
       if (!updatedUser) {
-        res.status(500).json({ message: "Failed to link application" });
+        res.status(404).json({ message: "User not found" });
         return;
       }
       const { password: _, ...safeUser } = updatedUser;
@@ -329,6 +361,69 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/portal/discussions/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const topic = await storage.getTopic(req.params.id);
+      if (!topic) {
+        res.status(404).json({ message: "Topic not found" });
+        return;
+      }
+      if (topic.authorId !== user.id && !user.isAdmin) {
+        res.status(403).json({ message: "Not authorized to edit this topic" });
+        return;
+      }
+      const allowedFields = ["title", "content", "category"];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      const updated = await storage.updateTopic(req.params.id, updates);
+      if (!updated) {
+        res.status(404).json({ message: "Topic not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update topic" });
+    }
+  });
+
+  app.delete("/api/portal/discussions/:id", requireAdmin, async (req, res) => {
+    try {
+      const topic = await storage.getTopic(req.params.id);
+      if (!topic) {
+        res.status(404).json({ message: "Topic not found" });
+        return;
+      }
+      await storage.deleteTopic(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete topic" });
+    }
+  });
+
+  app.delete("/api/portal/discussions/:topicId/replies/:replyId", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const reply = await storage.getReply(req.params.replyId);
+      if (!reply) {
+        res.status(404).json({ message: "Reply not found" });
+        return;
+      }
+      if (reply.authorId !== user.id && !user.isAdmin) {
+        res.status(403).json({ message: "Not authorized to delete this reply" });
+        return;
+      }
+      await storage.deleteReply(req.params.replyId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete reply" });
+    }
+  });
+
   app.get("/api/portal/projects", requireAuth, async (req, res) => {
     try {
       const projects = await storage.getProjects();
@@ -457,6 +552,32 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/portal/events/:id", requireAdmin, async (req, res) => {
+    try {
+      const existing = await storage.getEvent(req.params.id);
+      if (!existing) {
+        res.status(404).json({ message: "Event not found" });
+        return;
+      }
+      const allowedFields = ["title", "description", "eventDate", "eventTime", "location"];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      const updated = await storage.updateEvent(req.params.id, updates);
+      if (!updated) {
+        res.status(404).json({ message: "Event not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating event:", error);
+      res.status(500).json({ message: "Failed to update event" });
+    }
+  });
+
   app.delete("/api/portal/events/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteEvent(req.params.id);
@@ -503,6 +624,43 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/portal/newsletters/:id", requireAdmin, async (req, res) => {
+    try {
+      const newsletter = await storage.getNewsletter(req.params.id);
+      if (!newsletter) {
+        res.status(404).json({ message: "Newsletter not found" });
+        return;
+      }
+      const allowedFields = ["title", "content"];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      const updated = await storage.updateNewsletter(req.params.id, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating newsletter:", error);
+      res.status(500).json({ message: "Failed to update newsletter" });
+    }
+  });
+
+  app.delete("/api/portal/newsletters/:id", requireAdmin, async (req, res) => {
+    try {
+      const newsletter = await storage.getNewsletter(req.params.id);
+      if (!newsletter) {
+        res.status(404).json({ message: "Newsletter not found" });
+        return;
+      }
+      await storage.deleteNewsletter(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting newsletter:", error);
+      res.status(500).json({ message: "Failed to delete newsletter" });
+    }
+  });
+
   app.get("/api/portal/tools", requireAuth, async (req, res) => {
     try {
       const allTools = await storage.getTools();
@@ -527,6 +685,60 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/portal/tools/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const tool = await storage.getTool(req.params.id);
+      if (!tool) {
+        res.status(404).json({ message: "Tool not found" });
+        return;
+      }
+      if (tool.ownerId !== user.id && !user.isAdmin) {
+        res.status(403).json({ message: "Not authorized to edit this tool" });
+        return;
+      }
+      const allowedFields = ["name", "description", "category", "status"];
+      const updates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+      if (updates.status && !["available", "borrowed", "maintenance"].includes(updates.status)) {
+        res.status(400).json({ message: "Invalid status. Must be available, borrowed, or maintenance." });
+        return;
+      }
+      const updated = await storage.updateTool(req.params.id, updates);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update tool" });
+    }
+  });
+
+  app.delete("/api/portal/tools/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const tool = await storage.getTool(req.params.id);
+      if (!tool) {
+        res.status(404).json({ message: "Tool not found" });
+        return;
+      }
+      if (tool.ownerId !== user.id && !user.isAdmin) {
+        res.status(403).json({ message: "Not authorized to delete this tool" });
+        return;
+      }
+      const activeLoans = await storage.getActiveLoansForTool(req.params.id);
+      if (activeLoans.length > 0) {
+        res.status(400).json({ message: "Cannot delete tool with active loans" });
+        return;
+      }
+      await storage.deleteTool(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete tool" });
+    }
+  });
+
   app.post("/api/portal/tools/:id/borrow", requireAuth, async (req, res) => {
     try {
       const user = req.user!;
@@ -537,6 +749,11 @@ export async function registerRoutes(
       }
       if (tool.status !== "available") {
         res.status(400).json({ message: "Tool is not available" });
+        return;
+      }
+      const existingLoan = await storage.getActiveLoanForTool(req.params.id);
+      if (existingLoan && existingLoan.borrowerId === user.id) {
+        res.status(400).json({ message: "You already have an active loan for this tool" });
         return;
       }
       await storage.updateToolStatus(req.params.id, "borrowed");
@@ -637,6 +854,69 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/portal/courses/:id", requireAdmin, async (req, res) => {
+    try {
+      const { title, description } = req.body;
+      const updates: Record<string, any> = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      const course = await storage.updateCourse(req.params.id, updates);
+      if (!course) {
+        res.status(404).json({ message: "Course not found" });
+        return;
+      }
+      res.json(course);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update course" });
+    }
+  });
+
+  app.delete("/api/portal/courses/:id", requireAdmin, async (req, res) => {
+    try {
+      const course = await storage.getCourse(req.params.id);
+      if (!course) {
+        res.status(404).json({ message: "Course not found" });
+        return;
+      }
+      await storage.deleteCourse(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete course" });
+    }
+  });
+
+  app.patch("/api/portal/courses/:courseId/lessons/:lessonId", requireAdmin, async (req, res) => {
+    try {
+      const { title, content, sortOrder } = req.body;
+      const updates: Record<string, any> = {};
+      if (title !== undefined) updates.title = title;
+      if (content !== undefined) updates.content = content;
+      if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+      const lesson = await storage.updateLesson(req.params.lessonId, updates);
+      if (!lesson) {
+        res.status(404).json({ message: "Lesson not found" });
+        return;
+      }
+      res.json(lesson);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update lesson" });
+    }
+  });
+
+  app.delete("/api/portal/courses/:courseId/lessons/:lessonId", requireAdmin, async (req, res) => {
+    try {
+      const lesson = await storage.getLesson(req.params.lessonId);
+      if (!lesson) {
+        res.status(404).json({ message: "Lesson not found" });
+        return;
+      }
+      await storage.deleteLesson(req.params.lessonId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete lesson" });
+    }
+  });
+
   app.post("/api/portal/courses/:id/enroll", requireAuth, async (req, res) => {
     try {
       const user = req.user!;
@@ -661,7 +941,22 @@ export async function registerRoutes(
         return;
       }
       const { progress, completedLessons } = req.body;
-      const updated = await storage.updateEnrollmentProgress(enrollment.id, progress, completedLessons);
+      if (progress !== undefined) {
+        if (typeof progress !== "number" || progress < 0 || progress > 100) {
+          res.status(400).json({ message: "Progress must be a number between 0 and 100" });
+          return;
+        }
+      }
+      if (completedLessons !== undefined) {
+        if (typeof completedLessons !== "string" && !Array.isArray(completedLessons)) {
+          res.status(400).json({ message: "completedLessons must be a string or array" });
+          return;
+        }
+        if (Array.isArray(completedLessons)) {
+          req.body.completedLessons = completedLessons.join(",");
+        }
+      }
+      const updated = await storage.updateEnrollmentProgress(enrollment.id, progress, req.body.completedLessons);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update progress" });

@@ -69,8 +69,12 @@ export interface IStorage {
   getTopics(): Promise<DiscussionTopic[]>;
   getTopic(id: string): Promise<DiscussionTopic | undefined>;
   createTopic(topic: InsertDiscussionTopic): Promise<DiscussionTopic>;
+  updateTopic(id: string, data: Partial<DiscussionTopic>): Promise<DiscussionTopic | undefined>;
+  deleteTopic(id: string): Promise<void>;
   getReplies(topicId: string): Promise<DiscussionReply[]>;
+  getReply(id: string): Promise<DiscussionReply | undefined>;
   createReply(reply: InsertDiscussionReply): Promise<DiscussionReply>;
+  deleteReply(id: string): Promise<void>;
   getReplyCount(topicId: string): Promise<number>;
 
   getProjects(): Promise<ProjectOpportunity[]>;
@@ -82,21 +86,33 @@ export interface IStorage {
   updateBidStatus(bidId: string, status: string): Promise<ProjectBid | undefined>;
 
   getEvents(): Promise<CalendarEvent[]>;
+  getEvent(id: string): Promise<CalendarEvent | undefined>;
   createEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteEvent(id: string): Promise<void>;
+
+  updateCourse(id: string, data: Partial<Course>): Promise<Course | undefined>;
+  deleteCourse(id: string): Promise<void>;
+  updateLesson(id: string, data: Partial<Lesson>): Promise<Lesson | undefined>;
+  deleteLesson(id: string): Promise<void>;
 
   getNewsletters(): Promise<Newsletter[]>;
   getNewsletter(id: string): Promise<Newsletter | undefined>;
   createNewsletter(newsletter: InsertNewsletter): Promise<Newsletter>;
+  updateNewsletter(id: string, data: Partial<Newsletter>): Promise<Newsletter | undefined>;
+  deleteNewsletter(id: string): Promise<void>;
 
   getTools(): Promise<Tool[]>;
   getTool(id: string): Promise<Tool | undefined>;
   createTool(tool: InsertTool): Promise<Tool>;
+  updateTool(id: string, data: Partial<Tool>): Promise<Tool | undefined>;
+  deleteTool(id: string): Promise<void>;
   updateToolStatus(id: string, status: string): Promise<Tool | undefined>;
   createToolLoan(loan: InsertToolLoan): Promise<ToolLoan>;
   returnToolLoan(loanId: string): Promise<ToolLoan | undefined>;
   getMyLoans(userId: string): Promise<ToolLoan[]>;
   getActiveLoanForTool(toolId: string): Promise<ToolLoan | undefined>;
+  getActiveLoansForTool(toolId: string): Promise<ToolLoan[]>;
 
   getCourses(): Promise<Course[]>;
   getCourse(id: string): Promise<Course | undefined>;
@@ -225,13 +241,32 @@ export class DatabaseStorage implements IStorage {
     return t;
   }
 
+  async updateTopic(id: string, data: Partial<DiscussionTopic>): Promise<DiscussionTopic | undefined> {
+    const [t] = await db.update(discussionTopics).set(data).where(eq(discussionTopics.id, id)).returning();
+    return t;
+  }
+
+  async deleteTopic(id: string): Promise<void> {
+    await db.delete(discussionReplies).where(eq(discussionReplies.topicId, id));
+    await db.delete(discussionTopics).where(eq(discussionTopics.id, id));
+  }
+
   async getReplies(topicId: string): Promise<DiscussionReply[]> {
     return await db.select().from(discussionReplies).where(eq(discussionReplies.topicId, topicId)).orderBy(asc(discussionReplies.createdAt));
+  }
+
+  async getReply(id: string): Promise<DiscussionReply | undefined> {
+    const [r] = await db.select().from(discussionReplies).where(eq(discussionReplies.id, id));
+    return r;
   }
 
   async createReply(reply: InsertDiscussionReply): Promise<DiscussionReply> {
     const [r] = await db.insert(discussionReplies).values(reply).returning();
     return r;
+  }
+
+  async deleteReply(id: string): Promise<void> {
+    await db.delete(discussionReplies).where(eq(discussionReplies.id, id));
   }
 
   async getReplyCount(topicId: string): Promise<number> {
@@ -276,8 +311,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(calendarEvents).orderBy(asc(calendarEvents.eventDate));
   }
 
+  async getEvent(id: string): Promise<CalendarEvent | undefined> {
+    const [e] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    return e;
+  }
+
   async createEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
     const [e] = await db.insert(calendarEvents).values(event).returning();
+    return e;
+  }
+
+  async updateEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const [e] = await db.update(calendarEvents).set(data).where(eq(calendarEvents.id, id)).returning();
     return e;
   }
 
@@ -299,6 +344,15 @@ export class DatabaseStorage implements IStorage {
     return n;
   }
 
+  async updateNewsletter(id: string, data: Partial<Newsletter>): Promise<Newsletter | undefined> {
+    const [n] = await db.update(newsletters).set(data).where(eq(newsletters.id, id)).returning();
+    return n;
+  }
+
+  async deleteNewsletter(id: string): Promise<void> {
+    await db.delete(newsletters).where(eq(newsletters.id, id));
+  }
+
   async getTools(): Promise<Tool[]> {
     return await db.select().from(tools).orderBy(desc(tools.createdAt));
   }
@@ -311,6 +365,16 @@ export class DatabaseStorage implements IStorage {
   async createTool(tool: InsertTool): Promise<Tool> {
     const [t] = await db.insert(tools).values(tool).returning();
     return t;
+  }
+
+  async updateTool(id: string, data: Partial<Tool>): Promise<Tool | undefined> {
+    const [t] = await db.update(tools).set(data).where(eq(tools.id, id)).returning();
+    return t;
+  }
+
+  async deleteTool(id: string): Promise<void> {
+    await db.delete(toolLoans).where(eq(toolLoans.toolId, id));
+    await db.delete(tools).where(eq(tools.id, id));
   }
 
   async updateToolStatus(id: string, status: string): Promise<Tool | undefined> {
@@ -335,6 +399,10 @@ export class DatabaseStorage implements IStorage {
   async getActiveLoanForTool(toolId: string): Promise<ToolLoan | undefined> {
     const [loan] = await db.select().from(toolLoans).where(and(eq(toolLoans.toolId, toolId), eq(toolLoans.status, "active")));
     return loan;
+  }
+
+  async getActiveLoansForTool(toolId: string): Promise<ToolLoan[]> {
+    return await db.select().from(toolLoans).where(and(eq(toolLoans.toolId, toolId), eq(toolLoans.status, "active")));
   }
 
   async getCourses(): Promise<Course[]> {
@@ -382,6 +450,26 @@ export class DatabaseStorage implements IStorage {
   async updateEnrollmentProgress(id: string, progress: number, completedLessons: string): Promise<CourseEnrollment | undefined> {
     const [e] = await db.update(courseEnrollments).set({ progress, completedLessons }).where(eq(courseEnrollments.id, id)).returning();
     return e;
+  }
+
+  async updateCourse(id: string, data: Partial<Course>): Promise<Course | undefined> {
+    const [c] = await db.update(courses).set(data).where(eq(courses.id, id)).returning();
+    return c;
+  }
+
+  async deleteCourse(id: string): Promise<void> {
+    await db.delete(courseEnrollments).where(eq(courseEnrollments.courseId, id));
+    await db.delete(lessons).where(eq(lessons.courseId, id));
+    await db.delete(courses).where(eq(courses.id, id));
+  }
+
+  async updateLesson(id: string, data: Partial<Lesson>): Promise<Lesson | undefined> {
+    const [l] = await db.update(lessons).set(data).where(eq(lessons.id, id)).returning();
+    return l;
+  }
+
+  async deleteLesson(id: string): Promise<void> {
+    await db.delete(lessons).where(eq(lessons.id, id));
   }
 }
 

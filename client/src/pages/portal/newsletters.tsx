@@ -17,7 +17,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Newspaper, Plus, ArrowLeft, Calendar } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2 } from "lucide-react";
 import type { Newsletter } from "@shared/schema";
 
 export default function Newsletters() {
@@ -25,8 +36,11 @@ export default function Newsletters() {
   const { toast } = useToast();
   const [selectedNewsletterId, setSelectedNewsletterId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
 
   const { data: newsletters, isLoading: listLoading } = useQuery<Newsletter[]>({
     queryKey: ["/api/portal/newsletters"],
@@ -53,6 +67,42 @@ export default function Newsletters() {
       toast({ title: "Failed to create newsletter", description: error.message, variant: "destructive" });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { title: string; content: string }) => {
+      const res = await apiRequest("PATCH", `/api/portal/newsletters/${selectedNewsletterId}`, data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/newsletters"] });
+      setEditDialogOpen(false);
+      toast({ title: "Newsletter updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update newsletter", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/portal/newsletters/${id}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/newsletters"] });
+      setSelectedNewsletterId(null);
+      toast({ title: "Newsletter deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete newsletter", description: error.message, variant: "destructive" });
+    },
+  });
+
+  function openEditDialog(newsletter: Newsletter) {
+    setEditTitle(newsletter.title);
+    setEditContent(newsletter.content);
+    setEditDialogOpen(true);
+  }
 
   function formatDate(date: string | Date) {
     return new Date(date).toLocaleDateString("en-US", {
@@ -85,27 +135,112 @@ export default function Newsletters() {
               </CardContent>
             </Card>
           ) : selectedNewsletter ? (
-            <Card data-testid={`card-newsletter-detail-${selectedNewsletter.id}`}>
-              <CardHeader>
-                <CardTitle className="text-2xl" data-testid="text-newsletter-title">
-                  {selectedNewsletter.title}
-                </CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span data-testid="text-newsletter-date">
-                    {formatDate(selectedNewsletter.publishedAt)}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p
-                  className="whitespace-pre-wrap"
-                  data-testid="text-newsletter-content"
-                >
-                  {selectedNewsletter.content}
-                </p>
-              </CardContent>
-            </Card>
+            <>
+              <Card data-testid={`card-newsletter-detail-${selectedNewsletter.id}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                      <CardTitle className="text-2xl" data-testid="text-newsletter-title">
+                        {selectedNewsletter.title}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                        <Calendar className="h-4 w-4" />
+                        <span data-testid="text-newsletter-date">
+                          {formatDate(selectedNewsletter.publishedAt)}
+                        </span>
+                      </div>
+                    </div>
+                    {user?.isAdmin && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEditDialog(selectedNewsletter)}
+                          data-testid="button-edit-newsletter"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              data-testid="button-delete-newsletter"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Newsletter</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this newsletter? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(selectedNewsletter.id)}
+                                data-testid="button-confirm-delete"
+                              >
+                                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p
+                    className="whitespace-pre-wrap"
+                    data-testid="text-newsletter-content"
+                  >
+                    {selectedNewsletter.content}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Newsletter</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      updateMutation.mutate({ title: editTitle, content: editContent });
+                    }}
+                    className="space-y-4"
+                  >
+                    <Input
+                      placeholder="Newsletter title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      required
+                      data-testid="input-edit-newsletter-title"
+                    />
+                    <Textarea
+                      placeholder="Newsletter content..."
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="min-h-[200px]"
+                      required
+                      data-testid="input-edit-newsletter-content"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={updateMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-edit-newsletter"
+                    >
+                      {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </>
           ) : null}
         </div>
       </PortalLayout>

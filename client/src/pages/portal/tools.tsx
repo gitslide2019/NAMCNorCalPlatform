@@ -24,8 +24,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Plus, Package, ArrowLeftRight, Check } from "lucide-react";
+import { Wrench, Plus, Package, ArrowLeftRight, Check, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Tool, ToolLoan } from "@shared/schema";
 
 const categoryLabels: Record<string, string> = {
@@ -70,6 +80,14 @@ export default function ToolLibrary() {
   const [newToolName, setNewToolName] = useState("");
   const [newToolDescription, setNewToolDescription] = useState("");
   const [newToolCategory, setNewToolCategory] = useState("general");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTool, setEditingTool] = useState<Tool | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("general");
+  const [editStatus, setEditStatus] = useState("available");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTool, setDeletingTool] = useState<Tool | null>(null);
 
   const { data: tools = [], isLoading: toolsLoading } = useQuery<Tool[]>({
     queryKey: ["/api/portal/tools"],
@@ -125,6 +143,54 @@ export default function ToolLibrary() {
       toast({ title: "Failed to add tool", description: error.message, variant: "destructive" });
     },
   });
+
+  const editMutation = useMutation({
+    mutationFn: (data: { id: string; name: string; description: string; category: string; status: string }) =>
+      apiRequest("PATCH", `/api/portal/tools/${data.id}`, { name: data.name, description: data.description, category: data.category, status: data.status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
+      toast({ title: "Tool updated successfully" });
+      setEditDialogOpen(false);
+      setEditingTool(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update tool", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (toolId: string) =>
+      apiRequest("DELETE", `/api/portal/tools/${toolId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
+      toast({ title: "Tool deleted successfully" });
+      setDeleteDialogOpen(false);
+      setDeletingTool(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete tool", description: error.message, variant: "destructive" });
+    },
+  });
+
+  function openEditDialog(tool: Tool) {
+    setEditingTool(tool);
+    setEditName(tool.name);
+    setEditDescription(tool.description || "");
+    setEditCategory(tool.category);
+    setEditStatus(tool.status);
+    setEditDialogOpen(true);
+  }
+
+  function openDeleteDialog(tool: Tool) {
+    setDeletingTool(tool);
+    setDeleteDialogOpen(true);
+  }
+
+  const canManageTool = (tool: Tool) => {
+    return user?.isAdmin || tool.ownerId === user?.id;
+  };
 
   const filteredTools = tools.filter((tool) => {
     if (categoryFilter !== "all" && tool.category !== categoryFilter) return false;
@@ -281,29 +347,51 @@ export default function ToolLibrary() {
                         <Badge variant="outline" className="text-xs">
                           {categoryLabels[tool.category] || tool.category}
                         </Badge>
-                        {tool.status === "available" && !activeLoanToolIds.has(tool.id) && (
-                          <Button
-                            size="sm"
-                            onClick={() => borrowMutation.mutate(tool.id)}
-                            disabled={borrowMutation.isPending}
-                            data-testid={`button-borrow-${tool.id}`}
-                          >
-                            <Package className="h-3 w-3 mr-1" />
-                            Borrow
-                          </Button>
-                        )}
-                        {activeLoanToolIds.has(tool.id) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => returnMutation.mutate(tool.id)}
-                            disabled={returnMutation.isPending}
-                            data-testid={`button-return-${tool.id}`}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            Return
-                          </Button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {tool.status === "available" && !activeLoanToolIds.has(tool.id) && (
+                            <Button
+                              size="sm"
+                              onClick={() => borrowMutation.mutate(tool.id)}
+                              disabled={borrowMutation.isPending}
+                              data-testid={`button-borrow-${tool.id}`}
+                            >
+                              <Package className="h-3 w-3 mr-1" />
+                              Borrow
+                            </Button>
+                          )}
+                          {activeLoanToolIds.has(tool.id) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => returnMutation.mutate(tool.id)}
+                              disabled={returnMutation.isPending}
+                              data-testid={`button-return-${tool.id}`}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Return
+                            </Button>
+                          )}
+                          {canManageTool(tool) && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEditDialog(tool)}
+                                data-testid={`button-edit-tool-${tool.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openDeleteDialog(tool)}
+                                data-testid={`button-delete-tool-${tool.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -386,6 +474,86 @@ export default function ToolLibrary() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Tool</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Input
+              placeholder="Tool name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              data-testid="input-edit-tool-name"
+            />
+            <Textarea
+              placeholder="Description"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              data-testid="input-edit-tool-description"
+            />
+            <Select value={editCategory} onValueChange={setEditCategory}>
+              <SelectTrigger data-testid="select-edit-tool-category">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General</SelectItem>
+                <SelectItem value="power-tools">Power Tools</SelectItem>
+                <SelectItem value="hand-tools">Hand Tools</SelectItem>
+                <SelectItem value="safety">Safety Equipment</SelectItem>
+                <SelectItem value="measurement">Measurement</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={editStatus} onValueChange={setEditStatus}>
+              <SelectTrigger data-testid="select-edit-tool-status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="available">Available</SelectItem>
+                <SelectItem value="borrowed">Borrowed</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              onClick={() =>
+                editingTool && editMutation.mutate({
+                  id: editingTool.id,
+                  name: editName,
+                  description: editDescription,
+                  category: editCategory,
+                  status: editStatus,
+                })
+              }
+              disabled={!editName.trim() || editMutation.isPending}
+              data-testid="button-submit-edit-tool"
+            >
+              {editMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tool</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingTool?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-tool">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingTool && deleteMutation.mutate(deletingTool.id)}
+              data-testid="button-confirm-delete-tool"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalLayout>
   );
 }

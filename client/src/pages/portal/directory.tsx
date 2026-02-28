@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ interface DirectoryMember {
 }
 
 export default function Directory() {
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
@@ -97,7 +99,12 @@ export default function Directory() {
             </p>
             <div className="grid gap-4 md:grid-cols-2">
               {filtered.map((member) => (
-                <Card key={member.id} className="hover:shadow-md transition-shadow" data-testid={`card-directory-${member.id}`}>
+                <Card
+                  key={member.id}
+                  className="hover-elevate cursor-pointer"
+                  data-testid={`card-directory-${member.id}`}
+                  onClick={() => setLocation(`/portal/directory/${member.id}`)}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div>

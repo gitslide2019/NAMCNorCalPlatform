@@ -20,6 +20,7 @@ import CalendarPage from "@/pages/portal/calendar";
 import Newsletters from "@/pages/portal/newsletters";
 import ToolLibrary from "@/pages/portal/tools";
 import Courses from "@/pages/portal/courses";
+import MemberDetail from "@/pages/portal/member-detail";
 
 function Router() {
   return (
@@ -31,6 +32,9 @@ function Router() {
       </Route>
       <Route path="/portal/profile">
         <ProtectedRoute><Profile /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/directory/:id">
+        <ProtectedRoute><MemberDetail /></ProtectedRoute>
       </Route>
       <Route path="/portal/directory">
         <ProtectedRoute><Directory /></ProtectedRoute>

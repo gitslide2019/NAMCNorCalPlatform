@@ -17,7 +17,8 @@ Single-page application with sections for:
 Secure, authenticated area for members with:
 - **Dashboard** (`/portal`) - Welcome page with membership status, company info, quick links
 - **Profile** (`/portal/profile`) - View/edit company and contact information
-- **Member Directory** (`/portal/directory`) - Browse approved NAMC NorCal members with search and filters
+- **Member Directory** (`/portal/directory`) - Browse approved NAMC NorCal members with search and filters; click any member to view full profile
+- **Member Detail** (`/portal/directory/:id`) - Full member profile page with company info, services, certifications, and "Send Message" button
 - **Messages** (`/portal/messages`) - Member-to-member messaging with inbox, sent, compose, and reply
 - **Discussions** (`/portal/discussions`) - Discussion boards with topics, categories, and threaded replies
 - **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid)
@@ -118,8 +119,9 @@ The `shared/` directory contains code used by both frontend and backend:
 - `GET /api/membership-applications-export/csv` - CSV export (admin)
 - `GET /api/portal/my-application` - Get logged-in user's linked application
 - `GET /api/portal/directory` - Get approved members (auth)
+- `GET /api/portal/directory/:id` - Get single member profile (auth)
 - `PATCH /api/portal/profile` - Update contact info (auth)
-- `POST /api/portal/link-application` - Link user to application (admin)
+- `POST /api/portal/link-application` - Link user to application (admin, accepts optional userId)
 - `GET /api/portal/users` - List all users (id, username) (auth)
 - `GET /api/portal/messages` - Inbox messages (auth)
 - `GET /api/portal/messages/sent` - Sent messages (auth)
@@ -129,6 +131,9 @@ The `shared/` directory contains code used by both frontend and backend:
 - `GET /api/portal/discussions/:id` - Topic with replies (auth)
 - `POST /api/portal/discussions` - Create topic (auth)
 - `POST /api/portal/discussions/:id/replies` - Add reply (auth)
+- `PATCH /api/portal/discussions/:id` - Edit topic (author or admin)
+- `DELETE /api/portal/discussions/:id` - Delete topic with replies (admin)
+- `DELETE /api/portal/discussions/:topicId/replies/:replyId` - Delete reply (author or admin)
 - `GET /api/portal/projects` - List projects (auth)
 - `GET /api/portal/projects/:id` - Project with bids (auth, admin sees all bids)
 - `POST /api/portal/projects` - Create project (admin)
@@ -137,27 +142,36 @@ The `shared/` directory contains code used by both frontend and backend:
 - `PATCH /api/portal/projects/:projectId/bids/:bidId` - Update bid status (admin)
 - `GET /api/portal/events` - List calendar events (auth)
 - `POST /api/portal/events` - Create event (admin)
+- `PATCH /api/portal/events/:id` - Edit event (admin)
 - `DELETE /api/portal/events/:id` - Delete event (admin)
 - `GET /api/portal/newsletters` - List newsletters (auth)
 - `GET /api/portal/newsletters/:id` - Single newsletter (auth)
 - `POST /api/portal/newsletters` - Create newsletter (admin)
+- `PATCH /api/portal/newsletters/:id` - Edit newsletter (admin)
+- `DELETE /api/portal/newsletters/:id` - Delete newsletter (admin)
 - `GET /api/portal/tools` - List tools (auth)
 - `POST /api/portal/tools` - Add tool (auth)
 - `POST /api/portal/tools/:id/borrow` - Borrow tool (auth)
 - `POST /api/portal/tools/:id/return` - Return tool (auth)
+- `PATCH /api/portal/tools/:id` - Edit tool (owner or admin)
+- `DELETE /api/portal/tools/:id` - Delete tool (owner or admin, no active loans)
 - `GET /api/portal/tools/my-loans` - My tool loans (auth)
 - `GET /api/portal/courses` - List courses (auth)
 - `GET /api/portal/courses/my-enrollments` - My enrollments (auth)
 - `GET /api/portal/courses/:id` - Course with lessons and enrollment (auth)
 - `POST /api/portal/courses` - Create course (admin)
 - `POST /api/portal/courses/:id/lessons` - Add lesson (admin)
+- `PATCH /api/portal/courses/:id` - Edit course (admin)
+- `DELETE /api/portal/courses/:id` - Delete course with lessons/enrollments (admin)
+- `PATCH /api/portal/courses/:courseId/lessons/:lessonId` - Edit lesson (admin)
+- `DELETE /api/portal/courses/:courseId/lessons/:lessonId` - Delete lesson (admin)
 - `POST /api/portal/courses/:id/enroll` - Enroll in course (auth)
-- `PATCH /api/portal/courses/:id/progress` - Update progress (auth)
+- `PATCH /api/portal/courses/:id/progress` - Update progress (auth, validates 0-100)
 
 ### Admin Access
 - Default test admin: username `testadmin`, password `test1234`
 - Admin users see the Admin Panel in the portal sidebar
-- Admins can approve/reject applications, export CSV, post projects, manage bids, create events, publish newsletters, create courses/lessons
+- Admins can approve/reject applications, export CSV, post projects, manage bids, create/edit/delete events, publish/edit/delete newsletters, create/edit/delete courses/lessons, delete discussion topics/replies, edit/delete tools
 
 ## External Dependencies
 

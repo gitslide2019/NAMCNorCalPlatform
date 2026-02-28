@@ -19,6 +19,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   GraduationCap,
   Plus,
   BookOpen,
@@ -26,6 +37,8 @@ import {
   ArrowLeft,
   Play,
   Lock,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import type { Course, Lesson, CourseEnrollment } from "@shared/schema";
 
@@ -49,6 +62,14 @@ export default function Courses() {
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [newLessonContent, setNewLessonContent] = useState("");
   const [newLessonOrder, setNewLessonOrder] = useState("");
+  const [editCourseOpen, setEditCourseOpen] = useState(false);
+  const [editCourseTitle, setEditCourseTitle] = useState("");
+  const [editCourseDesc, setEditCourseDesc] = useState("");
+  const [editLessonOpen, setEditLessonOpen] = useState(false);
+  const [editLessonId, setEditLessonId] = useState<string | null>(null);
+  const [editLessonTitle, setEditLessonTitle] = useState("");
+  const [editLessonContent, setEditLessonContent] = useState("");
+  const [editLessonOrder, setEditLessonOrder] = useState("");
 
   const { data: courses, isLoading: coursesLoading } = useQuery<Course[]>({
     queryKey: ["/api/portal/courses"],
@@ -169,6 +190,88 @@ export default function Courses() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  const editCourseMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PATCH", `/api/portal/courses/${selectedCourseId}`, {
+        title: editCourseTitle,
+        description: editCourseDesc,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses", selectedCourseId] });
+      setEditCourseOpen(false);
+      toast({ title: "Course updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      await apiRequest("DELETE", `/api/portal/courses/${courseId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses/my-enrollments"] });
+      setView("catalog");
+      setSelectedCourseId(null);
+      toast({ title: "Course deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const editLessonMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PATCH", `/api/portal/courses/${selectedCourseId}/lessons/${editLessonId}`, {
+        title: editLessonTitle,
+        content: editLessonContent,
+        sortOrder: parseInt(editLessonOrder) || 0,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses", selectedCourseId] });
+      setEditLessonOpen(false);
+      setEditLessonId(null);
+      toast({ title: "Lesson updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: async (lessonId: string) => {
+      await apiRequest("DELETE", `/api/portal/courses/${selectedCourseId}/lessons/${lessonId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/courses", selectedCourseId] });
+      toast({ title: "Lesson deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const openEditCourse = () => {
+    if (courseDetail) {
+      setEditCourseTitle(courseDetail.title);
+      setEditCourseDesc(courseDetail.description || "");
+      setEditCourseOpen(true);
+    }
+  };
+
+  const openEditLesson = (lesson: Lesson) => {
+    setEditLessonId(lesson.id);
+    setEditLessonTitle(lesson.title);
+    setEditLessonContent(lesson.content);
+    setEditLessonOrder(String(lesson.sortOrder));
+    setEditLessonOpen(true);
+  };
 
   const getEnrollment = (courseId: string) =>
     enrollments?.find((e) => e.courseId === courseId);
@@ -306,51 +409,89 @@ export default function Courses() {
                     </Button>
                   )}
                   {user?.isAdmin && (
-                    <Dialog open={addLessonOpen} onOpenChange={setAddLessonOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" data-testid="button-add-lesson">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Lesson
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add Lesson</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 mt-4">
-                          <Input
-                            placeholder="Lesson title"
-                            value={newLessonTitle}
-                            onChange={(e) => setNewLessonTitle(e.target.value)}
-                            data-testid="input-lesson-title"
-                          />
-                          <Textarea
-                            placeholder="Lesson content"
-                            value={newLessonContent}
-                            onChange={(e) => setNewLessonContent(e.target.value)}
-                            rows={6}
-                            data-testid="input-lesson-content"
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Sort order"
-                            value={newLessonOrder}
-                            onChange={(e) => setNewLessonOrder(e.target.value)}
-                            data-testid="input-lesson-order"
-                          />
-                          <Button
-                            onClick={() => addLessonMutation.mutate()}
-                            disabled={addLessonMutation.isPending}
-                            className="w-full"
-                            data-testid="button-submit-lesson"
-                          >
-                            {addLessonMutation.isPending
-                              ? "Adding..."
-                              : "Add Lesson"}
+                    <>
+                      <Dialog open={addLessonOpen} onOpenChange={setAddLessonOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" data-testid="button-add-lesson">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Lesson
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Add Lesson</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 mt-4">
+                            <Input
+                              placeholder="Lesson title"
+                              value={newLessonTitle}
+                              onChange={(e) => setNewLessonTitle(e.target.value)}
+                              data-testid="input-lesson-title"
+                            />
+                            <Textarea
+                              placeholder="Lesson content"
+                              value={newLessonContent}
+                              onChange={(e) => setNewLessonContent(e.target.value)}
+                              rows={6}
+                              data-testid="input-lesson-content"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Sort order"
+                              value={newLessonOrder}
+                              onChange={(e) => setNewLessonOrder(e.target.value)}
+                              data-testid="input-lesson-order"
+                            />
+                            <Button
+                              onClick={() => addLessonMutation.mutate()}
+                              disabled={addLessonMutation.isPending}
+                              className="w-full"
+                              data-testid="button-submit-lesson"
+                            >
+                              {addLessonMutation.isPending
+                                ? "Adding..."
+                                : "Add Lesson"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={openEditCourse}
+                        data-testid="button-edit-course"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            data-testid="button-delete-course"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Course</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the course, all its lessons, and all enrollments. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-testid="button-cancel-delete-course">Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteCourseMutation.mutate(courseDetail.id)}
+                              data-testid="button-confirm-delete-course"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
                   )}
                 </div>
               </div>
@@ -404,6 +545,50 @@ export default function Courses() {
                                 {lesson.title}
                               </p>
                             </div>
+                            {user?.isAdmin && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditLesson(lesson);
+                                  }}
+                                  data-testid={`button-edit-lesson-${lesson.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => e.stopPropagation()}
+                                      data-testid={`button-delete-lesson-${lesson.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently delete this lesson. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel data-testid="button-cancel-delete-lesson">Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteLessonMutation.mutate(lesson.id)}
+                                        data-testid="button-confirm-delete-lesson"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            )}
                             {completed ? (
                               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
                             ) : !enrolled ? (
@@ -417,6 +602,75 @@ export default function Courses() {
                     })
                 )}
               </div>
+
+              <Dialog open={editCourseOpen} onOpenChange={setEditCourseOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Course</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input
+                      placeholder="Course title"
+                      value={editCourseTitle}
+                      onChange={(e) => setEditCourseTitle(e.target.value)}
+                      data-testid="input-edit-course-title"
+                    />
+                    <Textarea
+                      placeholder="Course description"
+                      value={editCourseDesc}
+                      onChange={(e) => setEditCourseDesc(e.target.value)}
+                      rows={4}
+                      data-testid="input-edit-course-description"
+                    />
+                    <Button
+                      onClick={() => editCourseMutation.mutate()}
+                      disabled={editCourseMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-edit-course"
+                    >
+                      {editCourseMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={editLessonOpen} onOpenChange={setEditLessonOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Lesson</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <Input
+                      placeholder="Lesson title"
+                      value={editLessonTitle}
+                      onChange={(e) => setEditLessonTitle(e.target.value)}
+                      data-testid="input-edit-lesson-title"
+                    />
+                    <Textarea
+                      placeholder="Lesson content"
+                      value={editLessonContent}
+                      onChange={(e) => setEditLessonContent(e.target.value)}
+                      rows={6}
+                      data-testid="input-edit-lesson-content"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Sort order"
+                      value={editLessonOrder}
+                      onChange={(e) => setEditLessonOrder(e.target.value)}
+                      data-testid="input-edit-lesson-order"
+                    />
+                    <Button
+                      onClick={() => editLessonMutation.mutate()}
+                      disabled={editLessonMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-edit-lesson"
+                    >
+                      {editLessonMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </>
           ) : null}
         </div>

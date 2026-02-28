@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send } from "lucide-react";
+import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2 } from "lucide-react";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
@@ -56,6 +56,10 @@ export default function Discussions() {
   const [newCategory, setNewCategory] = useState("general");
   const [newContent, setNewContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
+  const [editTopicDialogOpen, setEditTopicDialogOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState("general");
+  const [editContent, setEditContent] = useState("");
 
   const { data: users } = useQuery<PortalUser[]>({
     queryKey: ["/api/portal/users"],
@@ -115,6 +119,62 @@ export default function Discussions() {
     },
   });
 
+  const editTopicMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PATCH", `/api/portal/discussions/${selectedTopicId}`, {
+        title: editTitle,
+        category: editCategory,
+        content: editContent,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/discussions", selectedTopicId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/discussions"] });
+      setEditTopicDialogOpen(false);
+      toast({ title: "Topic updated", description: "Your topic has been updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteTopicMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/portal/discussions/${selectedTopicId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/discussions"] });
+      setSelectedTopicId(null);
+      toast({ title: "Topic deleted", description: "The topic has been deleted." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteReplyMutation = useMutation({
+    mutationFn: async (replyId: string) => {
+      await apiRequest("DELETE", `/api/portal/discussions/${selectedTopicId}/replies/${replyId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/discussions", selectedTopicId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/discussions"] });
+      toast({ title: "Reply deleted", description: "The reply has been deleted." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const openEditTopicDialog = () => {
+    if (topicDetail) {
+      setEditTitle(topicDetail.title);
+      setEditCategory(topicDetail.category);
+      setEditContent(topicDetail.content);
+      setEditTopicDialogOpen(true);
+    }
+  };
+
   const filteredTopics = (topics || [])
     .filter((t) => categoryFilter === "all" || t.category === categoryFilter)
     .sort((a, b) => {
@@ -166,6 +226,29 @@ export default function Discussions() {
                         )}
                       </div>
                     </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {(user?.id === topicDetail.authorId || user?.isAdmin) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={openEditTopicDialog}
+                          data-testid="button-edit-topic"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {user?.isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteTopicMutation.mutate()}
+                          disabled={deleteTopicMutation.isPending}
+                          data-testid="button-delete-topic"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -190,17 +273,32 @@ export default function Discussions() {
                 {(topicDetail.replies || []).map((reply) => (
                   <Card key={reply.id} data-testid={`card-reply-${reply.id}`}>
                     <CardContent className="p-4">
-                      <p className="whitespace-pre-wrap mb-2" data-testid={`text-reply-content-${reply.id}`}>
-                        {reply.content}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span data-testid={`text-reply-author-${reply.id}`}>
-                          {getUsername(reply.authorId)}
-                        </span>
-                        <span>·</span>
-                        <span data-testid={`text-reply-date-${reply.id}`}>
-                          {new Date(reply.createdAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="whitespace-pre-wrap mb-2" data-testid={`text-reply-content-${reply.id}`}>
+                            {reply.content}
+                          </p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span data-testid={`text-reply-author-${reply.id}`}>
+                              {getUsername(reply.authorId)}
+                            </span>
+                            <span>·</span>
+                            <span data-testid={`text-reply-date-${reply.id}`}>
+                              {new Date(reply.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        {(user?.id === reply.authorId || user?.isAdmin) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteReplyMutation.mutate(reply.id)}
+                            disabled={deleteReplyMutation.isPending}
+                            data-testid={`button-delete-reply-${reply.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -231,6 +329,48 @@ export default function Discussions() {
                   </Button>
                 </CardContent>
               </Card>
+              <Dialog open={editTopicDialogOpen} onOpenChange={setEditTopicDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Topic</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-2">
+                    <Input
+                      placeholder="Topic title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      data-testid="input-edit-topic-title"
+                    />
+                    <Select value={editCategory} onValueChange={setEditCategory}>
+                      <SelectTrigger data-testid="select-edit-topic-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat} data-testid={`edit-select-item-${cat}`}>
+                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      placeholder="Topic content"
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      rows={5}
+                      data-testid="input-edit-topic-content"
+                    />
+                    <Button
+                      onClick={() => editTopicMutation.mutate()}
+                      disabled={!editTitle.trim() || !editContent.trim() || editTopicMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-edit-topic"
+                    >
+                      {editTopicMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </>
           ) : null}
         </div>

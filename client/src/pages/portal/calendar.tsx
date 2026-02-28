@@ -23,6 +23,7 @@ import {
   MapPin,
   Clock,
   Trash2,
+  Pencil,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -62,11 +63,18 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(now.getMonth());
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
   const [newEventTime, setNewEventTime] = useState("");
   const [newLocation, setNewLocation] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editEventDate, setEditEventDate] = useState("");
+  const [editEventTime, setEditEventTime] = useState("");
+  const [editLocation, setEditLocation] = useState("");
 
   const { data: events, isLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/portal/events"],
@@ -109,6 +117,38 @@ export default function CalendarPage() {
       toast({ title: "Failed to delete event", description: error.message, variant: "destructive" });
     },
   });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingEvent) return;
+      await apiRequest("PATCH", `/api/portal/events/${editingEvent.id}`, {
+        title: editTitle,
+        description: editDescription,
+        eventDate: editEventDate,
+        eventTime: editEventTime,
+        location: editLocation,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/events"] });
+      toast({ title: "Event updated successfully" });
+      setEditDialogOpen(false);
+      setEditingEvent(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update event", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const openEditDialog = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setEditTitle(event.title);
+    setEditDescription(event.description || "");
+    setEditEventDate(event.eventDate);
+    setEditEventTime(event.eventTime || "");
+    setEditLocation(event.location || "");
+    setEditDialogOpen(true);
+  };
 
   const goToPrevMonth = () => {
     if (currentMonth === 0) {
@@ -317,15 +357,25 @@ export default function CalendarPage() {
                           {event.eventDate}
                         </Badge>
                         {user?.isAdmin && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deleteMutation.mutate(event.id)}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-event-${event.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditDialog(event)}
+                              data-testid={`button-edit-event-${event.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => deleteMutation.mutate(event.id)}
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-event-${event.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -346,6 +396,54 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Event</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Input
+                placeholder="Event title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                data-testid="input-edit-event-title"
+              />
+              <Textarea
+                placeholder="Event description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                data-testid="input-edit-event-description"
+              />
+              <Input
+                type="date"
+                value={editEventDate}
+                onChange={(e) => setEditEventDate(e.target.value)}
+                data-testid="input-edit-event-date"
+              />
+              <Input
+                type="time"
+                value={editEventTime}
+                onChange={(e) => setEditEventTime(e.target.value)}
+                data-testid="input-edit-event-time"
+              />
+              <Input
+                placeholder="Location"
+                value={editLocation}
+                onChange={(e) => setEditLocation(e.target.value)}
+                data-testid="input-edit-event-location"
+              />
+              <Button
+                className="w-full"
+                onClick={() => editMutation.mutate()}
+                disabled={!editTitle || !editEventDate || editMutation.isPending}
+                data-testid="button-submit-edit-event"
+              >
+                {editMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
     </PortalLayout>
   );
 }
