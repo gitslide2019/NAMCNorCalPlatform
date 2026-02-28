@@ -212,6 +212,8 @@ export const tools = pgTable("tools", {
   category: text("category").notNull().default("general"),
   ownerId: varchar("owner_id").notNull(),
   status: text("status").notNull().default("available"),
+  condition: text("condition").notNull().default("good"),
+  location: text("location"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -229,7 +231,10 @@ export const toolLoans = pgTable("tool_loans", {
   toolId: varchar("tool_id").notNull(),
   borrowerId: varchar("borrower_id").notNull(),
   borrowDate: timestamp("borrow_date").defaultNow().notNull(),
+  expectedReturnDate: timestamp("expected_return_date"),
   returnDate: timestamp("return_date"),
+  notes: text("notes"),
+  returnNotes: text("return_notes"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -237,6 +242,7 @@ export const toolLoans = pgTable("tool_loans", {
 export const insertToolLoanSchema = createInsertSchema(toolLoans).omit({
   id: true,
   returnDate: true,
+  returnNotes: true,
   status: true,
   createdAt: true,
 });

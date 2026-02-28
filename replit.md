@@ -24,7 +24,7 @@ Secure, authenticated area for members with:
 - **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid)
 - **Calendar** (`/portal/calendar`) - Monthly calendar view with events (admin manages events)
 - **Newsletters** (`/portal/newsletters`) - Newsletter archive with full content view (admin publishes)
-- **Equipment Sharing** (`/portal/tools`) - Equipment lending library for borrowing/returning shared tools
+- **Equipment Sharing** (`/portal/tools`) - Equipment lending library with borrow/return dialogs (expected return date, pickup notes, condition assessment, return notes), owner info, pickup location, condition badges, overdue tracking, active loans vs history
 - **Training** (`/portal/courses`) - Learning management system with courses, lessons, and progress tracking
 - **Admin Panel** (`/portal/admin`) - Admin-only application management with approve/reject and CSV export
 
@@ -93,8 +93,8 @@ Current database tables:
 - `project_bids` - Bids on projects (projectId, bidderId, amount, proposal, status)
 - `calendar_events` - Events with date/time/location (eventDate, eventTime, location)
 - `newsletters` - Published newsletters (title, content, publishedAt)
-- `tools` - Tool lending library catalog (name, description, category, status: available/borrowed/maintenance)
-- `tool_loans` - Tool borrowing records (toolId, borrowerId, borrowDate, returnDate, status)
+- `tools` - Tool lending library catalog (name, description, category, status: available/borrowed/maintenance, condition: good/fair/needs-repair, location, ownerId)
+- `tool_loans` - Tool borrowing records (toolId, borrowerId, borrowDate, expectedReturnDate, returnDate, notes, returnNotes, status)
 - `courses` - LMS courses (title, description)
 - `lessons` - Course lessons (courseId, title, content, sortOrder)
 - `course_enrollments` - User course enrollments with progress (courseId, userId, progress, completedLessons)

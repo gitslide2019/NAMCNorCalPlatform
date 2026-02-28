@@ -664,7 +664,24 @@ export async function registerRoutes(
   app.get("/api/portal/tools", requireAuth, async (req, res) => {
     try {
       const allTools = await storage.getTools();
-      res.json(allTools);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      const enriched = await Promise.all(allTools.map(async (tool) => {
+        const activeLoan = await storage.getActiveLoanForTool(tool.id);
+        return {
+          ...tool,
+          ownerUsername: userMap.get(tool.ownerId) || "Unknown",
+          activeLoan: activeLoan ? {
+            id: activeLoan.id,
+            borrowerId: activeLoan.borrowerId,
+            borrowerUsername: userMap.get(activeLoan.borrowerId) || "Unknown",
+            borrowDate: activeLoan.borrowDate,
+            expectedReturnDate: activeLoan.expectedReturnDate,
+            notes: activeLoan.notes,
+          } : null,
+        };
+      }));
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tools" });
     }
@@ -697,7 +714,7 @@ export async function registerRoutes(
         res.status(403).json({ message: "Not authorized to edit this tool" });
         return;
       }
-      const allowedFields = ["name", "description", "category", "status"];
+      const allowedFields = ["name", "description", "category", "status", "condition", "location"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -756,8 +773,23 @@ export async function registerRoutes(
         res.status(400).json({ message: "You already have an active loan for this tool" });
         return;
       }
+      const { expectedReturnDate, notes } = req.body;
+      if (!expectedReturnDate) {
+        res.status(400).json({ message: "Expected return date is required" });
+        return;
+      }
+      const returnBy = new Date(expectedReturnDate);
+      if (isNaN(returnBy.getTime()) || returnBy <= new Date()) {
+        res.status(400).json({ message: "Expected return date must be a valid future date" });
+        return;
+      }
       await storage.updateToolStatus(req.params.id, "borrowed");
-      const loan = await storage.createToolLoan({ toolId: req.params.id, borrowerId: user.id });
+      const loan = await storage.createToolLoan({
+        toolId: req.params.id,
+        borrowerId: user.id,
+        expectedReturnDate: returnBy,
+        notes: notes || null,
+      });
       res.status(201).json(loan);
     } catch (error) {
       res.status(500).json({ message: "Failed to borrow tool" });
@@ -772,8 +804,13 @@ export async function registerRoutes(
         res.status(400).json({ message: "No active loan found for this tool" });
         return;
       }
-      await storage.returnToolLoan(activeLoan.id);
-      await storage.updateToolStatus(req.params.id, "available");
+      const { returnNotes, condition } = req.body || {};
+      await storage.returnToolLoan(activeLoan.id, returnNotes || undefined);
+      if (condition && ["good", "fair", "needs-repair"].includes(condition)) {
+        await storage.updateTool(req.params.id, { condition, status: "available" });
+      } else {
+        await storage.updateToolStatus(req.params.id, "available");
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to return tool" });
@@ -784,7 +821,15 @@ export async function registerRoutes(
     try {
       const user = req.user!;
       const loans = await storage.getMyLoans(user.id);
-      res.json(loans);
+      const enriched = await Promise.all(loans.map(async (loan) => {
+        const tool = await storage.getTool(loan.toolId);
+        return {
+          ...loan,
+          toolName: tool?.name || "Unknown Tool",
+          toolCategory: tool?.category || "general",
+        };
+      }));
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch loans" });
     }

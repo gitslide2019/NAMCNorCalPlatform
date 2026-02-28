@@ -24,7 +24,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Plus, Package, ArrowLeftRight, Check, Pencil, Trash2 } from "lucide-react";
+import {
+  Wrench,
+  Plus,
+  Package,
+  ArrowLeftRight,
+  Check,
+  Pencil,
+  Trash2,
+  MapPin,
+  User,
+  CalendarDays,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -37,6 +50,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Tool, ToolLoan } from "@shared/schema";
+
+interface EnrichedTool extends Tool {
+  ownerUsername?: string;
+  activeLoan?: {
+    id: string;
+    borrowerId: string;
+    borrowerUsername: string;
+    borrowDate: string;
+    expectedReturnDate: string | null;
+    notes: string | null;
+  } | null;
+}
+
+interface EnrichedLoan extends ToolLoan {
+  toolName?: string;
+  toolCategory?: string;
+}
 
 const categoryLabels: Record<string, string> = {
   general: "General",
@@ -71,6 +101,32 @@ function getStatusBadge(status: string) {
   }
 }
 
+function getConditionBadge(condition: string) {
+  switch (condition) {
+    case "good":
+      return <Badge variant="outline" className="text-xs border-green-300 text-green-700 dark:border-green-700 dark:text-green-400">Good</Badge>;
+    case "fair":
+      return <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">Fair</Badge>;
+    case "needs-repair":
+      return <Badge variant="outline" className="text-xs border-red-300 text-red-700 dark:border-red-700 dark:text-red-400">Needs Repair</Badge>;
+    default:
+      return null;
+  }
+}
+
+function formatDate(dateStr: string | Date | null | undefined) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getDaysRemaining(expectedReturnDate: string | null | undefined) {
+  if (!expectedReturnDate) return null;
+  const now = new Date();
+  const due = new Date(expectedReturnDate);
+  const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return diff;
+}
+
 export default function ToolLibrary() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -80,20 +136,34 @@ export default function ToolLibrary() {
   const [newToolName, setNewToolName] = useState("");
   const [newToolDescription, setNewToolDescription] = useState("");
   const [newToolCategory, setNewToolCategory] = useState("general");
+  const [newToolLocation, setNewToolLocation] = useState("");
+  const [newToolCondition, setNewToolCondition] = useState("good");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingTool, setEditingTool] = useState<Tool | null>(null);
+  const [editingTool, setEditingTool] = useState<EnrichedTool | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("general");
   const [editStatus, setEditStatus] = useState("available");
+  const [editLocation, setEditLocation] = useState("");
+  const [editCondition, setEditCondition] = useState("good");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingTool, setDeletingTool] = useState<Tool | null>(null);
+  const [deletingTool, setDeletingTool] = useState<EnrichedTool | null>(null);
+  const [borrowDialogOpen, setBorrowDialogOpen] = useState(false);
+  const [borrowingTool, setBorrowingTool] = useState<EnrichedTool | null>(null);
+  const [borrowReturnDate, setBorrowReturnDate] = useState("");
+  const [borrowNotes, setBorrowNotes] = useState("");
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [returningToolId, setReturningToolId] = useState("");
+  const [returningToolName, setReturningToolName] = useState("");
+  const [returningLoanInfo, setReturningLoanInfo] = useState<{ borrowDate?: string; expectedReturnDate?: string | null }>({});
+  const [returnCondition, setReturnCondition] = useState("good");
+  const [returnNotes, setReturnNotes] = useState("");
 
-  const { data: tools = [], isLoading: toolsLoading } = useQuery<Tool[]>({
+  const { data: tools = [], isLoading: toolsLoading } = useQuery<EnrichedTool[]>({
     queryKey: ["/api/portal/tools"],
   });
 
-  const { data: myLoans = [], isLoading: loansLoading } = useQuery<ToolLoan[]>({
+  const { data: myLoans = [], isLoading: loansLoading } = useQuery<EnrichedLoan[]>({
     queryKey: ["/api/portal/tools/my-loans"],
   });
 
@@ -102,60 +172,83 @@ export default function ToolLibrary() {
   );
 
   const borrowMutation = useMutation({
-    mutationFn: (toolId: string) =>
-      apiRequest("POST", `/api/portal/tools/${toolId}/borrow`),
+    mutationFn: (data: { toolId: string; expectedReturnDate: string; notes?: string }) =>
+      apiRequest("POST", `/api/portal/tools/${data.toolId}/borrow`, {
+        expectedReturnDate: data.expectedReturnDate,
+        notes: data.notes || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
-      toast({ title: "Tool borrowed successfully" });
+      const returnDateStr = borrowReturnDate ? formatDate(borrowReturnDate) : "";
+      toast({ title: "Equipment borrowed", description: returnDateStr ? `Return by ${returnDateStr}` : undefined });
+      setBorrowDialogOpen(false);
+      setBorrowingTool(null);
+      setBorrowReturnDate("");
+      setBorrowNotes("");
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to borrow tool", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to borrow", description: error.message, variant: "destructive" });
     },
   });
 
   const returnMutation = useMutation({
-    mutationFn: (toolId: string) =>
-      apiRequest("POST", `/api/portal/tools/${toolId}/return`),
+    mutationFn: (data: { toolId: string; returnNotes?: string; condition?: string }) =>
+      apiRequest("POST", `/api/portal/tools/${data.toolId}/return`, {
+        returnNotes: data.returnNotes || undefined,
+        condition: data.condition || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
-      toast({ title: "Tool returned successfully" });
+      toast({ title: "Equipment returned successfully" });
+      setReturnDialogOpen(false);
+      setReturningToolId("");
+      setReturningToolName("");
+      setReturnCondition("good");
+      setReturnNotes("");
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to return tool", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to return", description: error.message, variant: "destructive" });
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; description: string; category: string }) =>
+    mutationFn: (data: { name: string; description: string; category: string; location?: string; condition?: string }) =>
       apiRequest("POST", "/api/portal/tools", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
-      toast({ title: "Tool added successfully" });
+      toast({ title: "Equipment added successfully" });
       setDialogOpen(false);
       setNewToolName("");
       setNewToolDescription("");
       setNewToolCategory("general");
+      setNewToolLocation("");
+      setNewToolCondition("good");
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to add tool", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to add equipment", description: error.message, variant: "destructive" });
     },
   });
 
   const editMutation = useMutation({
-    mutationFn: (data: { id: string; name: string; description: string; category: string; status: string }) =>
-      apiRequest("PATCH", `/api/portal/tools/${data.id}`, { name: data.name, description: data.description, category: data.category, status: data.status }),
+    mutationFn: (data: { id: string; name: string; description: string; category: string; status: string; location?: string; condition?: string }) =>
+      apiRequest("PATCH", `/api/portal/tools/${data.id}`, {
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        status: data.status,
+        location: data.location,
+        condition: data.condition,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
-      toast({ title: "Tool updated successfully" });
+      toast({ title: "Equipment updated successfully" });
       setEditDialogOpen(false);
       setEditingTool(null);
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to update tool", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
     },
   });
 
@@ -165,30 +258,48 @@ export default function ToolLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
-      toast({ title: "Tool deleted successfully" });
+      toast({ title: "Equipment deleted" });
       setDeleteDialogOpen(false);
       setDeletingTool(null);
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to delete tool", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
     },
   });
 
-  function openEditDialog(tool: Tool) {
+  function openBorrowDialog(tool: EnrichedTool) {
+    setBorrowingTool(tool);
+    setBorrowReturnDate("");
+    setBorrowNotes("");
+    setBorrowDialogOpen(true);
+  }
+
+  function openReturnDialog(toolId: string, toolName: string, loanInfo?: { borrowDate?: string; expectedReturnDate?: string | null }) {
+    setReturningToolId(toolId);
+    setReturningToolName(toolName);
+    setReturningLoanInfo(loanInfo || {});
+    setReturnCondition("good");
+    setReturnNotes("");
+    setReturnDialogOpen(true);
+  }
+
+  function openEditDialog(tool: EnrichedTool) {
     setEditingTool(tool);
     setEditName(tool.name);
     setEditDescription(tool.description || "");
     setEditCategory(tool.category);
     setEditStatus(tool.status);
+    setEditLocation(tool.location || "");
+    setEditCondition(tool.condition || "good");
     setEditDialogOpen(true);
   }
 
-  function openDeleteDialog(tool: Tool) {
+  function openDeleteDialog(tool: EnrichedTool) {
     setDeletingTool(tool);
     setDeleteDialogOpen(true);
   }
 
-  const canManageTool = (tool: Tool) => {
+  const canManageTool = (tool: EnrichedTool) => {
     return user?.isAdmin || tool.ownerId === user?.id;
   };
 
@@ -199,7 +310,12 @@ export default function ToolLibrary() {
     return true;
   });
 
-  const toolsMap = new Map(tools.map((t) => [t.id, t]));
+  const activeLoans = myLoans.filter((l) => l.status === "active");
+  const returnedLoans = myLoans.filter((l) => l.status === "returned");
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split("T")[0];
 
   return (
     <PortalLayout>
@@ -217,22 +333,22 @@ export default function ToolLibrary() {
             <DialogTrigger asChild>
               <Button data-testid="button-add-tool">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Tool
+                Share Equipment
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add a New Tool</DialogTitle>
+                <DialogTitle>Share Equipment</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <Input
-                  placeholder="Tool name"
+                  placeholder="Equipment name (e.g. Laser Level)"
                   value={newToolName}
                   onChange={(e) => setNewToolName(e.target.value)}
                   data-testid="input-tool-name"
                 />
                 <Textarea
-                  placeholder="Description"
+                  placeholder="Description — include make, model, and what it's best for"
                   value={newToolDescription}
                   onChange={(e) => setNewToolDescription(e.target.value)}
                   data-testid="input-tool-description"
@@ -249,6 +365,22 @@ export default function ToolLibrary() {
                     <SelectItem value="measurement">Measurement</SelectItem>
                   </SelectContent>
                 </Select>
+                <Input
+                  placeholder="Pickup location (e.g. NAMC Office — Oakland)"
+                  value={newToolLocation}
+                  onChange={(e) => setNewToolLocation(e.target.value)}
+                  data-testid="input-tool-location"
+                />
+                <Select value={newToolCondition} onValueChange={setNewToolCondition}>
+                  <SelectTrigger data-testid="select-tool-condition">
+                    <SelectValue placeholder="Condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="good">Good</SelectItem>
+                    <SelectItem value="fair">Fair</SelectItem>
+                    <SelectItem value="needs-repair">Needs Repair</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   className="w-full"
                   onClick={() =>
@@ -256,12 +388,14 @@ export default function ToolLibrary() {
                       name: newToolName,
                       description: newToolDescription,
                       category: newToolCategory,
+                      location: newToolLocation || undefined,
+                      condition: newToolCondition,
                     })
                   }
                   disabled={!newToolName.trim() || createMutation.isPending}
                   data-testid="button-submit-tool"
                 >
-                  {createMutation.isPending ? "Adding..." : "Add Tool"}
+                  {createMutation.isPending ? "Adding..." : "Share Equipment"}
                 </Button>
               </div>
             </DialogContent>
@@ -272,11 +406,11 @@ export default function ToolLibrary() {
           <TabsList>
             <TabsTrigger value="catalog" data-testid="tab-catalog">
               <Package className="h-4 w-4 mr-2" />
-              Tool Catalog
+              Equipment Catalog
             </TabsTrigger>
             <TabsTrigger value="my-loans" data-testid="tab-my-loans">
               <ArrowLeftRight className="h-4 w-4 mr-2" />
-              My Loans
+              My Loans{activeLoans.length > 0 && ` (${activeLoans.length})`}
             </TabsTrigger>
           </TabsList>
 
@@ -312,7 +446,7 @@ export default function ToolLibrary() {
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i}>
                     <CardContent className="p-6">
-                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-32 w-full" />
                     </CardContent>
                   </Card>
                 ))}
@@ -321,38 +455,67 @@ export default function ToolLibrary() {
               <Card data-testid="card-no-tools">
                 <CardContent className="p-8 text-center">
                   <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No tools found</h3>
+                  <h3 className="text-lg font-semibold mb-2">No equipment found</h3>
                   <p className="text-muted-foreground">
-                    Try adjusting your filters or add a new tool.
+                    Try adjusting your filters or share some equipment.
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredTools.map((tool) => (
-                  <Card key={tool.id} data-testid={`card-tool-${tool.id}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <CardTitle className="text-base">{tool.name}</CardTitle>
-                        {getStatusBadge(tool.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {tool.description && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {tool.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {categoryLabels[tool.category] || tool.category}
-                        </Badge>
-                        <div className="flex flex-wrap items-center gap-1">
+                {filteredTools.map((tool) => {
+                  const daysRemaining = tool.activeLoan ? getDaysRemaining(tool.activeLoan.expectedReturnDate) : null;
+                  return (
+                    <Card key={tool.id} data-testid={`card-tool-${tool.id}`}>
+                      <CardHeader className="pb-2">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <CardTitle className="text-base">{tool.name}</CardTitle>
+                          {getStatusBadge(tool.status)}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {tool.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {tool.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {categoryLabels[tool.category] || tool.category}
+                          </Badge>
+                          {getConditionBadge(tool.condition || "good")}
+                        </div>
+
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          {tool.ownerUsername && (
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3 w-3" />
+                              <span>Shared by {tool.ownerUsername}</span>
+                            </div>
+                          )}
+                          {tool.location && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{tool.location}</span>
+                            </div>
+                          )}
+                          {tool.status === "borrowed" && tool.activeLoan?.expectedReturnDate && (
+                            <div className={`flex items-center gap-1.5 ${daysRemaining !== null && daysRemaining < 0 ? "text-red-600 dark:text-red-400 font-medium" : daysRemaining !== null && daysRemaining <= 2 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                              <CalendarDays className="h-3 w-3" />
+                              <span>
+                                Due back {formatDate(tool.activeLoan.expectedReturnDate)}
+                                {daysRemaining !== null && daysRemaining < 0 && " (overdue)"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1 pt-1">
                           {tool.status === "available" && !activeLoanToolIds.has(tool.id) && (
                             <Button
                               size="sm"
-                              onClick={() => borrowMutation.mutate(tool.id)}
-                              disabled={borrowMutation.isPending}
+                              onClick={() => openBorrowDialog(tool)}
                               data-testid={`button-borrow-${tool.id}`}
                             >
                               <Package className="h-3 w-3 mr-1" />
@@ -363,8 +526,13 @@ export default function ToolLibrary() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => returnMutation.mutate(tool.id)}
-                              disabled={returnMutation.isPending}
+                              onClick={() => {
+                                const loan = myLoans.find(l => l.toolId === tool.id && l.status === "active");
+                                openReturnDialog(tool.id, tool.name, {
+                                  borrowDate: loan?.borrowDate ? String(loan.borrowDate) : undefined,
+                                  expectedReturnDate: loan?.expectedReturnDate ? String(loan.expectedReturnDate) : null,
+                                });
+                              }}
                               data-testid={`button-return-${tool.id}`}
                             >
                               <Check className="h-3 w-3 mr-1" />
@@ -392,10 +560,10 @@ export default function ToolLibrary() {
                             </>
                           )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -406,7 +574,7 @@ export default function ToolLibrary() {
                 {[1, 2, 3].map((i) => (
                   <Card key={i}>
                     <CardContent className="p-6">
-                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-24 w-full" />
                     </CardContent>
                   </Card>
                 ))}
@@ -417,72 +585,254 @@ export default function ToolLibrary() {
                   <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No loans yet</h3>
                   <p className="text-muted-foreground">
-                    Browse the tool catalog to borrow tools.
+                    Browse the equipment catalog to borrow tools and equipment.
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {myLoans.map((loan) => {
-                  const tool = toolsMap.get(loan.toolId);
-                  return (
-                    <Card key={loan.id} data-testid={`card-loan-${loan.id}`}>
-                      <CardHeader className="pb-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <CardTitle className="text-base">
-                            {tool?.name || "Unknown Tool"}
-                          </CardTitle>
-                          {loan.status === "active" ? (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Returned</Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          <p data-testid={`text-borrow-date-${loan.id}`}>
-                            Borrowed: {new Date(loan.borrowDate).toLocaleDateString()}
-                          </p>
-                          {loan.returnDate && (
-                            <p data-testid={`text-return-date-${loan.id}`}>
-                              Returned: {new Date(loan.returnDate).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        {loan.status === "active" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-3"
-                            onClick={() => returnMutation.mutate(loan.toolId)}
-                            disabled={returnMutation.isPending}
-                            data-testid={`button-return-loan-${loan.id}`}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            Return
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+              <div className="space-y-8">
+                {activeLoans.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" data-testid="text-active-loans-heading">
+                      <Clock className="h-5 w-5 text-primary" />
+                      Active Loans ({activeLoans.length})
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {activeLoans.map((loan) => {
+                        const daysRemaining = getDaysRemaining(loan.expectedReturnDate ? String(loan.expectedReturnDate) : null);
+                        const isOverdue = daysRemaining !== null && daysRemaining < 0;
+                        const isDueSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 2;
+                        return (
+                          <Card key={loan.id} className={isOverdue ? "border-red-300 dark:border-red-700" : ""} data-testid={`card-loan-${loan.id}`}>
+                            <CardHeader className="pb-2">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <CardTitle className="text-base">
+                                  {loan.toolName || "Unknown"}
+                                </CardTitle>
+                                {isOverdue ? (
+                                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Overdue
+                                  </Badge>
+                                ) : isDueSoon ? (
+                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                    Due Soon
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+                                <p data-testid={`text-borrow-date-${loan.id}`}>
+                                  Borrowed: {formatDate(loan.borrowDate)}
+                                </p>
+                                {loan.expectedReturnDate && (
+                                  <p className={isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""} data-testid={`text-due-date-${loan.id}`}>
+                                    Due: {formatDate(loan.expectedReturnDate)}
+                                    {daysRemaining !== null && (
+                                      <span className="ml-1">
+                                        ({isOverdue ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} left`})
+                                      </span>
+                                    )}
+                                  </p>
+                                )}
+                                {loan.notes && (
+                                  <p className="text-xs italic">"{loan.notes}"</p>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  openReturnDialog(loan.toolId, loan.toolName || "Unknown", {
+                                    borrowDate: String(loan.borrowDate),
+                                    expectedReturnDate: loan.expectedReturnDate ? String(loan.expectedReturnDate) : null,
+                                  })
+                                }
+                                data-testid={`button-return-loan-${loan.id}`}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Return Equipment
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {returnedLoans.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold mb-4 text-muted-foreground" data-testid="text-loan-history-heading">
+                      Loan History
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {returnedLoans.map((loan) => (
+                        <Card key={loan.id} className="opacity-75" data-testid={`card-loan-${loan.id}`}>
+                          <CardHeader className="pb-2">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <CardTitle className="text-base">
+                                {loan.toolName || "Unknown"}
+                              </CardTitle>
+                              <Badge variant="secondary">Returned</Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                              <p>Borrowed: {formatDate(loan.borrowDate)}</p>
+                              {loan.returnDate && (
+                                <p>Returned: {formatDate(loan.returnDate)}</p>
+                              )}
+                              {loan.returnNotes && (
+                                <p className="text-xs italic mt-1">"{loan.returnNotes}"</p>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
         </Tabs>
       </div>
 
+      <Dialog open={borrowDialogOpen} onOpenChange={setBorrowDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Borrow Equipment</DialogTitle>
+          </DialogHeader>
+          {borrowingTool && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="font-medium">{borrowingTool.name}</p>
+                {borrowingTool.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{borrowingTool.description}</p>
+                )}
+                {borrowingTool.location && (
+                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Pickup: {borrowingTool.location}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Expected Return Date *</label>
+                <Input
+                  type="date"
+                  value={borrowReturnDate}
+                  min={minDate}
+                  onChange={(e) => setBorrowReturnDate(e.target.value)}
+                  data-testid="input-borrow-return-date"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Pickup Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <Textarea
+                  placeholder="e.g. I'll pick up Tuesday after 3pm"
+                  value={borrowNotes}
+                  onChange={(e) => setBorrowNotes(e.target.value)}
+                  data-testid="input-borrow-notes"
+                />
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() =>
+                  borrowMutation.mutate({
+                    toolId: borrowingTool.id,
+                    expectedReturnDate: borrowReturnDate,
+                    notes: borrowNotes,
+                  })
+                }
+                disabled={!borrowReturnDate || borrowMutation.isPending}
+                data-testid="button-confirm-borrow"
+              >
+                {borrowMutation.isPending ? "Processing..." : "Confirm Borrow"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Return Equipment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-1">
+              <p className="font-medium">{returningToolName}</p>
+              {returningLoanInfo.borrowDate && (
+                <p className="text-sm text-muted-foreground">
+                  Borrowed: {formatDate(returningLoanInfo.borrowDate)}
+                </p>
+              )}
+              {returningLoanInfo.expectedReturnDate && (
+                <p className="text-sm text-muted-foreground">
+                  Due: {formatDate(returningLoanInfo.expectedReturnDate)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Condition</label>
+              <Select value={returnCondition} onValueChange={setReturnCondition}>
+                <SelectTrigger data-testid="select-return-condition">
+                  <SelectValue placeholder="How is the equipment?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="good">Good — ready for next borrower</SelectItem>
+                  <SelectItem value="fair">Fair — minor wear</SelectItem>
+                  <SelectItem value="needs-repair">Needs Repair — has an issue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Return Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <Textarea
+                placeholder="e.g. Blade slightly worn, battery at 50%"
+                value={returnNotes}
+                onChange={(e) => setReturnNotes(e.target.value)}
+                data-testid="input-return-notes"
+              />
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() =>
+                returnMutation.mutate({
+                  toolId: returningToolId,
+                  returnNotes: returnNotes,
+                  condition: returnCondition,
+                })
+              }
+              disabled={returnMutation.isPending}
+              data-testid="button-confirm-return"
+            >
+              {returnMutation.isPending ? "Processing..." : "Confirm Return"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Tool</DialogTitle>
+            <DialogTitle>Edit Equipment</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <Input
-              placeholder="Tool name"
+              placeholder="Equipment name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               data-testid="input-edit-tool-name"
@@ -505,6 +855,22 @@ export default function ToolLibrary() {
                 <SelectItem value="measurement">Measurement</SelectItem>
               </SelectContent>
             </Select>
+            <Input
+              placeholder="Pickup location"
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+              data-testid="input-edit-tool-location"
+            />
+            <Select value={editCondition} onValueChange={setEditCondition}>
+              <SelectTrigger data-testid="select-edit-tool-condition">
+                <SelectValue placeholder="Condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="good">Good</SelectItem>
+                <SelectItem value="fair">Fair</SelectItem>
+                <SelectItem value="needs-repair">Needs Repair</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={editStatus} onValueChange={setEditStatus}>
               <SelectTrigger data-testid="select-edit-tool-status">
                 <SelectValue placeholder="Select status" />
@@ -524,6 +890,8 @@ export default function ToolLibrary() {
                   description: editDescription,
                   category: editCategory,
                   status: editStatus,
+                  location: editLocation,
+                  condition: editCondition,
                 })
               }
               disabled={!editName.trim() || editMutation.isPending}
@@ -538,7 +906,7 @@ export default function ToolLibrary() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Tool</AlertDialogTitle>
+            <AlertDialogTitle>Delete Equipment</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deletingTool?.name}"? This action cannot be undone.
             </AlertDialogDescription>
@@ -549,7 +917,7 @@ export default function ToolLibrary() {
               onClick={() => deletingTool && deleteMutation.mutate(deletingTool.id)}
               data-testid="button-confirm-delete-tool"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

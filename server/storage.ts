@@ -387,9 +387,15 @@ export class DatabaseStorage implements IStorage {
     return l;
   }
 
-  async returnToolLoan(loanId: string): Promise<ToolLoan | undefined> {
-    const [l] = await db.update(toolLoans).set({ status: "returned", returnDate: new Date() }).where(eq(toolLoans.id, loanId)).returning();
+  async returnToolLoan(loanId: string, returnNotes?: string): Promise<ToolLoan | undefined> {
+    const updates: Record<string, any> = { status: "returned", returnDate: new Date() };
+    if (returnNotes) updates.returnNotes = returnNotes;
+    const [l] = await db.update(toolLoans).set(updates).where(eq(toolLoans.id, loanId)).returning();
     return l;
+  }
+
+  async getToolLoans(toolId: string): Promise<ToolLoan[]> {
+    return await db.select().from(toolLoans).where(eq(toolLoans.toolId, toolId)).orderBy(desc(toolLoans.borrowDate));
   }
 
   async getMyLoans(userId: string): Promise<ToolLoan[]> {
