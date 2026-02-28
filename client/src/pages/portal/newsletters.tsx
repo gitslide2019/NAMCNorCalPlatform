@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,12 +194,12 @@ export default function Newsletters() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p
-                    className="whitespace-pre-wrap"
+                  <div
+                    className="prose prose-sm dark:prose-invert max-w-none"
                     data-testid="text-newsletter-content"
                   >
-                    {selectedNewsletter.content}
-                  </p>
+                    <ReactMarkdown>{selectedNewsletter.content}</ReactMarkdown>
+                  </div>
                 </CardContent>
               </Card>
 

@@ -168,8 +168,15 @@ The `shared/` directory contains code used by both frontend and backend:
 - `POST /api/portal/courses/:id/enroll` - Enroll in course (auth)
 - `PATCH /api/portal/courses/:id/progress` - Update progress (auth, validates 0-100)
 
+### Test Accounts
+- **Admin**: `testadmin` / `test1234` (full admin access)
+- **Member (Small)**: `james.jackson` / `member123` — Digital Disclosure AV
+- **Member (Medium)**: `tana.harris` / `member123` — Harris Hoisting
+- **Member (Large)**: `bruce.giron` / `member123` — Giron Construction (NAMC President)
+- **Member (Large)**: `bianca.johnson` / `member123` — Turner Construction
+- **Member (Government)**: `kimberly.wilson` / `member123` — Port of Oakland
+
 ### Admin Access
-- Default test admin: username `testadmin`, password `test1234`
 - Admin users see the Admin Panel in the portal sidebar
 - Admins can approve/reject applications, export CSV, post projects, manage bids, create/edit/delete events, publish/edit/delete newsletters, create/edit/delete courses/lessons, delete discussion topics/replies, edit/delete tools
 

@@ -60,6 +60,43 @@ export async function seedMembers() {
   }
 }
 
+export async function seedMemberAccounts() {
+  try {
+    console.log("Checking member user accounts...");
+    const memberAccounts = [
+      { username: "james.jackson", companyName: "Digital Disclosure AV" },
+      { username: "tana.harris", companyName: "Harris Hoisting" },
+      { username: "bruce.giron", companyName: "Giron Construction" },
+      { username: "bianca.johnson", companyName: "Turner Construction" },
+      { username: "kimberly.wilson", companyName: "Port of Oakland" },
+    ];
+
+    for (const account of memberAccounts) {
+      const [existing] = await db.select().from(users).where(eq(users.username, account.username));
+      if (existing) continue;
+
+      const [app] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, account.companyName));
+      if (!app) {
+        console.log(`Skipping ${account.username} - no application found for ${account.companyName}`);
+        continue;
+      }
+
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync("member123", salt, 64)) as Buffer;
+      const hashedPassword = buf.toString("hex") + "." + salt;
+      await db.insert(users).values({
+        username: account.username,
+        password: hashedPassword,
+        isAdmin: false,
+        memberApplicationId: app.id,
+      });
+      console.log(`Created member account: ${account.username} (${account.companyName} - ${app.membershipCategory})`);
+    }
+  } catch (error) {
+    console.error("Error seeding member accounts:", error);
+  }
+}
+
 export async function seedSampleContent() {
   try {
     console.log("Checking sample content...");
@@ -87,7 +124,7 @@ export async function seedSampleContent() {
     const nlCount = await db.select({ count: sql<number>`count(*)` }).from(newsletters);
     if (Number(nlCount[0]?.count || 0) === 0) {
       await db.insert(newsletters).values([
-        { title: "NAMC NorCal Spring 2026 Newsletter", content: "Dear NAMC NorCal Members,\n\nWe are excited to kick off spring 2026 with a number of important updates and opportunities for our members.\n\nMembership Growth\nWe are proud to announce that NAMC NorCal now has over 55 active member companies, representing a diverse range of construction trades and services across Northern California. Welcome to all our new members!\n\nUpcoming Project Opportunities\nSeveral major public works projects are on the horizon, including the Oakland Airport expansion, BART station renovations, and multiple affordable housing developments in the East Bay. Check the Projects section of your member portal for details and bidding deadlines.\n\nWorkforce Development\nOur partnership with Laney College continues to grow. We now offer free OSHA 10-hour training, estimating workshops, and project management courses to all NAMC members. See the Learning section in your portal.\n\nCommunity Impact\nNAMC NorCal members contributed over $2.5 million in community investments last year through local hiring, apprenticeship programs, and charitable giving. Thank you for making a difference!\n\nMark Your Calendar\n- March 15: Monthly General Meeting\n- March 22: Workforce Development Workshop\n- April 5: Networking Mixer\n- May 10: Annual Golf Tournament\n\nStay connected and keep building!\n\nBruce Giron\nPresident, NAMC NorCal", createdById: adminId },
+        { title: "NAMC NorCal Quarterly Newsletter", content: "## A Message from Our President\n\n\"NAMC NorCal is the go-to contractor implementation organization in Northern California. We are governed by active contractors FOR active contractors, focusing purely on delivery and moving beyond advocacy to execute actual contracts.\"\n\n---\n\n## Why Join or Invest in NAMC NorCal?\n\n### For Contractors: Win More Work\n\n- **Direct Access**: We are the only organization in the region focused purely on contract delivery.\n- **Networking**: Connect directly with decision-makers at major GCs and agencies.\n- **Growth**: Access specialized training like the Turner Construction School or CRC Project Management.\n\n### For Sponsors: Reach the Right Partners\n\n- **Pipeline Access**: Gain visibility with a vetted network of active, delivery-focused minority contractors.\n- **Community Impact**: Support workforce funding and inclusion at the policy level.\n- **Strategic Branding**: Align with key regional events and legislative advocacy.\n\n---\n\n## This Quarter's Top Stories\n\n### Recap: 100 Years of Black History\n\nOn February 26, we celebrated a century of Black History in partnership with the OAACC, the City of Oakland, and PG&E.\n\n---\n\n## Upcoming Events & Opportunities\n\n| Date | Event / Opportunity | Description |\n| --- | --- | --- |\n| **Feb 26** | **Turner Construction Mixer** | Connect with Turner's team at their new Walnut Creek office regarding upcoming projects. |\n| **Mar 11** | **AGC Women Build CA Summit** | Actionable tools for talent retention and industry opportunity in Santa Clara. |\n| **Mar 24** | **NAMC NY Unity Gala** | Join our partners in New York for their annual gala. |\n| **March** | **Turner Construction School** | New class session begins; highly recommended for networking and technical growth. |\n| **Ongoing** | **CRC Project Management** | 10-week course focusing on energy efficiency and AI. |\n| **Ongoing** | **RFP opportunities with the City of East Palo Alto** | Opportunity to contract directly with the City and begin monitoring future RFP releases. |\n\n---\n\n## Member & Partner Spotlights\n\n- **New Swag**: Big thanks to board member **Mark Hall** for our new merch! Visit our website to order hoodies, mugs, or bags for your team — funds help spread the word.\n- **In the Field**: Member **Sean Paul Guess** is currently participating in the CRC Project Management course; reach out to him with questions.\n- **Resource Launch**: We are developing a **Contractors Support Resource Guide** covering cash-flow financing and technical education. **We need your quotes!** Share your real-life experiences to be featured.\n\n---\n\n## Call to Action\n\n- **Visit Our New Website**: We've updated our links for easier membership renewal and merch access.\n- **Get Involved**: Reach out to **Shannon** or any **NAMC Board member** to connect with these opportunities.\n\n**NAMC NOR CAL** | 977 66th Ave, Oakland, CA 94621 | info@namcnorcal.org", createdById: adminId },
         { title: "February 2026 Member Update", content: "Hello NAMC NorCal Family,\n\nHere are the highlights from February:\n\nMember Spotlight: 5D Construction Containment Services\nCongratulations to Amir Jenkins and the 5D Construction team for being featured as our Member Spotlight this month. Their work in environmental containment services continues to set the standard in the industry.\n\nPolicy Update\nThe California Legislature is considering new legislation that would increase DBE participation goals on state-funded projects. NAMC NorCal is actively advocating for our members' interests. We will keep you updated on developments.\n\nTool Lending Library\nWe have launched a new Tool Lending Library for members! You can now borrow specialized construction tools and equipment through the member portal. Check availability and reserve tools online.\n\nNetworking Success\nOur January networking event brought together over 40 member companies and resulted in several new subcontracting partnerships. If you missed it, don't worry — our next mixer is coming in April.\n\nReminder: Dues\nAnnual membership dues are now being accepted for the 2026-2027 fiscal year. Log in to your portal to view your membership tier and payment status.\n\nThank you for your continued support.\n\nNAMC NorCal Team", createdById: adminId },
         { title: "Welcome to the NAMC NorCal Member Portal!", content: "Dear Members,\n\nWe are thrilled to launch the new NAMC NorCal Member Portal! This platform has been designed to strengthen our community and provide you with valuable resources.\n\nWhat You Can Do:\n\n1. Member Directory - Browse and connect with all approved NAMC NorCal member companies. Search by name, category, or certifications.\n\n2. Messages - Send direct messages to other members for networking, collaboration, and project inquiries.\n\n3. Discussion Boards - Join conversations on industry topics, share best practices, and ask questions.\n\n4. Project Opportunities - View open project opportunities and submit bids directly through the portal.\n\n5. Calendar - Stay up to date on NAMC events, workshops, and networking mixers.\n\n6. Tool Lending Library - Borrow tools and equipment from our shared library.\n\n7. Learning Center - Access courses and training materials to grow your skills.\n\nWe encourage you to explore all the features and reach out to us at info@namcnorcal.org if you have any questions.\n\nTogether we build!\n\nNAMC NorCal", createdById: adminId },
       ]);

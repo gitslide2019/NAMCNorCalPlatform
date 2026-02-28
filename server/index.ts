@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { ensureTables, ensureAdminUser, seedMembers, seedSampleContent } from "./db";
+import { ensureTables, ensureAdminUser, seedMembers, seedMemberAccounts, seedSampleContent } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -67,6 +67,7 @@ app.use((req, res, next) => {
   await ensureTables();
   await ensureAdminUser();
   await seedMembers();
+  await seedMemberAccounts();
   await seedSampleContent();
   await registerRoutes(httpServer, app);
 
