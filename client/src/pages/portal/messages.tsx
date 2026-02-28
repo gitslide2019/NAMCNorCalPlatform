@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Send, Plus, Reply, Clock } from "lucide-react";
+import { Mail, Send, Plus, Reply, Clock, ArrowLeft } from "lucide-react";
 import type { Message } from "@shared/schema";
 
 interface MessageWithSender extends Message {
@@ -137,6 +137,16 @@ export default function Messages() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex flex-row items-center justify-between gap-4 mb-8 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-messages-title">

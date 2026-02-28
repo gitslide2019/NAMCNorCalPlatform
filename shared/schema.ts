@@ -137,6 +137,8 @@ export const projectOpportunities = pgTable("project_opportunities", {
   contactEmail: text("contact_email"),
   postedById: varchar("posted_by_id").notNull(),
   status: text("status").notNull().default("open"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

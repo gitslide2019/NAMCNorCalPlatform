@@ -10,12 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe, Wrench } from "lucide-react";
+import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe, Wrench, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import type { MembershipApplication } from "@shared/schema";
 
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { data: application, isLoading } = useQuery<MembershipApplication | null>({
     queryKey: ["/api/portal/my-application"],
   });
@@ -38,6 +40,16 @@ export default function Profile() {
     return (
       <PortalLayout>
         <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/portal")}
+            className="mb-4"
+            data-testid="button-back-to-dashboard"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
           <Skeleton className="h-8 w-48 mb-8" />
           <Skeleton className="h-96 w-full" />
         </div>
@@ -49,6 +61,16 @@ export default function Profile() {
     return (
       <PortalLayout>
         <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/portal")}
+            className="mb-4"
+            data-testid="button-back-to-dashboard"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
           <h1 className="text-2xl sm:text-3xl font-bold mb-4">My Profile</h1>
           <Card>
             <CardContent className="p-8 text-center">
@@ -63,6 +85,16 @@ export default function Profile() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-profile-title">My Profile</h1>
           <p className="text-muted-foreground mt-1">View and manage your membership information.</p>

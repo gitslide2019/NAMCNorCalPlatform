@@ -30,11 +30,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2 } from "lucide-react";
+import { useLocation as useWouterLocation } from "wouter";
 import type { Newsletter } from "@shared/schema";
 
 export default function Newsletters() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setWouterLocation] = useWouterLocation();
   const [selectedNewsletterId, setSelectedNewsletterId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -251,6 +253,16 @@ export default function Newsletters() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setWouterLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-newsletters-heading">

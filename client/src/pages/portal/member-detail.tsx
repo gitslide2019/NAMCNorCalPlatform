@@ -46,6 +46,16 @@ export default function MemberDetailPage() {
       <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
         <Button
           variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-2"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
+        <Button
+          variant="ghost"
           onClick={() => setLocation("/portal/directory")}
           className="mb-6"
           data-testid="button-back-to-directory"

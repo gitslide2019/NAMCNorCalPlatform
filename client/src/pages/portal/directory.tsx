@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Building2, MapPin, Phone, Mail, Globe, Users } from "lucide-react";
+import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DirectoryMember {
@@ -45,6 +46,16 @@ export default function Directory() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-directory-title">Member Directory</h1>
           <p className="text-muted-foreground mt-1">Browse and connect with NAMC NorCal member companies.</p>

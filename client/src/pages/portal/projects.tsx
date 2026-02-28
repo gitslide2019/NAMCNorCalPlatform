@@ -34,8 +34,32 @@ import {
   Send,
   CheckCircle,
   XCircle,
+  List,
+  Map as MapIcon,
 } from "lucide-react";
+import { useLocation as useWouterLocation } from "wouter";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { ProjectOpportunity, ProjectBid } from "@shared/schema";
+
+const openMarkerIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const closedMarkerIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 type ProjectWithBids = ProjectOpportunity & { bids: ProjectBid[] };
 type PortalUser = { id: string; username: string };
@@ -82,13 +106,91 @@ function getDeadlineUrgency(deadline: string | null | undefined): {
   return { label: `${diffDays} days left`, variant: "green" };
 }
 
-function ProjectListView({
+function ProjectMapView({
+  projects,
   onSelectProject,
 }: {
+  projects: ProjectOpportunity[];
   onSelectProject: (id: string) => void;
+}) {
+  const mappable = projects.filter(
+    (p) => p.latitude && p.longitude
+  );
+
+  return (
+    <div className="rounded-lg overflow-hidden border" style={{ height: "500px" }} data-testid="map-container">
+      <MapContainer
+        center={[37.8, -122.25]}
+        zoom={10}
+        style={{ height: "100%", width: "100%" }}
+        scrollWheelZoom={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {mappable.map((project) => (
+          <Marker
+            key={project.id}
+            position={[parseFloat(project.latitude!), parseFloat(project.longitude!)]}
+            icon={project.status === "open" ? openMarkerIcon : closedMarkerIcon}
+          >
+            <Popup>
+              <div className="min-w-[200px]" data-testid={`popup-project-${project.id}`}>
+                <h3 className="font-semibold text-sm mb-1">{project.title}</h3>
+                <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                  <span>📍</span> {project.location}
+                </p>
+                {project.budget && (
+                  <p className="text-xs text-gray-600 mb-1">
+                    💰 {formatBudget(project.budget)}
+                  </p>
+                )}
+                {project.deadline && (
+                  <p className="text-xs text-gray-600 mb-1">
+                    📅 {formatDeadline(project.deadline)}
+                    {(() => {
+                      const urgency = getDeadlineUrgency(project.deadline);
+                      if (!urgency) return null;
+                      const color =
+                        urgency.variant === "red" ? "#dc2626" :
+                        urgency.variant === "amber" ? "#d97706" : "#16a34a";
+                      return (
+                        <span style={{ color, fontWeight: 600, marginLeft: 6 }}>
+                          ({urgency.label})
+                        </span>
+                      );
+                    })()}
+                  </p>
+                )}
+                <button
+                  onClick={() => onSelectProject(project.id)}
+                  className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  data-testid={`link-view-details-${project.id}`}
+                >
+                  View Details →
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
+function ProjectListView({
+  onSelectProject,
+  viewMode,
+  onViewModeChange,
+}: {
+  onSelectProject: (id: string) => void;
+  viewMode: "list" | "map";
+  onViewModeChange: (mode: "list" | "map") => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setProjectsLocation] = useWouterLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -142,6 +244,16 @@ function ProjectListView({
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setProjectsLocation("/portal")}
+        className="mb-4"
+        data-testid="button-back-to-dashboard"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Dashboard
+      </Button>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-projects-title">
@@ -153,6 +265,28 @@ function ProjectListView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex rounded-md border" data-testid="view-mode-toggle">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-r-none"
+              onClick={() => onViewModeChange("list")}
+              data-testid="button-view-list"
+            >
+              <List className="h-4 w-4 mr-1" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-l-none"
+              onClick={() => onViewModeChange("map")}
+              data-testid="button-view-map"
+            >
+              <MapIcon className="h-4 w-4 mr-1" />
+              Map
+            </Button>
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
               <SelectValue placeholder="Filter" />
@@ -239,6 +373,17 @@ function ProjectListView({
             </Card>
           ))}
         </div>
+      ) : viewMode === "map" ? (
+        filtered && filtered.length > 0 ? (
+          <ProjectMapView projects={filtered} onSelectProject={onSelectProject} />
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground" data-testid="text-no-projects">No projects to show on map.</p>
+            </CardContent>
+          </Card>
+        )
       ) : filtered && filtered.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
@@ -639,6 +784,7 @@ function ProjectDetailView({
 
 export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   return (
     <PortalLayout>
@@ -648,7 +794,11 @@ export default function Projects() {
           onBack={() => setSelectedProjectId(null)}
         />
       ) : (
-        <ProjectListView onSelectProject={setSelectedProjectId} />
+        <ProjectListView
+          onSelectProject={setSelectedProjectId}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
       )}
     </PortalLayout>
   );

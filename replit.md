@@ -21,7 +21,7 @@ Secure, authenticated area for members with:
 - **Member Detail** (`/portal/directory/:id`) - Full member profile page with company info, services, certifications, and "Send Message" button
 - **Messages** (`/portal/messages`) - Member-to-member messaging with inbox, sent, compose, and reply
 - **Discussions** (`/portal/discussions`) - Discussion boards with topics, categories, and threaded replies
-- **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid), deadline urgency indicators (days left, color-coded), formatted budgets ($X,XXX), sorted by deadline
+- **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid), deadline urgency indicators (days left, color-coded), formatted budgets ($X,XXX), sorted by deadline, toggleable List/Map views with Leaflet map showing project markers on Bay Area map (green=open, grey=closed), clickable markers with popup details
 - **Calendar** (`/portal/calendar`) - Monthly calendar view with events (admin manages events)
 - **Newsletters** (`/portal/newsletters`) - Newsletter archive with full content view (admin publishes)
 - **Equipment Sharing** (`/portal/tools`) - Equipment lending library with borrow/return dialogs (expected return date, pickup notes, condition assessment, return notes), owner info, pickup location, condition badges, overdue tracking, active loans vs history
@@ -34,6 +34,7 @@ Portal sidebar is organized into sections:
 - Resources: Projects, Calendar, Newsletters, Equipment Sharing, Training
 - Admin: Admin Panel (admin only)
 - Mobile: Sheet/Drawer slide-out navigation from left side, with unread message icon in header
+- Navigation: Every portal page (except Dashboard) has a "Back to Dashboard" ghost button at the top for quick navigation back to /portal
 
 ### Authentication (/auth)
 - Login and registration page with NAMC branding
@@ -90,7 +91,7 @@ Current database tables:
 - `messages` - Direct messages between members (senderId, recipientId, subject, content, isRead)
 - `discussion_topics` - Discussion board topics (title, category, content, authorId, isPinned)
 - `discussion_replies` - Replies to discussion topics (topicId, authorId, content)
-- `project_opportunities` - Project postings for member bidding (title, description, location, budget, deadline, status)
+- `project_opportunities` - Project postings for member bidding (title, description, location, budget, deadline, status, latitude, longitude)
 - `project_bids` - Bids on projects (projectId, bidderId, amount, proposal, status)
 - `calendar_events` - Events with date/time/location (eventDate, eventTime, location)
 - `newsletters` - Published newsletters (title, content, publishedAt)

@@ -40,6 +40,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { useLocation as useWouterLocation } from "wouter";
 import type { Course, Lesson, CourseEnrollment } from "@shared/schema";
 
 type View = "catalog" | "detail" | "lesson";
@@ -52,6 +53,7 @@ interface CourseDetail extends Course {
 export default function Courses() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setCoursesLocation] = useWouterLocation();
   const [view, setView] = useState<View>("catalog");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -681,6 +683,16 @@ export default function Courses() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCoursesLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
           <div>
             <h1

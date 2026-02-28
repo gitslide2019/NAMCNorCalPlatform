@@ -25,6 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2 } from "lucide-react";
+import { useLocation as useWouterLocation } from "wouter";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
@@ -49,6 +50,7 @@ function categoryColor(cat: string) {
 export default function Discussions() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setWouterLocation] = useWouterLocation();
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -381,6 +383,16 @@ export default function Discussions() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setWouterLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-discussions-title">

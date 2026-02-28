@@ -15,7 +15,8 @@ import {
   Loader2, 
   FileText, 
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  ArrowLeft
 } from "lucide-react";
 import { 
   Dialog, 
@@ -24,7 +25,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { useState } from "react";
 import type { MembershipApplication } from "@shared/schema";
 
@@ -42,6 +43,7 @@ function getStatusBadge(status: string) {
 export default function Admin() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedApp, setSelectedApp] = useState<MembershipApplication | null>(null);
 
   const { data: applications, isLoading } = useQuery<MembershipApplication[]>({
@@ -73,6 +75,16 @@ export default function Admin() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-admin-title">

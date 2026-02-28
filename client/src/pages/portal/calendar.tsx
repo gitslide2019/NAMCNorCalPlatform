@@ -26,7 +26,9 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import type { CalendarEvent } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -59,6 +61,7 @@ function formatTime(timeStr: string) {
 export default function CalendarPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState(now.getMonth());
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
@@ -187,6 +190,16 @@ export default function CalendarPage() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-calendar-title">

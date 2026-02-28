@@ -37,7 +37,9 @@ import {
   CalendarDays,
   AlertTriangle,
   Clock,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -130,6 +132,7 @@ function getDaysRemaining(expectedReturnDate: string | null | undefined) {
 export default function ToolLibrary() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -320,6 +323,16 @@ export default function ToolLibrary() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/portal")}
+          className="mb-4"
+          data-testid="button-back-to-dashboard"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-tools-title">
