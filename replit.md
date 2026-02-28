@@ -178,6 +178,10 @@ The `shared/` directory contains code used by both frontend and backend:
 - **Member (Large)**: `bianca.johnson` / `member123` — Turner Construction
 - **Member (Government)**: `kimberly.wilson` / `member123` — Port of Oakland
 
+### Real Accounts
+- **Chapter Admin**: `shannon.hickman` / `NamcAdmin2026!` — Shannon Hickman, NAMC NorCal (info@namcnorcal.org, has admin access)
+- **President (Large)**: `mario.wagner` / `NamcPresident2026!` — Mario Wagner, RF Contractors (mwagner@rfcontractors.com)
+
 ### Admin Access
 - Admin users see the Admin Panel in the portal sidebar
 - Admins can approve/reject applications, export CSV, post projects, manage bids, create/edit/delete events, publish/edit/delete newsletters, create/edit/delete courses/lessons, delete discussion topics/replies, edit/delete tools
