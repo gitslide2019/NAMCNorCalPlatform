@@ -45,7 +45,7 @@ const communityItems = [
 ];
 
 const resourceItems = [
-  { href: "/portal/projects", label: "Projects", icon: Briefcase },
+  { href: "/portal/projects", label: "Project Opportunities", icon: Briefcase },
   { href: "/portal/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/portal/newsletters", label: "Newsletters", icon: Newspaper },
   { href: "/portal/tools", label: "Equipment Sharing", icon: Wrench },
