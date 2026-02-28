@@ -37,15 +37,15 @@ export async function ensureAdminUser() {
 export async function seedMembers() {
   const { membershipApplications } = await import("@shared/schema");
   const { sql: sqlTag } = await import("drizzle-orm");
+  const { seedMemberData } = await import("./seed-members");
 
   const result = await db.select({ count: sqlTag<number>`count(*)` }).from(membershipApplications);
   const count = Number(result[0]?.count || 0);
   if (count === 0) {
-    const { default: seedData } = await import("./seed-members.json");
-    for (const member of seedData) {
+    for (const member of seedMemberData) {
       await db.insert(membershipApplications).values(member as any);
     }
-    console.log(`Seeded ${seedData.length} member applications`);
+    console.log(`Seeded ${seedMemberData.length} member applications`);
   }
 }
 
