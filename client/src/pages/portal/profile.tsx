@@ -9,7 +9,8 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe, Wrench } from "lucide-react";
 import type { MembershipApplication } from "@shared/schema";
 
 export default function Profile() {
@@ -79,40 +80,94 @@ export default function Profile() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Company Name</p>
-                  <p className="font-medium">{application.companyName}</p>
+                  <p className="font-medium" data-testid="text-company-name">{application.companyName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Membership Category</p>
-                  <p className="font-medium capitalize">{application.membershipCategory}</p>
+                  <p className="font-medium capitalize" data-testid="text-membership-category">{application.membershipCategory}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Primary Services</p>
-                  <p className="font-medium">{application.primaryServices || "Not specified"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Certifications</p>
-                  <p className="font-medium">{application.certifications || "None listed"}</p>
-                </div>
-                {application.yearEstablished && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Year Established</p>
-                    <p className="font-medium">{application.yearEstablished}</p>
-                  </div>
-                )}
-                {application.numberOfEmployees && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Number of Employees</p>
-                    <p className="font-medium">{application.numberOfEmployees}</p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
+
+          <BusinessDetailsForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
 
           <ProfileEditForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
         </div>
       </div>
     </PortalLayout>
+  );
+}
+
+function BusinessDetailsForm({
+  application,
+  onSubmit,
+  isPending,
+}: {
+  application: MembershipApplication;
+  onSubmit: (data: Record<string, string>) => void;
+  isPending: boolean;
+}) {
+  const form = useForm({
+    defaultValues: {
+      primaryServices: application.primaryServices || "",
+      certifications: application.certifications || "",
+      yearEstablished: application.yearEstablished || "",
+      numberOfEmployees: application.numberOfEmployees || "",
+    },
+  });
+
+  return (
+    <Card data-testid="card-business-details">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wrench className="h-5 w-5" />
+          Business Details
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField control={form.control} name="primaryServices" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Primary Services</FormLabel>
+                <FormControl><Textarea {...field} data-testid="input-profile-services" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="certifications" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Certifications</FormLabel>
+                <FormControl><Input {...field} data-testid="input-profile-certifications" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField control={form.control} name="yearEstablished" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Year Established</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-profile-year" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="numberOfEmployees" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of Employees</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-profile-employees" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isPending} data-testid="button-save-business-details">
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
 

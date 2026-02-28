@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
@@ -7,7 +8,6 @@ import {
   ShieldCheck, 
   LogOut, 
   Menu, 
-  X,
   Home,
   Mail,
   MessageSquare,
@@ -18,8 +18,20 @@ import {
   GraduationCap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
+
+interface InboxMessage {
+  id: number;
+  isRead: boolean;
+}
 
 const navItems = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
@@ -49,6 +61,12 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const { data: messages } = useQuery<InboxMessage[]>({
+    queryKey: ["/api/portal/messages"],
+  });
+
+  const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
+
   const allNavItems = [
     ...navItems,
     ...communityItems,
@@ -68,6 +86,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
     const isActive = location === item.href || (item.href !== "/portal" && location.startsWith(item.href));
     const isExactActive = location === item.href;
     const active = item.href === "/portal" ? isExactActive : isActive;
+    const isMessages = item.href === "/portal/messages";
     return (
       <Link key={item.href} href={item.href}>
         <div
@@ -80,7 +99,16 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           onClick={onClick}
         >
           <item.icon className="h-4 w-4" />
-          {item.label}
+          <span className="flex-1">{item.label}</span>
+          {isMessages && unreadCount > 0 && (
+            <Badge
+              variant={active ? "outline" : "destructive"}
+              className={active ? "border-primary-foreground/30 text-primary-foreground text-[10px]" : "text-[10px]"}
+              data-testid="badge-sidebar-unread"
+            >
+              {unreadCount}
+            </Badge>
+          )}
         </div>
       </Link>
     );
@@ -91,6 +119,43 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</p>
       {items.map((item) => renderNavItem(item, onClick))}
     </div>
+  );
+
+  const sidebarContent = (onClick?: () => void) => (
+    <>
+      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        <div className="space-y-0.5">
+          {navItems.map((item) => renderNavItem(item, onClick))}
+        </div>
+        {renderSection("Community", communityItems, onClick)}
+        {renderSection("Resources", resourceItems, onClick)}
+        {user?.isAdmin && renderSection("Admin", adminNavItems, onClick)}
+      </nav>
+
+      <div className="p-3 border-t space-y-1">
+        <Link href="/">
+          <div
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+            data-testid="link-portal-main-site"
+            onClick={onClick}
+          >
+            <Home className="h-4 w-4" />
+            Main Site
+          </div>
+        </Link>
+        <button
+          onClick={() => { onClick?.(); handleLogout(); }}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full"
+          data-testid="button-logout"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
+        <div className="px-3 py-2 mt-2">
+          <p className="text-xs text-muted-foreground truncate">{user?.username}</p>
+        </div>
+      </div>
+    </>
   );
 
   return (
@@ -108,80 +173,47 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-
-          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-            <div className="space-y-0.5">
-              {navItems.map((item) => renderNavItem(item))}
-            </div>
-            {renderSection("Community", communityItems)}
-            {renderSection("Resources", resourceItems)}
-            {user?.isAdmin && renderSection("Admin", adminNavItems)}
-          </nav>
-
-          <div className="p-3 border-t space-y-1">
-            <Link href="/">
-              <div
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
-                data-testid="link-portal-main-site"
-              >
-                <Home className="h-4 w-4" />
-                Main Site
-              </div>
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full"
-              data-testid="button-logout"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
-            <div className="px-3 py-2 mt-2">
-              <p className="text-xs text-muted-foreground truncate">{user?.username}</p>
-            </div>
-          </div>
+          {sidebarContent()}
         </div>
       </aside>
 
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 border">
             <img src={namcLogo} alt="NAMC NorCal" className="h-full w-full object-contain" />
           </div>
           <span className="text-sm font-bold">Member Portal</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)} data-testid="button-portal-mobile-menu">
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Link href="/portal/messages">
+              <div className="relative">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center" data-testid="badge-mobile-unread">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              </div>
+            </Link>
+          )}
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} data-testid="button-portal-mobile-menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
-          <div className="fixed top-14 left-0 right-0 bg-card border-b p-3 space-y-3 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="space-y-0.5">
-              {navItems.map((item) => renderNavItem(item, () => setMobileOpen(false)))}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="w-72 p-0 flex flex-col">
+          <SheetHeader className="p-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white p-1 border">
+                <img src={namcLogo} alt="NAMC NorCal" className="h-full w-full object-contain" />
+              </div>
+              <SheetTitle className="text-sm font-bold leading-tight">NAMC NorCal</SheetTitle>
             </div>
-            {renderSection("Community", communityItems, () => setMobileOpen(false))}
-            {renderSection("Resources", resourceItems, () => setMobileOpen(false))}
-            {user?.isAdmin && renderSection("Admin", adminNavItems, () => setMobileOpen(false))}
-            <div className="border-t pt-2 space-y-0.5">
-              <Link href="/">
-                <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground cursor-pointer">
-                  <Home className="h-4 w-4" />
-                  Main Site
-                </div>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive w-full"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </SheetHeader>
+          {sidebarContent(() => setMobileOpen(false))}
+        </SheetContent>
+      </Sheet>
 
       <main className="flex-1 lg:ml-64">
         <div className="pt-16 lg:pt-0">

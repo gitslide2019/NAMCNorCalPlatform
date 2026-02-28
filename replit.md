@@ -15,13 +15,13 @@ Single-page application with sections for:
 
 ### Member Portal (/portal)
 Secure, authenticated area for members with:
-- **Dashboard** (`/portal`) - Welcome page with membership status, company info, activity summary (unread messages, open projects, upcoming events, recent discussions), quick links, and onboarding tutorial for first-time users
-- **Profile** (`/portal/profile`) - View/edit company and contact information
+- **Dashboard** (`/portal`) - Personalized welcome (uses contact first name), membership status, company info, activity summary (unread messages, open projects, upcoming events, recent discussions), contractor-focused quick links (Browse Projects, Check Messages, Member Directory), empty state CTAs for events/discussions, onboarding tutorial for first-time users
+- **Profile** (`/portal/profile`) - View/edit company info, contact details, and business details (services, certifications, year established, employee count)
 - **Member Directory** (`/portal/directory`) - Browse approved NAMC NorCal members with search and filters; click any member to view full profile
 - **Member Detail** (`/portal/directory/:id`) - Full member profile page with company info, services, certifications, and "Send Message" button
 - **Messages** (`/portal/messages`) - Member-to-member messaging with inbox, sent, compose, and reply
 - **Discussions** (`/portal/discussions`) - Discussion boards with topics, categories, and threaded replies
-- **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid)
+- **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid), deadline urgency indicators (days left, color-coded), formatted budgets ($X,XXX), sorted by deadline
 - **Calendar** (`/portal/calendar`) - Monthly calendar view with events (admin manages events)
 - **Newsletters** (`/portal/newsletters`) - Newsletter archive with full content view (admin publishes)
 - **Equipment Sharing** (`/portal/tools`) - Equipment lending library with borrow/return dialogs (expected return date, pickup notes, condition assessment, return notes), owner info, pickup location, condition badges, overdue tracking, active loans vs history
@@ -30,9 +30,10 @@ Secure, authenticated area for members with:
 
 Portal sidebar is organized into sections:
 - Main: Dashboard, My Profile, Member Directory
-- Community: Messages, Discussions
+- Community: Messages (with unread count badge), Discussions
 - Resources: Projects, Calendar, Newsletters, Equipment Sharing, Training
 - Admin: Admin Panel (admin only)
+- Mobile: Sheet/Drawer slide-out navigation from left side, with unread message icon in header
 
 ### Authentication (/auth)
 - Login and registration page with NAMC branding

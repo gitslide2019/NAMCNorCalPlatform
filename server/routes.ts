@@ -186,7 +186,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "No linked application found" });
         return;
       }
-      const allowedFields = ["contactName", "email", "phone", "address", "city", "state", "zipCode", "website"];
+      const allowedFields = ["contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {

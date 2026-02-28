@@ -40,6 +40,48 @@ import type { ProjectOpportunity, ProjectBid } from "@shared/schema";
 type ProjectWithBids = ProjectOpportunity & { bids: ProjectBid[] };
 type PortalUser = { id: string; username: string };
 
+function formatBudget(budget: string | null | undefined): string {
+  if (!budget) return "";
+  const num = parseFloat(budget.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return budget;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+}
+
+function formatDeadline(deadline: string | null | undefined): string {
+  if (!deadline) return "";
+  const date = new Date(deadline);
+  if (isNaN(date.getTime())) return deadline;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getDeadlineUrgency(deadline: string | null | undefined): {
+  label: string;
+  variant: "green" | "amber" | "red";
+} | null {
+  if (!deadline) return null;
+  const date = new Date(deadline);
+  if (isNaN(date.getTime())) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { label: "Deadline passed", variant: "red" };
+  if (diffDays === 0) return { label: "Due today", variant: "amber" };
+  if (diffDays === 1) return { label: "1 day left", variant: "amber" };
+  if (diffDays <= 7) return { label: `${diffDays} days left`, variant: "amber" };
+  return { label: `${diffDays} days left`, variant: "green" };
+}
+
 function ProjectListView({
   onSelectProject,
 }: {
@@ -84,10 +126,19 @@ function ProjectListView({
     },
   });
 
-  const filtered = projects?.filter((p) => {
-    if (statusFilter === "all") return true;
-    return p.status === statusFilter;
-  });
+  const filtered = projects
+    ?.filter((p) => {
+      if (statusFilter === "all") return true;
+      return p.status === statusFilter;
+    })
+    .sort((a, b) => {
+      if (a.status === "open" && b.status !== "open") return -1;
+      if (a.status !== "open" && b.status === "open") return 1;
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    });
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
@@ -222,18 +273,36 @@ function ProjectListView({
                     {project.location}
                   </span>
                   {project.budget && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" data-testid={`text-project-budget-${project.id}`}>
                       <DollarSign className="h-3.5 w-3.5" />
-                      {project.budget}
+                      {formatBudget(project.budget)}
                     </span>
                   )}
                   {project.deadline && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" data-testid={`text-project-deadline-${project.id}`}>
                       <Calendar className="h-3.5 w-3.5" />
-                      {project.deadline}
+                      {formatDeadline(project.deadline)}
                     </span>
                   )}
                 </div>
+                {(() => {
+                  const urgency = getDeadlineUrgency(project.deadline);
+                  if (!urgency) return null;
+                  const urgencyClasses =
+                    urgency.variant === "red"
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : urgency.variant === "amber"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+                  return (
+                    <Badge
+                      className={urgencyClasses}
+                      data-testid={`badge-project-urgency-${project.id}`}
+                    >
+                      {urgency.label}
+                    </Badge>
+                  );
+                })()}
               </CardContent>
             </Card>
           ))}
@@ -365,23 +434,41 @@ function ProjectDetailView({
           <p className="whitespace-pre-wrap" data-testid="text-project-full-description">
             {project.description}
           </p>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
               {project.location}
             </span>
             {project.budget && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1" data-testid="text-detail-budget">
                 <DollarSign className="h-4 w-4" />
-                {project.budget}
+                {formatBudget(project.budget)}
               </span>
             )}
             {project.deadline && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1" data-testid="text-detail-deadline">
                 <Calendar className="h-4 w-4" />
-                {project.deadline}
+                {formatDeadline(project.deadline)}
               </span>
             )}
+            {(() => {
+              const urgency = getDeadlineUrgency(project.deadline);
+              if (!urgency) return null;
+              const urgencyClasses =
+                urgency.variant === "red"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  : urgency.variant === "amber"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+              return (
+                <Badge
+                  className={urgencyClasses}
+                  data-testid="badge-detail-urgency"
+                >
+                  {urgency.label}
+                </Badge>
+              );
+            })()}
           </div>
           {project.contactEmail && (
             <p className="text-sm text-muted-foreground" data-testid="text-contact-email">

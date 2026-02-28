@@ -5,9 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import {
-  User,
   Users,
-  Building2,
   Clock,
   CheckCircle,
   XCircle,
@@ -62,6 +60,14 @@ interface DashboardTopic {
   replyCount?: number;
 }
 
+function getFirstName(contactName: string | undefined, username: string | undefined): string {
+  if (contactName) {
+    const first = contactName.split(" ")[0];
+    if (first) return first;
+  }
+  return username || "Member";
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { forceOpen, restartTour, onClose } = useOnboardingReset();
@@ -99,6 +105,8 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
 
+  const displayName = getFirstName(application?.contactName, user?.username);
+
   return (
     <PortalLayout>
       <OnboardingTutorial forceOpen={forceOpen} onClose={onClose} />
@@ -106,7 +114,7 @@ export default function Dashboard() {
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-dashboard-title">
-              Welcome back, {user?.username}
+              Welcome back, {displayName}
             </h1>
             <p className="text-muted-foreground mt-1">
               Here's an overview of your NAMC NorCal membership.
@@ -217,14 +225,14 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            {upcomingEvents.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold" data-testid="text-upcoming-events-heading">Upcoming Events</h2>
-                  <Link href="/portal/calendar">
-                    <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-events">View all</span>
-                  </Link>
-                </div>
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold" data-testid="text-upcoming-events-heading">Upcoming Events</h2>
+                <Link href="/portal/calendar">
+                  <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-events">View all</span>
+                </Link>
+              </div>
+              {upcomingEvents.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {upcomingEvents.map((event) => (
                     <Link key={event.id} href="/portal/calendar">
@@ -254,17 +262,31 @@ export default function Dashboard() {
                     </Link>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <Card data-testid="card-no-events">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/20 shrink-0">
+                      <CalendarDays className="h-5 w-5 text-amber-500/60 dark:text-amber-400/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-muted-foreground">No upcoming events</p>
+                      <p className="text-xs text-muted-foreground">
+                        Check the <Link href="/portal/calendar"><span className="text-primary hover:underline">calendar</span></Link> for past events and updates.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
-            {recentTopics.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold" data-testid="text-recent-discussions-heading">Recent Discussions</h2>
-                  <Link href="/portal/discussions">
-                    <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-discussions">View all</span>
-                  </Link>
-                </div>
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold" data-testid="text-recent-discussions-heading">Recent Discussions</h2>
+                <Link href="/portal/discussions">
+                  <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-discussions">View all</span>
+                </Link>
+              </div>
+              {recentTopics.length > 0 ? (
                 <div className="space-y-2">
                   {recentTopics.map((topic) => (
                     <Link key={topic.id} href="/portal/discussions">
@@ -283,20 +305,48 @@ export default function Dashboard() {
                     </Link>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <Card data-testid="card-no-discussions">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 shrink-0">
+                      <MessageSquare className="h-5 w-5 text-muted-foreground/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-muted-foreground">No recent discussions</p>
+                      <p className="text-xs text-muted-foreground">
+                        <Link href="/portal/discussions"><span className="text-primary hover:underline">Start a conversation</span></Link> with fellow NAMC members.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
             <h2 className="text-lg font-semibold mb-4" data-testid="text-quick-links-heading">Quick Links</h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Link href="/portal/profile">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-profile">
+              <Link href="/portal/projects">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-projects">
                   <CardContent className="p-6 flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <User className="h-5 w-5 text-primary" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-medium">My Profile</p>
-                      <p className="text-sm text-muted-foreground">View & edit your info</p>
+                      <p className="font-medium">Browse Projects</p>
+                      <p className="text-sm text-muted-foreground">Find bidding opportunities</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/portal/messages">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-messages">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Check Messages</p>
+                      <p className="text-sm text-muted-foreground">Read & send messages</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -310,25 +360,11 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="font-medium">Member Directory</p>
-                      <p className="text-sm text-muted-foreground">Browse NAMC members</p>
+                      <p className="text-sm text-muted-foreground">Find contractors & partners</p>
                     </div>
                   </CardContent>
                 </Card>
               </Link>
-
-              <a href="https://www.namcnorcal.org" target="_blank" rel="noopener noreferrer">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-namc">
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">NAMC NorCal</p>
-                      <p className="text-sm text-muted-foreground">Visit main website</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </a>
             </div>
           </>
         ) : (
