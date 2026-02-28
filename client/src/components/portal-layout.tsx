@@ -8,7 +8,14 @@ import {
   LogOut, 
   Menu, 
   X,
-  Home
+  Home,
+  Mail,
+  MessageSquare,
+  Briefcase,
+  CalendarDays,
+  Newspaper,
+  Wrench,
+  GraduationCap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -18,6 +25,19 @@ const navItems = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/profile", label: "My Profile", icon: User },
   { href: "/portal/directory", label: "Member Directory", icon: Users },
+];
+
+const communityItems = [
+  { href: "/portal/messages", label: "Messages", icon: Mail },
+  { href: "/portal/discussions", label: "Discussions", icon: MessageSquare },
+];
+
+const resourceItems = [
+  { href: "/portal/projects", label: "Projects", icon: Briefcase },
+  { href: "/portal/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/portal/newsletters", label: "Newsletters", icon: Newspaper },
+  { href: "/portal/tools", label: "Tool Library", icon: Wrench },
+  { href: "/portal/courses", label: "Learning", icon: GraduationCap },
 ];
 
 const adminNavItems = [
@@ -31,6 +51,8 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 
   const allNavItems = [
     ...navItems,
+    ...communityItems,
+    ...resourceItems,
     ...(user?.isAdmin ? adminNavItems : []),
   ];
 
@@ -41,6 +63,35 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       },
     });
   };
+
+  const renderNavItem = (item: typeof navItems[0], onClick?: () => void) => {
+    const isActive = location === item.href || (item.href !== "/portal" && location.startsWith(item.href));
+    const isExactActive = location === item.href;
+    const active = item.href === "/portal" ? isExactActive : isActive;
+    return (
+      <Link key={item.href} href={item.href}>
+        <div
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+            active
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+          data-testid={`link-portal-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+          onClick={onClick}
+        >
+          <item.icon className="h-4 w-4" />
+          {item.label}
+        </div>
+      </Link>
+    );
+  };
+
+  const renderSection = (label: string, items: typeof navItems, onClick?: () => void) => (
+    <div>
+      <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{label}</p>
+      {items.map((item) => renderNavItem(item, onClick))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex bg-muted/30">
@@ -58,33 +109,19 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1">
-            {allNavItems.map((item) => {
-              const isActive = location === item.href || (item.href !== "/portal" && location.startsWith(item.href));
-              const isExactActive = location === item.href;
-              const active = item.href === "/portal" ? isExactActive : isActive;
-              return (
-                <Link key={item.href} href={item.href}>
-                  <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                    data-testid={`link-portal-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </div>
-                </Link>
-              );
-            })}
+          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+            <div className="space-y-0.5">
+              {navItems.map((item) => renderNavItem(item))}
+            </div>
+            {renderSection("Community", communityItems)}
+            {renderSection("Resources", resourceItems)}
+            {user?.isAdmin && renderSection("Admin", adminNavItems)}
           </nav>
 
           <div className="p-3 border-t space-y-1">
             <Link href="/">
               <div
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
                 data-testid="link-portal-main-site"
               >
                 <Home className="h-4 w-4" />
@@ -93,7 +130,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full"
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4" />
@@ -120,36 +157,28 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
-          <div className="fixed top-14 left-0 right-0 bg-card border-b p-3 space-y-1" onClick={(e) => e.stopPropagation()}>
-            {allNavItems.map((item) => {
-              const isActive = location === item.href;
-              return (
-                <Link key={item.href} href={item.href}>
-                  <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer ${
-                      isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                    }`}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </div>
-                </Link>
-              );
-            })}
-            <Link href="/">
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground cursor-pointer">
-                <Home className="h-4 w-4" />
-                Main Site
-              </div>
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive w-full"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
+          <div className="fixed top-14 left-0 right-0 bg-card border-b p-3 space-y-3 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-0.5">
+              {navItems.map((item) => renderNavItem(item, () => setMobileOpen(false)))}
+            </div>
+            {renderSection("Community", communityItems, () => setMobileOpen(false))}
+            {renderSection("Resources", resourceItems, () => setMobileOpen(false))}
+            {user?.isAdmin && renderSection("Admin", adminNavItems, () => setMobileOpen(false))}
+            <div className="border-t pt-2 space-y-0.5">
+              <Link href="/">
+                <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground cursor-pointer">
+                  <Home className="h-4 w-4" />
+                  Main Site
+                </div>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive w-full"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       )}

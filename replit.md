@@ -18,7 +18,20 @@ Secure, authenticated area for members with:
 - **Dashboard** (`/portal`) - Welcome page with membership status, company info, quick links
 - **Profile** (`/portal/profile`) - View/edit company and contact information
 - **Member Directory** (`/portal/directory`) - Browse approved NAMC NorCal members with search and filters
+- **Messages** (`/portal/messages`) - Member-to-member messaging with inbox, sent, compose, and reply
+- **Discussions** (`/portal/discussions`) - Discussion boards with topics, categories, and threaded replies
+- **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid)
+- **Calendar** (`/portal/calendar`) - Monthly calendar view with events (admin manages events)
+- **Newsletters** (`/portal/newsletters`) - Newsletter archive with full content view (admin publishes)
+- **Tool Library** (`/portal/tools`) - Tool lending library for borrowing/returning shared tools
+- **Learning** (`/portal/courses`) - Learning management system with courses, lessons, and progress tracking
 - **Admin Panel** (`/portal/admin`) - Admin-only application management with approve/reject and CSV export
+
+Portal sidebar is organized into sections:
+- Main: Dashboard, My Profile, Member Directory
+- Community: Messages, Discussions
+- Resources: Projects, Calendar, Newsletters, Tool Library, Learning
+- Admin: Admin Panel (admin only)
 
 ### Authentication (/auth)
 - Login and registration page with NAMC branding
@@ -58,7 +71,7 @@ The frontend follows a component-based architecture with:
 
 The server provides:
 - Auth routes (`server/auth.ts`): register, login, logout, current user
-- API routes (`server/routes.ts`): membership application CRUD, portal endpoints, admin endpoints
+- API routes (`server/routes.ts`): membership application CRUD, portal endpoints, messaging, discussions, projects, calendar, newsletters, tools, courses, admin endpoints
 - Static file serving for production builds
 - Vite dev server integration for development
 
@@ -72,6 +85,18 @@ Current database tables:
 - `users` - User accounts with username, password, isAdmin flag, and memberApplicationId link
 - `membership_applications` - Submitted membership applications with company info, contact details, membership category, and status (pending/approved/rejected)
 - `session` - Express session store (auto-created by connect-pg-simple)
+- `messages` - Direct messages between members (senderId, recipientId, subject, content, isRead)
+- `discussion_topics` - Discussion board topics (title, category, content, authorId, isPinned)
+- `discussion_replies` - Replies to discussion topics (topicId, authorId, content)
+- `project_opportunities` - Project postings for member bidding (title, description, location, budget, deadline, status)
+- `project_bids` - Bids on projects (projectId, bidderId, amount, proposal, status)
+- `calendar_events` - Events with date/time/location (eventDate, eventTime, location)
+- `newsletters` - Published newsletters (title, content, publishedAt)
+- `tools` - Tool lending library catalog (name, description, category, status: available/borrowed/maintenance)
+- `tool_loans` - Tool borrowing records (toolId, borrowerId, borrowDate, returnDate, status)
+- `courses` - LMS courses (title, description)
+- `lessons` - Course lessons (courseId, title, content, sortOrder)
+- `course_enrollments` - User course enrollments with progress (courseId, userId, progress, completedLessons)
 
 ### Code Sharing
 The `shared/` directory contains code used by both frontend and backend:
@@ -87,19 +112,52 @@ The `shared/` directory contains code used by both frontend and backend:
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/user` - Get current user
 - `POST /api/membership-applications` - Submit application
-- `GET /api/membership-applications` - List all applications
-- `GET /api/membership-applications/:id` - Get single application
-- `PATCH /api/membership-applications/:id/status` - Update status (admin only)
-- `GET /api/membership-applications-export/csv` - CSV export
+- `GET /api/membership-applications` - List all applications (admin)
+- `GET /api/membership-applications/:id` - Get single application (admin)
+- `PATCH /api/membership-applications/:id/status` - Update status (admin)
+- `GET /api/membership-applications-export/csv` - CSV export (admin)
 - `GET /api/portal/my-application` - Get logged-in user's linked application
-- `GET /api/portal/directory` - Get approved members (auth required)
-- `PATCH /api/portal/profile` - Update contact info (auth required)
-- `POST /api/portal/link-application` - Link user to application (auth required)
+- `GET /api/portal/directory` - Get approved members (auth)
+- `PATCH /api/portal/profile` - Update contact info (auth)
+- `POST /api/portal/link-application` - Link user to application (admin)
+- `GET /api/portal/users` - List all users (id, username) (auth)
+- `GET /api/portal/messages` - Inbox messages (auth)
+- `GET /api/portal/messages/sent` - Sent messages (auth)
+- `GET /api/portal/messages/:id` - Single message, auto mark read (auth)
+- `POST /api/portal/messages` - Send message (auth)
+- `GET /api/portal/discussions` - List discussion topics with reply counts (auth)
+- `GET /api/portal/discussions/:id` - Topic with replies (auth)
+- `POST /api/portal/discussions` - Create topic (auth)
+- `POST /api/portal/discussions/:id/replies` - Add reply (auth)
+- `GET /api/portal/projects` - List projects (auth)
+- `GET /api/portal/projects/:id` - Project with bids (auth, admin sees all bids)
+- `POST /api/portal/projects` - Create project (admin)
+- `PATCH /api/portal/projects/:id/status` - Update project status (admin)
+- `POST /api/portal/projects/:id/bids` - Submit bid (auth)
+- `PATCH /api/portal/projects/:projectId/bids/:bidId` - Update bid status (admin)
+- `GET /api/portal/events` - List calendar events (auth)
+- `POST /api/portal/events` - Create event (admin)
+- `DELETE /api/portal/events/:id` - Delete event (admin)
+- `GET /api/portal/newsletters` - List newsletters (auth)
+- `GET /api/portal/newsletters/:id` - Single newsletter (auth)
+- `POST /api/portal/newsletters` - Create newsletter (admin)
+- `GET /api/portal/tools` - List tools (auth)
+- `POST /api/portal/tools` - Add tool (auth)
+- `POST /api/portal/tools/:id/borrow` - Borrow tool (auth)
+- `POST /api/portal/tools/:id/return` - Return tool (auth)
+- `GET /api/portal/tools/my-loans` - My tool loans (auth)
+- `GET /api/portal/courses` - List courses (auth)
+- `GET /api/portal/courses/my-enrollments` - My enrollments (auth)
+- `GET /api/portal/courses/:id` - Course with lessons and enrollment (auth)
+- `POST /api/portal/courses` - Create course (admin)
+- `POST /api/portal/courses/:id/lessons` - Add lesson (admin)
+- `POST /api/portal/courses/:id/enroll` - Enroll in course (auth)
+- `PATCH /api/portal/courses/:id/progress` - Update progress (auth)
 
 ### Admin Access
 - Default test admin: username `testadmin`, password `test1234`
 - Admin users see the Admin Panel in the portal sidebar
-- Admins can approve/reject applications and export CSV
+- Admins can approve/reject applications, export CSV, post projects, manage bids, create events, publish newsletters, create courses/lessons
 
 ## External Dependencies
 

@@ -13,6 +13,13 @@ import Dashboard from "@/pages/portal/dashboard";
 import Profile from "@/pages/portal/profile";
 import Directory from "@/pages/portal/directory";
 import Admin from "@/pages/portal/admin";
+import Messages from "@/pages/portal/messages";
+import Discussions from "@/pages/portal/discussions";
+import Projects from "@/pages/portal/projects";
+import CalendarPage from "@/pages/portal/calendar";
+import Newsletters from "@/pages/portal/newsletters";
+import ToolLibrary from "@/pages/portal/tools";
+import Courses from "@/pages/portal/courses";
 
 function Router() {
   return (
@@ -30,6 +37,27 @@ function Router() {
       </Route>
       <Route path="/portal/admin">
         <ProtectedRoute><Admin /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/messages">
+        <ProtectedRoute><Messages /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/discussions">
+        <ProtectedRoute><Discussions /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/projects">
+        <ProtectedRoute><Projects /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/calendar">
+        <ProtectedRoute><CalendarPage /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/newsletters">
+        <ProtectedRoute><Newsletters /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/tools">
+        <ProtectedRoute><ToolLibrary /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/courses">
+        <ProtectedRoute><Courses /></ProtectedRoute>
       </Route>
       <Route component={NotFound} />
     </Switch>
