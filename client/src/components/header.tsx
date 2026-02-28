@@ -1,19 +1,21 @@
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
 
 const navLinks = [
   { href: "#why-join", label: "Why Join" },
   { href: "#membership", label: "Membership" },
-  { href: "#events", label: "Events" },
   { href: "#get-involved", label: "Get Involved" },
   { href: "#apply", label: "Apply Now" },
 ];
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -58,6 +60,21 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {user ? (
+              <Link href="/portal">
+                <Button variant="default" size="sm" className="hidden sm:inline-flex" data-testid="link-my-portal">
+                  <User className="h-4 w-4 mr-1.5" />
+                  My Portal
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/auth">
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex" data-testid="link-member-login">
+                  <LogIn className="h-4 w-4 mr-1.5" />
+                  Member Login
+                </Button>
+              </Link>
+            )}
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -85,6 +102,21 @@ export function Header() {
                   {link.label}
                 </Button>
               ))}
+              {user ? (
+                <Link href="/portal">
+                  <Button variant="default" className="justify-start w-full mt-2" data-testid="link-mobile-portal">
+                    <User className="h-4 w-4 mr-1.5" />
+                    My Portal
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/auth">
+                  <Button variant="outline" className="justify-start w-full mt-2" data-testid="link-mobile-login">
+                    <LogIn className="h-4 w-4 mr-1.5" />
+                    Member Login
+                  </Button>
+                </Link>
+              )}
             </div>
           </nav>
         )}

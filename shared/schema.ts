@@ -12,6 +12,9 @@ export const membershipCategories = [
 
 export type MembershipCategory = typeof membershipCategories[number];
 
+export const applicationStatuses = ["pending", "approved", "rejected"] as const;
+export type ApplicationStatus = typeof applicationStatuses[number];
+
 export const membershipApplications = pgTable("membership_applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   membershipCategory: text("membership_category").notNull(),
@@ -32,11 +35,13 @@ export const membershipApplications = pgTable("membership_applications", {
   certifications: text("certifications"),
   howDidYouHear: text("how_did_you_hear"),
   acceptedTerms: boolean("accepted_terms").notNull().default(false),
+  status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertMembershipApplicationSchema = createInsertSchema(membershipApplications).omit({
   id: true,
+  status: true,
   createdAt: true,
 }).extend({
   email: z.string().email("Please enter a valid email address"),
@@ -56,6 +61,8 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  memberApplicationId: varchar("member_application_id"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
