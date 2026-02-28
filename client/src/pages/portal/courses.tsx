@@ -688,7 +688,7 @@ export default function Courses() {
               data-testid="text-courses-title"
             >
               <GraduationCap className="h-7 w-7" />
-              Courses
+              Training
             </h1>
             <p className="text-muted-foreground mt-1">
               Explore training and development courses

@@ -4,8 +4,23 @@ import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { User, Users, Building2, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import {
+  User,
+  Users,
+  Building2,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Mail,
+  CalendarDays,
+  Briefcase,
+  MessageSquare,
+  RotateCcw,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { OnboardingTutorial, useOnboardingReset } from "@/components/onboarding-tutorial";
 import type { MembershipApplication } from "@shared/schema";
 
 function getStatusBadge(status: string) {
@@ -19,22 +34,94 @@ function getStatusBadge(status: string) {
   }
 }
 
+interface DashboardMessage {
+  id: number;
+  isRead: boolean;
+}
+
+interface DashboardEvent {
+  id: number;
+  title: string;
+  eventDate: string;
+  eventTime: string | null;
+  location: string | null;
+}
+
+interface DashboardProject {
+  id: number;
+  title: string;
+  status: string;
+}
+
+interface DashboardTopic {
+  id: number;
+  title: string;
+  category: string;
+  createdAt: string;
+  authorUsername?: string;
+  replyCount?: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const { forceOpen, restartTour, onClose } = useOnboardingReset();
+
   const { data: application, isLoading } = useQuery<MembershipApplication | null>({
     queryKey: ["/api/portal/my-application"],
   });
 
+  const { data: messages } = useQuery<DashboardMessage[]>({
+    queryKey: ["/api/portal/messages"],
+  });
+
+  const { data: events } = useQuery<DashboardEvent[]>({
+    queryKey: ["/api/portal/events"],
+  });
+
+  const { data: projects } = useQuery<DashboardProject[]>({
+    queryKey: ["/api/portal/projects"],
+  });
+
+  const { data: discussions } = useQuery<DashboardTopic[]>({
+    queryKey: ["/api/portal/discussions"],
+  });
+
+  const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
+  const openProjects = projects?.filter((p) => p.status === "open") ?? [];
+
+  const now = new Date();
+  const upcomingEvents = (events ?? [])
+    .filter((e) => new Date(e.eventDate) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+    .slice(0, 3);
+
+  const recentTopics = (discussions ?? [])
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
+
   return (
     <PortalLayout>
+      <OnboardingTutorial forceOpen={forceOpen} onClose={onClose} />
       <div className="p-6 sm:p-8 lg:p-10 max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-dashboard-title">
-            Welcome back, {user?.username}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Here's an overview of your NAMC NorCal membership.
-          </p>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-dashboard-title">
+              Welcome back, {user?.username}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Here's an overview of your NAMC NorCal membership.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={restartTour}
+            className="text-xs"
+            data-testid="button-restart-tour"
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-1" />
+            Restart Tour
+          </Button>
         </div>
 
         {isLoading ? (
@@ -81,6 +168,125 @@ export default function Dashboard() {
               </Card>
             </div>
 
+            <h2 className="text-lg font-semibold mb-4" data-testid="text-activity-heading">Activity</h2>
+            <div className="grid gap-4 md:grid-cols-2 mb-8">
+              <Link href="/portal/messages">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="card-activity-messages">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">Messages</p>
+                      <p className="text-xs text-muted-foreground">
+                        {unreadCount > 0
+                          ? `${unreadCount} unread message${unreadCount !== 1 ? "s" : ""}`
+                          : "No unread messages"}
+                      </p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <Badge className="bg-blue-600 text-white" data-testid="badge-unread-count">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/portal/projects">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="card-activity-projects">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">Open Projects</p>
+                      <p className="text-xs text-muted-foreground">
+                        {openProjects.length > 0
+                          ? `${openProjects.length} project${openProjects.length !== 1 ? "s" : ""} accepting bids`
+                          : "No open projects right now"}
+                      </p>
+                    </div>
+                    {openProjects.length > 0 && (
+                      <Badge className="bg-green-600 text-white" data-testid="badge-open-projects">
+                        {openProjects.length}
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+
+            {upcomingEvents.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold" data-testid="text-upcoming-events-heading">Upcoming Events</h2>
+                  <Link href="/portal/calendar">
+                    <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-events">View all</span>
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {upcomingEvents.map((event) => (
+                    <Link key={event.id} href="/portal/calendar">
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid={`card-event-${event.id}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
+                              <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{event.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(event.eventDate).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                                {event.eventTime && ` · ${event.eventTime}`}
+                              </p>
+                              {event.location && (
+                                <p className="text-xs text-muted-foreground truncate">{event.location}</p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recentTopics.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold" data-testid="text-recent-discussions-heading">Recent Discussions</h2>
+                  <Link href="/portal/discussions">
+                    <span className="text-xs text-primary hover:underline cursor-pointer" data-testid="link-view-all-discussions">View all</span>
+                  </Link>
+                </div>
+                <div className="space-y-2">
+                  {recentTopics.map((topic) => (
+                    <Link key={topic.id} href="/portal/discussions">
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid={`card-topic-${topic.id}`}>
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{topic.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {topic.category} · {topic.authorUsername || "Member"}
+                              {topic.replyCount !== undefined && ` · ${topic.replyCount} replies`}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <h2 className="text-lg font-semibold mb-4" data-testid="text-quick-links-heading">Quick Links</h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Link href="/portal/profile">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-profile">

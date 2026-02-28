@@ -15,7 +15,7 @@ Single-page application with sections for:
 
 ### Member Portal (/portal)
 Secure, authenticated area for members with:
-- **Dashboard** (`/portal`) - Welcome page with membership status, company info, quick links
+- **Dashboard** (`/portal`) - Welcome page with membership status, company info, activity summary (unread messages, open projects, upcoming events, recent discussions), quick links, and onboarding tutorial for first-time users
 - **Profile** (`/portal/profile`) - View/edit company and contact information
 - **Member Directory** (`/portal/directory`) - Browse approved NAMC NorCal members with search and filters; click any member to view full profile
 - **Member Detail** (`/portal/directory/:id`) - Full member profile page with company info, services, certifications, and "Send Message" button
@@ -24,14 +24,14 @@ Secure, authenticated area for members with:
 - **Projects** (`/portal/projects`) - Project opportunities with bidding system (admin posts, members bid)
 - **Calendar** (`/portal/calendar`) - Monthly calendar view with events (admin manages events)
 - **Newsletters** (`/portal/newsletters`) - Newsletter archive with full content view (admin publishes)
-- **Tool Library** (`/portal/tools`) - Tool lending library for borrowing/returning shared tools
-- **Learning** (`/portal/courses`) - Learning management system with courses, lessons, and progress tracking
+- **Equipment Sharing** (`/portal/tools`) - Equipment lending library for borrowing/returning shared tools
+- **Training** (`/portal/courses`) - Learning management system with courses, lessons, and progress tracking
 - **Admin Panel** (`/portal/admin`) - Admin-only application management with approve/reject and CSV export
 
 Portal sidebar is organized into sections:
 - Main: Dashboard, My Profile, Member Directory
 - Community: Messages, Discussions
-- Resources: Projects, Calendar, Newsletters, Tool Library, Learning
+- Resources: Projects, Calendar, Newsletters, Equipment Sharing, Training
 - Admin: Admin Panel (admin only)
 
 ### Authentication (/auth)

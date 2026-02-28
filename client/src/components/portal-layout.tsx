@@ -36,8 +36,8 @@ const resourceItems = [
   { href: "/portal/projects", label: "Projects", icon: Briefcase },
   { href: "/portal/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/portal/newsletters", label: "Newsletters", icon: Newspaper },
-  { href: "/portal/tools", label: "Tool Library", icon: Wrench },
-  { href: "/portal/courses", label: "Learning", icon: GraduationCap },
+  { href: "/portal/tools", label: "Equipment Sharing", icon: Wrench },
+  { href: "/portal/courses", label: "Training", icon: GraduationCap },
 ];
 
 const adminNavItems = [

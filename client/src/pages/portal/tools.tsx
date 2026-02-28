@@ -207,10 +207,10 @@ export default function ToolLibrary() {
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-tools-title">
-              Tool Lending Library
+              Equipment Sharing
             </h1>
             <p className="text-muted-foreground mt-1">
-              Browse, borrow, and share tools with fellow members.
+              Browse, borrow, and share equipment with fellow members.
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
