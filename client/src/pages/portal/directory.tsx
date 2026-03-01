@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft } from "lucide-react";
+import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -24,6 +24,7 @@ interface DirectoryMember {
   certifications: string | null;
   membershipCategory: string;
   isBoardMember: boolean;
+  profileImageUrl: string | null;
 }
 
 export default function Directory() {
@@ -43,6 +44,9 @@ export default function Directory() {
     const matchesCategory = categoryFilter === "all" || m.membershipCategory === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const corporateMembers = filtered.filter(m => m.membershipCategory === "large");
+  const otherMembers = filtered.filter(m => m.membershipCategory !== "large");
 
   return (
     <PortalLayout>
@@ -81,7 +85,7 @@ export default function Directory() {
               <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="small">Small Business</SelectItem>
               <SelectItem value="medium">Medium Business</SelectItem>
-              <SelectItem value="large">Large Business</SelectItem>
+              <SelectItem value="large">Corporate Partners</SelectItem>
               <SelectItem value="government">Government</SelectItem>
             </SelectContent>
           </Select>
@@ -109,69 +113,117 @@ export default function Directory() {
             <p className="text-sm text-muted-foreground mb-4" data-testid="text-directory-count">
               {filtered.length} member{filtered.length !== 1 ? "s" : ""} found
             </p>
+
+            {corporateMembers.length > 0 && categoryFilter !== "all" ? null : corporateMembers.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Crown className="h-5 w-5 text-[#E5A830]" />
+                  <h2 className="text-lg font-semibold" data-testid="text-corporate-section">Corporate Partners</h2>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {corporateMembers.map((member) => (
+                    <MemberCard key={member.id} member={member} setLocation={setLocation} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {categoryFilter === "all" && corporateMembers.length > 0 && otherMembers.length > 0 && (
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">All Members</h2>
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
-              {filtered.map((member) => (
-                <Card
-                  key={member.id}
-                  className="hover-elevate cursor-pointer"
-                  data-testid={`card-directory-${member.id}`}
-                  onClick={() => setLocation(`/portal/directory/${member.id}`)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{member.companyName}</h3>
-                        <p className="text-sm text-muted-foreground">{member.contactName} - {member.title}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
-                        {member.isBoardMember && (
-                          <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board Member</Badge>
-                        )}
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {member.membershipCategory}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {member.primaryServices && (
-                      <p className="text-sm text-muted-foreground mb-3">{member.primaryServices}</p>
-                    )}
-
-                    <div className="space-y-1.5 text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" />
-                        <span>{member.city}, {member.state}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        <a href={`tel:${member.phone}`} className="hover:text-primary">{member.phone}</a>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="h-3.5 w-3.5 shrink-0" />
-                        <a href={`mailto:${member.email}`} className="hover:text-primary truncate">{member.email}</a>
-                      </div>
-                      {member.website && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Globe className="h-3.5 w-3.5 shrink-0" />
-                          <a href={member.website.startsWith("http") ? member.website : `https://${member.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary truncate">{member.website}</a>
-                        </div>
-                      )}
-                    </div>
-
-                    {member.certifications && (
-                      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t">
-                        {member.certifications.split(",").map((cert, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">{cert.trim()}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              {(categoryFilter === "all" ? otherMembers : filtered).map((member) => (
+                <MemberCard key={member.id} member={member} setLocation={setLocation} />
               ))}
             </div>
           </>
         )}
       </div>
     </PortalLayout>
+  );
+}
+
+function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocation: (path: string) => void }) {
+  const isCorporate = member.membershipCategory === "large";
+
+  return (
+    <Card
+      className={`hover-elevate cursor-pointer transition-all ${isCorporate ? "border-l-4 border-l-[#E5A830]" : ""}`}
+      data-testid={`card-directory-${member.id}`}
+      onClick={() => setLocation(`/portal/directory/${member.id}`)}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-start gap-3 mb-3">
+          {member.profileImageUrl ? (
+            <img
+              src={member.profileImageUrl}
+              alt={member.companyName}
+              className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-[#E5A830]" : "border-muted"}`}
+              data-testid={`img-member-${member.id}`}
+            />
+          ) : (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-[#E5A830]/10 text-[#E5A830] border border-[#E5A830]/30" : "bg-muted text-muted-foreground"}`}>
+              {member.companyName.charAt(0)}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg leading-tight">{member.companyName}</h3>
+            <p className="text-sm text-muted-foreground">{member.contactName} - {member.title}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
+            {isCorporate && (
+              <Badge className="text-xs bg-[#E5A830] hover:bg-[#d4982a] text-white" data-testid={`badge-corporate-${member.id}`}>
+                <Crown className="h-3 w-3 mr-1" />Corporate Partner
+              </Badge>
+            )}
+            {member.isBoardMember && (
+              <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board Member</Badge>
+            )}
+            {!isCorporate && (
+              <Badge variant="secondary" className="text-xs capitalize">
+                {member.membershipCategory}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {member.primaryServices && (
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{member.primaryServices}</p>
+        )}
+
+        <div className="space-y-1.5 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span>{member.city}, {member.state}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Phone className="h-3.5 w-3.5 shrink-0" />
+            <a href={`tel:${member.phone}`} className="hover:text-primary" onClick={e => e.stopPropagation()}>{member.phone}</a>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Mail className="h-3.5 w-3.5 shrink-0" />
+            <a href={`mailto:${member.email}`} className="hover:text-primary truncate" onClick={e => e.stopPropagation()}>{member.email}</a>
+          </div>
+          {member.website && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Globe className="h-3.5 w-3.5 shrink-0" />
+              <a href={member.website.startsWith("http") ? member.website : `https://${member.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary truncate" onClick={e => e.stopPropagation()}>{member.website}</a>
+            </div>
+          )}
+        </div>
+
+        {member.certifications && (
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t">
+            {member.certifications.split(",").map((cert, i) => (
+              <Badge key={i} variant="outline" className="text-xs">{cert.trim()}</Badge>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -126,6 +126,7 @@ export async function registerRoutes(
         certifications: app.certifications,
         membershipCategory: app.membershipCategory,
         isBoardMember: app.isBoardMember,
+        profileImageUrl: app.profileImageUrl,
       }));
       res.json(directory);
     } catch (error) {
@@ -143,6 +144,17 @@ export async function registerRoutes(
       }
       const allUsers = await storage.getAllUsers();
       const linkedUser = allUsers.find(u => u.memberApplicationId === application.id);
+      const linkedUserId = linkedUser?.id || null;
+
+      let memberProjectsList: any[] = [];
+      let memberDocumentsList: any[] = [];
+      if (linkedUserId) {
+        try {
+          memberProjectsList = await storage.getMemberProjects(linkedUserId);
+          memberDocumentsList = await storage.getMemberDocuments(linkedUserId);
+        } catch (e) {}
+      }
+
       res.json({
         id: application.id,
         companyName: application.companyName,
@@ -159,7 +171,13 @@ export async function registerRoutes(
         certifications: application.certifications,
         membershipCategory: application.membershipCategory,
         isBoardMember: application.isBoardMember,
-        userId: linkedUser?.id || null,
+        userId: linkedUserId,
+        yearEstablished: application.yearEstablished,
+        numberOfEmployees: application.numberOfEmployees,
+        annualRevenue: application.annualRevenue,
+        profileImageUrl: application.profileImageUrl,
+        memberProjects: memberProjectsList,
+        memberDocuments: memberDocumentsList,
       });
     } catch (error) {
       console.error("Error fetching member:", error);

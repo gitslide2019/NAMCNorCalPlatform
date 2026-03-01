@@ -6,7 +6,7 @@ This project is a membership application and portal for the National Association
 
 Key capabilities include:
 - **Public Site**: Information on benefits, membership tiers, and an online application form.
-- **Member Portal**: A secure area offering a dashboard, editable profiles, a member directory, messaging, discussion boards, project opportunities with bidding, a calendar for events, newsletter archives, a document library, equipment sharing, training modules, fundraising campaign tracking, and notifications.
+- **Member Portal**: A secure area offering a dashboard, editable profiles (with photo upload, document uploads, project portfolio), a member directory (with enhanced corporate partner profiles featuring gold accents, stats cards, services/certifications sections, portfolio and document displays), messaging, discussion boards, project opportunities with bidding and map view, a calendar for events, newsletter archives, a document library, equipment sharing, training modules, fundraising campaign tracking, and notifications.
 - **Authentication**: Secure login, registration, and password recovery.
 - **Admin Panel**: Tabbed interface with Applications management (approve/reject, CSV export, admin-only) and Finance dashboard (organizational budget, revenue tracking, pie charts, bar charts, editable expense/revenue tables, campaign progress, pledge status — accessible to admins and board members, with editing restricted to admins).
 
@@ -39,7 +39,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for database interactions.
 - **Schema**: Defined in `shared/schema.ts`.
 - **Migrations**: Managed using Drizzle Kit.
-- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `courses`, `lessons`, `course_enrollments`, `announcements`, `notifications`, `endorsements`, `event_rsvps`, `documents`, `campaigns`, `campaign_pledges`, `budget_categories`, `funding_sources`.
+- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `courses`, `lessons`, `course_enrollments`, `announcements`, `notifications`, `endorsements`, `event_rsvps`, `documents`, `campaigns`, `campaign_pledges`, `budget_categories`, `funding_sources`, `member_projects`, `member_documents`.
 - **Charts**: Recharts library for pie charts, bar charts in admin Finance dashboard.
 
 ### Code Sharing
