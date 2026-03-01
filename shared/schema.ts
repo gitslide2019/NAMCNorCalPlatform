@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -36,6 +36,7 @@ export const membershipApplications = pgTable("membership_applications", {
   howDidYouHear: text("how_did_you_hear"),
   acceptedTerms: boolean("accepted_terms").notNull().default(false),
   isBoardMember: boolean("is_board_member").notNull().default(false),
+  profileImageUrl: text("profile_image_url"),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -315,3 +316,125 @@ export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments
 
 export type InsertCourseEnrollment = z.infer<typeof insertCourseEnrollmentSchema>;
 export type CourseEnrollment = typeof courseEnrollments.$inferSelect;
+
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  priority: text("priority").notNull().default("normal"),
+  authorId: varchar("author_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+
+export const endorsements = pgTable("endorsements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: varchar("from_user_id").notNull(),
+  toApplicationId: varchar("to_application_id").notNull(),
+  skill: text("skill").notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEndorsementSchema = createInsertSchema(endorsements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEndorsement = z.infer<typeof insertEndorsementSchema>;
+export type Endorsement = typeof endorsements.$inferSelect;
+
+export const eventRsvps = pgTable("event_rsvps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  status: text("status").notNull().default("attending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type EventRsvp = typeof eventRsvps.$inferSelect;
+
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  fileType: text("file_type"),
+  fileData: text("file_data").notNull(),
+  category: text("category").notNull().default("general"),
+  uploadedById: varchar("uploaded_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
+
+export const campaigns = pgTable("campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  goalAmount: numeric("goal_amount", { precision: 12, scale: 2 }).notNull(),
+  currentAmount: numeric("current_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  status: text("status").notNull().default("active"),
+  createdById: varchar("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({
+  id: true,
+  currentAmount: true,
+  status: true,
+  createdAt: true,
+});
+
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
+export const campaignPledges = pgTable("campaign_pledges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  note: text("note"),
+  status: text("status").notNull().default("pledged"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCampaignPledgeSchema = createInsertSchema(campaignPledges).omit({
+  id: true,
+  status: true,
+  paidAt: true,
+  createdAt: true,
+});
+
+export type InsertCampaignPledge = z.infer<typeof insertCampaignPledgeSchema>;
+export type CampaignPledge = typeof campaignPledges.$inferSelect;

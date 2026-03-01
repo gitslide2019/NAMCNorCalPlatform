@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema } from "@shared/schema";
+import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, membershipApplications, discussionTopics, projectOpportunities, calendarEvents, newsletters } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin } from "./auth";
+import { sendNewsletterEmail, sendDigestEmail } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -188,7 +189,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "No linked application found" });
         return;
       }
-      const allowedFields = ["companyName", "title", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue"];
+      const allowedFields = ["companyName", "title", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -1007,6 +1008,424 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update progress" });
+    }
+  });
+
+  // === ANNOUNCEMENTS ===
+  app.get("/api/portal/announcements", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getAnnouncements();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+
+  app.post("/api/portal/announcements", requireAdmin, async (req, res) => {
+    try {
+      const data = insertAnnouncementSchema.parse(req.body);
+      const announcement = await storage.createAnnouncement(data);
+      const allUsers = await storage.getAllUsers();
+      for (const u of allUsers) {
+        if (u.id !== req.user!.id) {
+          await storage.createNotification({
+            userId: u.id,
+            type: "announcement",
+            title: "New Announcement",
+            message: data.title,
+            link: "/portal",
+          });
+        }
+      }
+      res.status(201).json(announcement);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Failed to create announcement" });
+      }
+    }
+  });
+
+  app.delete("/api/portal/announcements/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteAnnouncement(req.params.id);
+      res.json({ message: "Announcement deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete announcement" });
+    }
+  });
+
+  // === NOTIFICATIONS ===
+  app.get("/api/portal/notifications", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getNotifications(req.user!.id);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/portal/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch count" });
+    }
+  });
+
+  app.patch("/api/portal/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id);
+      res.json({ message: "Marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update" });
+    }
+  });
+
+  app.patch("/api/portal/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.user!.id);
+      res.json({ message: "All marked as read" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update" });
+    }
+  });
+
+  // === ENDORSEMENTS ===
+  app.get("/api/portal/endorsements/:applicationId", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getEndorsements(req.params.applicationId);
+      const allUsers = await storage.getAllUsers();
+      const enriched = items.map(e => {
+        const user = allUsers.find(u => u.id === e.fromUserId);
+        return { ...e, fromUsername: user?.username || "Unknown" };
+      });
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch endorsements" });
+    }
+  });
+
+  app.post("/api/portal/endorsements", requireAuth, async (req, res) => {
+    try {
+      const data = insertEndorsementSchema.parse(req.body);
+      const endorsement = await storage.createEndorsement(data);
+      res.status(201).json(endorsement);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Failed to create endorsement" });
+      }
+    }
+  });
+
+  app.delete("/api/portal/endorsements/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteEndorsement(req.params.id);
+      res.json({ message: "Endorsement deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete endorsement" });
+    }
+  });
+
+  // === EVENT RSVPS ===
+  app.get("/api/portal/events/:id/rsvps", requireAuth, async (req, res) => {
+    try {
+      const rsvps = await storage.getRsvps(req.params.id);
+      const allUsers = await storage.getAllUsers();
+      const enriched = rsvps.map(r => {
+        const user = allUsers.find(u => u.id === r.userId);
+        return { ...r, username: user?.username || "Unknown" };
+      });
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RSVPs" });
+    }
+  });
+
+  app.post("/api/portal/events/:id/rsvp", requireAuth, async (req, res) => {
+    try {
+      const status = req.body.status || "attending";
+      const rsvp = await storage.createRsvp(req.params.id, req.user!.id, status);
+      res.status(201).json(rsvp);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to RSVP" });
+    }
+  });
+
+  app.delete("/api/portal/events/:id/rsvp", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteRsvp(req.params.id, req.user!.id);
+      res.json({ message: "RSVP cancelled" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to cancel RSVP" });
+    }
+  });
+
+  // === DOCUMENTS ===
+  app.get("/api/portal/documents", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getDocuments();
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.get("/api/portal/documents/:id/download", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getDocument(req.params.id);
+      if (!doc) { res.status(404).json({ message: "Not found" }); return; }
+      const buffer = Buffer.from(doc.fileData, "base64");
+      res.setHeader("Content-Disposition", `attachment; filename="${doc.fileName}"`);
+      res.setHeader("Content-Type", doc.fileType || "application/octet-stream");
+      res.send(buffer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to download" });
+    }
+  });
+
+  app.post("/api/portal/documents", requireAdmin, async (req, res) => {
+    try {
+      const { title, description, category, fileName, fileType, fileSize, fileData } = req.body;
+      if (!title || !fileName || !fileData) {
+        res.status(400).json({ message: "Title, filename, and file data are required" });
+        return;
+      }
+      const doc = await storage.createDocument({
+        title,
+        description: description || null,
+        category: category || "general",
+        fileName,
+        fileType: fileType || null,
+        fileSize: fileSize || null,
+        fileData,
+        uploadedById: req.user!.id,
+      });
+      res.status(201).json(doc);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  app.delete("/api/portal/documents/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteDocument(req.params.id);
+      res.json({ message: "Document deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // === CAMPAIGNS ===
+  app.get("/api/portal/campaigns", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getCampaigns();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch campaigns" });
+    }
+  });
+
+  app.get("/api/portal/campaigns/:id", requireAuth, async (req, res) => {
+    try {
+      const campaign = await storage.getCampaign(req.params.id);
+      if (!campaign) { res.status(404).json({ message: "Not found" }); return; }
+      const pledges = await storage.getCampaignPledges(req.params.id);
+      const allUsers = await storage.getAllUsers();
+      const apps = await storage.getMembershipApplications();
+      const enrichedPledges = pledges.map(p => {
+        const user = allUsers.find(u => u.id === p.userId);
+        const app = apps.find(a => a.id === user?.memberApplicationId);
+        return { ...p, username: user?.username || "Unknown", companyName: app?.companyName || "" };
+      });
+      res.json({ ...campaign, pledges: enrichedPledges });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch campaign" });
+    }
+  });
+
+  app.post("/api/portal/campaigns", requireAdmin, async (req, res) => {
+    try {
+      const data = insertCampaignSchema.parse(req.body);
+      const campaign = await storage.createCampaign(data);
+      res.status(201).json(campaign);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Failed to create campaign" });
+      }
+    }
+  });
+
+  app.patch("/api/portal/campaigns/:id", requireAdmin, async (req, res) => {
+    try {
+      const campaign = await storage.updateCampaign(req.params.id, req.body);
+      res.json(campaign);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+
+  app.delete("/api/portal/campaigns/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCampaign(req.params.id);
+      res.json({ message: "Campaign deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+
+  app.post("/api/portal/campaigns/:id/pledges", requireAuth, async (req, res) => {
+    try {
+      const data = insertCampaignPledgeSchema.parse({ ...req.body, campaignId: req.params.id, userId: req.user!.id });
+      const pledge = await storage.createPledge(data);
+      res.status(201).json(pledge);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Failed to create pledge" });
+      }
+    }
+  });
+
+  app.patch("/api/portal/campaigns/:campaignId/pledges/:pledgeId", requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      const paidAt = status === "received" ? new Date() : undefined;
+      const pledge = await storage.updatePledgeStatus(req.params.pledgeId, status, paidAt);
+      res.json(pledge);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update pledge" });
+    }
+  });
+
+  app.delete("/api/portal/campaigns/:campaignId/pledges/:pledgeId", requireAdmin, async (req, res) => {
+    try {
+      await storage.deletePledge(req.params.pledgeId);
+      res.json({ message: "Pledge deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete pledge" });
+    }
+  });
+
+  // === GLOBAL SEARCH ===
+  app.get("/api/portal/search", requireAuth, async (req, res) => {
+    try {
+      const q = (req.query.q as string || "").toLowerCase().trim();
+      if (!q) { res.json({ members: [], projects: [], discussions: [], events: [], newsletters: [] }); return; }
+      const apps = await storage.getApprovedMembershipApplications();
+      const members = apps.filter(a => a.companyName.toLowerCase().includes(q) || a.contactName.toLowerCase().includes(q) || (a.primaryServices || "").toLowerCase().includes(q)).slice(0, 10).map(a => ({ id: a.id, companyName: a.companyName, contactName: a.contactName, type: "member" }));
+      const projects = (await storage.getProjects()).filter(p => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.location.toLowerCase().includes(q)).slice(0, 10).map(p => ({ id: p.id, title: p.title, location: p.location, type: "project" }));
+      const discussions = (await storage.getTopics()).filter(t => t.title.toLowerCase().includes(q) || t.content.toLowerCase().includes(q)).slice(0, 10).map(t => ({ id: t.id, title: t.title, category: t.category, type: "discussion" }));
+      const events = (await storage.getEvents()).filter(e => e.title.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q)).slice(0, 10).map(e => ({ id: e.id, title: e.title, eventDate: e.eventDate, type: "event" }));
+      const nls = (await storage.getNewsletters()).filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)).slice(0, 10).map(n => ({ id: n.id, title: n.title, type: "newsletter" }));
+      res.json({ members, projects, discussions, events, newsletters: nls });
+    } catch (error) {
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
+  // === NEWSLETTER EMAIL ===
+  app.post("/api/portal/newsletters/:id/send-email", requireAdmin, async (req, res) => {
+    try {
+      const newsletter = await storage.getNewsletter(req.params.id);
+      if (!newsletter) { res.status(404).json({ message: "Newsletter not found" }); return; }
+      const apps = await storage.getApprovedMembershipApplications();
+      const emails = apps.map(a => a.email).filter(Boolean);
+      let sent = 0;
+      for (const email of emails) {
+        try {
+          await sendNewsletterEmail(email, newsletter.title, newsletter.content);
+          sent++;
+        } catch (e) {
+          console.error(`Failed to send newsletter to ${email}:`, e);
+        }
+      }
+      res.json({ message: `Newsletter sent to ${sent} member(s)` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send newsletter emails" });
+    }
+  });
+
+  // === SEND DIGEST EMAIL ===
+  app.post("/api/portal/send-digest", requireAdmin, async (req, res) => {
+    try {
+      const apps = await storage.getApprovedMembershipApplications();
+      const projects = (await storage.getProjects()).filter(p => p.status === "open").slice(0, 5);
+      const events = (await storage.getEvents()).slice(0, 5);
+      const anns = (await storage.getAnnouncements()).slice(0, 5);
+      const emails = apps.map(a => a.email).filter(Boolean);
+      let sent = 0;
+      for (const email of emails) {
+        try {
+          await sendDigestEmail(email, anns, projects, events);
+          sent++;
+        } catch (e) {
+          console.error(`Failed to send digest to ${email}:`, e);
+        }
+      }
+      res.json({ message: `Digest sent to ${sent} member(s)` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send digest" });
+    }
+  });
+
+  // === PROFILE IMAGE ===
+  app.patch("/api/portal/profile-image", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!user.memberApplicationId) { res.status(404).json({ message: "No linked application" }); return; }
+      const { profileImageUrl } = req.body;
+      const app = await storage.updateMembershipApplication(user.memberApplicationId, { profileImageUrl });
+      res.json(app);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update profile image" });
+    }
+  });
+
+  // === ADMIN ANALYTICS ===
+  app.get("/api/portal/admin/analytics", requireAdmin, async (req, res) => {
+    try {
+      const allApps = await storage.getMembershipApplications();
+      const allUsers = await storage.getAllUsers();
+      const projects = await storage.getProjects();
+      const topics = await storage.getTopics();
+      const events = await storage.getEvents();
+      const courses = await storage.getCourses();
+
+      const totalMembers = allApps.filter(a => a.status === "approved").length;
+      const pendingApps = allApps.filter(a => a.status === "pending").length;
+      const rejectedApps = allApps.filter(a => a.status === "rejected").length;
+      const totalUsers = allUsers.length;
+      const openProjects = projects.filter(p => p.status === "open").length;
+      const totalDiscussions = topics.length;
+      const totalEvents = events.length;
+      const totalCourses = courses.length;
+
+      const categoryBreakdown: Record<string, number> = {};
+      allApps.filter(a => a.status === "approved").forEach(a => {
+        categoryBreakdown[a.membershipCategory] = (categoryBreakdown[a.membershipCategory] || 0) + 1;
+      });
+
+      res.json({
+        totalMembers,
+        pendingApps,
+        rejectedApps,
+        totalUsers,
+        openProjects,
+        totalDiscussions,
+        totalEvents,
+        totalCourses,
+        categoryBreakdown,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
 

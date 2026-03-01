@@ -27,6 +27,16 @@ import {
   type InsertLesson,
   type CourseEnrollment,
   type InsertCourseEnrollment,
+  type Announcement,
+  type InsertAnnouncement,
+  type Notification,
+  type Endorsement,
+  type InsertEndorsement,
+  type EventRsvp,
+  type Campaign,
+  type InsertCampaign,
+  type CampaignPledge,
+  type InsertCampaignPledge,
   users,
   membershipApplications,
   messages,
@@ -40,10 +50,17 @@ import {
   toolLoans,
   courses,
   lessons,
-  courseEnrollments
+  courseEnrollments,
+  announcements,
+  notifications,
+  endorsements,
+  eventRsvps,
+  documents,
+  campaigns,
+  campaignPledges
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -124,6 +141,41 @@ export interface IStorage {
   getEnrollment(courseId: string, userId: string): Promise<CourseEnrollment | undefined>;
   getMyEnrollments(userId: string): Promise<CourseEnrollment[]>;
   updateEnrollmentProgress(id: string, progress: number, completedLessons: string): Promise<CourseEnrollment | undefined>;
+
+  getAnnouncements(): Promise<Announcement[]>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  deleteAnnouncement(id: string): Promise<void>;
+
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(data: { userId: string; type: string; title: string; message: string; link?: string }): Promise<Notification>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+
+  getEndorsements(applicationId: string): Promise<Endorsement[]>;
+  createEndorsement(endorsement: InsertEndorsement): Promise<Endorsement>;
+  deleteEndorsement(id: string): Promise<void>;
+
+  getRsvps(eventId: string): Promise<EventRsvp[]>;
+  getUserRsvp(eventId: string, userId: string): Promise<EventRsvp | undefined>;
+  createRsvp(eventId: string, userId: string, status: string): Promise<EventRsvp>;
+  deleteRsvp(eventId: string, userId: string): Promise<void>;
+
+  getDocuments(): Promise<any[]>;
+  getDocument(id: string): Promise<any | undefined>;
+  createDocument(doc: any): Promise<any>;
+  deleteDocument(id: string): Promise<void>;
+
+  getCampaigns(): Promise<Campaign[]>;
+  getCampaign(id: string): Promise<Campaign | undefined>;
+  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  updateCampaign(id: string, data: Partial<Campaign>): Promise<Campaign | undefined>;
+  deleteCampaign(id: string): Promise<void>;
+  getCampaignPledges(campaignId: string): Promise<CampaignPledge[]>;
+  createPledge(pledge: InsertCampaignPledge): Promise<CampaignPledge>;
+  updatePledgeStatus(id: string, status: string, paidAt?: Date): Promise<CampaignPledge | undefined>;
+  deletePledge(id: string): Promise<void>;
+  updateCampaignTotal(campaignId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -476,6 +528,160 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLesson(id: string): Promise<void> {
     await db.delete(lessons).where(eq(lessons.id, id));
+  }
+
+  async getAnnouncements(): Promise<Announcement[]> {
+    return await db.select().from(announcements).orderBy(desc(announcements.createdAt));
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
+    const [a] = await db.insert(announcements).values(announcement).returning();
+    return a;
+  }
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(data: { userId: string; type: string; title: string; message: string; link?: string }): Promise<Notification> {
+    const [n] = await db.insert(notifications).values(data).returning();
+    return n;
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return Number(result[0]?.count || 0);
+  }
+
+  async getEndorsements(applicationId: string): Promise<Endorsement[]> {
+    return await db.select().from(endorsements).where(eq(endorsements.toApplicationId, applicationId)).orderBy(desc(endorsements.createdAt));
+  }
+
+  async createEndorsement(endorsement: InsertEndorsement): Promise<Endorsement> {
+    const [e] = await db.insert(endorsements).values(endorsement).returning();
+    return e;
+  }
+
+  async deleteEndorsement(id: string): Promise<void> {
+    await db.delete(endorsements).where(eq(endorsements.id, id));
+  }
+
+  async getRsvps(eventId: string): Promise<EventRsvp[]> {
+    return await db.select().from(eventRsvps).where(eq(eventRsvps.eventId, eventId));
+  }
+
+  async getUserRsvp(eventId: string, userId: string): Promise<EventRsvp | undefined> {
+    const [r] = await db.select().from(eventRsvps).where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)));
+    return r;
+  }
+
+  async createRsvp(eventId: string, userId: string, status: string): Promise<EventRsvp> {
+    const existing = await this.getUserRsvp(eventId, userId);
+    if (existing) {
+      const [r] = await db.update(eventRsvps).set({ status }).where(eq(eventRsvps.id, existing.id)).returning();
+      return r;
+    }
+    const [r] = await db.insert(eventRsvps).values({ eventId, userId, status }).returning();
+    return r;
+  }
+
+  async deleteRsvp(eventId: string, userId: string): Promise<void> {
+    await db.delete(eventRsvps).where(and(eq(eventRsvps.eventId, eventId), eq(eventRsvps.userId, userId)));
+  }
+
+  async getDocuments(): Promise<any[]> {
+    const docs = await db.select({
+      id: documents.id,
+      title: documents.title,
+      description: documents.description,
+      fileName: documents.fileName,
+      fileSize: documents.fileSize,
+      fileType: documents.fileType,
+      category: documents.category,
+      uploadedById: documents.uploadedById,
+      createdAt: documents.createdAt,
+    }).from(documents).orderBy(desc(documents.createdAt));
+    return docs;
+  }
+
+  async getDocument(id: string): Promise<any | undefined> {
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+    return doc;
+  }
+
+  async createDocument(doc: any): Promise<any> {
+    const [d] = await db.insert(documents).values(doc).returning();
+    return d;
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async getCampaigns(): Promise<Campaign[]> {
+    return await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
+  }
+
+  async getCampaign(id: string): Promise<Campaign | undefined> {
+    const [c] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return c;
+  }
+
+  async createCampaign(campaign: InsertCampaign): Promise<Campaign> {
+    const [c] = await db.insert(campaigns).values(campaign).returning();
+    return c;
+  }
+
+  async updateCampaign(id: string, data: Partial<Campaign>): Promise<Campaign | undefined> {
+    const [c] = await db.update(campaigns).set(data).where(eq(campaigns.id, id)).returning();
+    return c;
+  }
+
+  async deleteCampaign(id: string): Promise<void> {
+    await db.delete(campaignPledges).where(eq(campaignPledges.campaignId, id));
+    await db.delete(campaigns).where(eq(campaigns.id, id));
+  }
+
+  async getCampaignPledges(campaignId: string): Promise<CampaignPledge[]> {
+    return await db.select().from(campaignPledges).where(eq(campaignPledges.campaignId, campaignId)).orderBy(desc(campaignPledges.createdAt));
+  }
+
+  async createPledge(pledge: InsertCampaignPledge): Promise<CampaignPledge> {
+    const [p] = await db.insert(campaignPledges).values(pledge).returning();
+    await this.updateCampaignTotal(pledge.campaignId);
+    return p;
+  }
+
+  async updatePledgeStatus(id: string, status: string, paidAt?: Date): Promise<CampaignPledge | undefined> {
+    const updateData: any = { status };
+    if (paidAt) updateData.paidAt = paidAt;
+    const [p] = await db.update(campaignPledges).set(updateData).where(eq(campaignPledges.id, id)).returning();
+    if (p) await this.updateCampaignTotal(p.campaignId);
+    return p;
+  }
+
+  async deletePledge(id: string): Promise<void> {
+    const [pledge] = await db.select().from(campaignPledges).where(eq(campaignPledges.id, id));
+    await db.delete(campaignPledges).where(eq(campaignPledges.id, id));
+    if (pledge) await this.updateCampaignTotal(pledge.campaignId);
+  }
+
+  async updateCampaignTotal(campaignId: string): Promise<void> {
+    const result = await db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` }).from(campaignPledges).where(and(eq(campaignPledges.campaignId, campaignId), eq(campaignPledges.status, "received")));
+    const total = result[0]?.total || "0";
+    await db.update(campaigns).set({ currentAmount: total }).where(eq(campaigns.id, campaignId));
   }
 }
 

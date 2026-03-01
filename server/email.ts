@@ -106,6 +106,92 @@ export async function sendPasswordResetEmail(
   return data;
 }
 
+export async function sendNewsletterEmail(
+  toEmail: string,
+  title: string,
+  content: string
+) {
+  const { client, fromEmail } = await getUncachableResendClient();
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
+    to: [toEmail],
+    subject: `NAMC NorCal Newsletter: ${title}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #1a1a1a; margin: 0;">NAMC NorCal</h1>
+          <p style="color: #666; margin: 4px 0 0;">Newsletter</p>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+          <h2 style="color: #1a1a1a; margin: 0 0 16px;">${title}</h2>
+          <div style="color: #333; line-height: 1.6;">${content.replace(/\n/g, "<br>")}</div>
+        </div>
+        <div style="text-align: center; color: #999; font-size: 12px;">
+          <p>NAMC NorCal &middot; 977 66th Ave, Oakland, CA 94621</p>
+        </div>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("Failed to send newsletter email:", error);
+    throw new Error("Failed to send newsletter email");
+  }
+  return data;
+}
+
+export async function sendDigestEmail(
+  toEmail: string,
+  announcements: any[],
+  projects: any[],
+  events: any[]
+) {
+  const { client, fromEmail } = await getUncachableResendClient();
+
+  const announcementHtml = announcements.length > 0
+    ? `<h3 style="color: #E5A830; margin-top: 20px;">Announcements</h3>` + announcements.map(a => `<p style="margin: 4px 0;">• ${a.title}</p>`).join("")
+    : "";
+
+  const projectHtml = projects.length > 0
+    ? `<h3 style="color: #E5A830; margin-top: 20px;">Open Projects</h3>` + projects.map(p => `<p style="margin: 4px 0;">• ${p.title} — ${p.location}</p>`).join("")
+    : "";
+
+  const eventHtml = events.length > 0
+    ? `<h3 style="color: #E5A830; margin-top: 20px;">Upcoming Events</h3>` + events.map(e => `<p style="margin: 4px 0;">• ${e.title} — ${e.eventDate}</p>`).join("")
+    : "";
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
+    to: [toEmail],
+    subject: "NAMC NorCal Weekly Digest",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #1a1a1a; margin: 0;">NAMC NorCal</h1>
+          <p style="color: #666; margin: 4px 0 0;">Weekly Digest</p>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+          <p style="color: #333; line-height: 1.6;">Here's what's happening at NAMC NorCal:</p>
+          ${announcementHtml}
+          ${projectHtml}
+          ${eventHtml}
+          ${!announcementHtml && !projectHtml && !eventHtml ? '<p style="color: #666;">No new updates this week.</p>' : ''}
+        </div>
+        <div style="text-align: center; color: #999; font-size: 12px;">
+          <p>NAMC NorCal &middot; 977 66th Ave, Oakland, CA 94621</p>
+        </div>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("Failed to send digest email:", error);
+    throw new Error("Failed to send digest email");
+  }
+  return data;
+}
+
 export async function sendLoginInviteEmail(
   toEmail: string,
   loginUrl: string,
