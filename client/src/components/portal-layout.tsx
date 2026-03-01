@@ -15,22 +15,37 @@ import {
   CalendarDays,
   Newspaper,
   Wrench,
-  GraduationCap
+  GraduationCap,
+  Bell,
+  FileText,
+  Target,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useState, useRef, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Card, CardContent } from "@/components/ui/card";
+import { apiRequest } from "@/lib/queryClient";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
 
 interface InboxMessage {
   id: number;
   isRead: boolean;
+}
+
+interface SearchResults {
+  members: { id: string; companyName: string; contactName: string; type: string }[];
+  projects: { id: string; title: string; location: string; type: string }[];
+  discussions: { id: string; title: string; category: string; type: string }[];
+  events: { id: string; title: string; eventDate: string; type: string }[];
+  newsletters: { id: string; title: string; type: string }[];
 }
 
 const navItems = [
@@ -48,13 +63,138 @@ const resourceItems = [
   { href: "/portal/projects", label: "Project Opportunities", icon: Briefcase },
   { href: "/portal/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/portal/newsletters", label: "Newsletters", icon: Newspaper },
+  { href: "/portal/documents", label: "Documents", icon: FileText },
   { href: "/portal/tools", label: "Equipment Sharing", icon: Wrench },
   { href: "/portal/courses", label: "Training", icon: GraduationCap },
+  { href: "/portal/campaigns", label: "Fundraising", icon: Target },
 ];
 
 const adminNavItems = [
   { href: "/portal/admin", label: "Admin Panel", icon: ShieldCheck },
 ];
+
+function GlobalSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResults | null>(null);
+  const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
+  const ref = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearch = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) { setResults(null); setOpen(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await apiRequest("GET", `/api/portal/search?q=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setResults(data);
+        setOpen(true);
+      } catch { setResults(null); }
+    }, 300);
+  };
+
+  const navigate = (path: string) => {
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+    setLocation(path);
+  };
+
+  const totalResults = results ? results.members.length + results.projects.length + results.discussions.length + results.events.length + results.newsletters.length : 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search members, projects..."
+          value={query}
+          onChange={e => handleSearch(e.target.value)}
+          onFocus={() => { if (results && query) setOpen(true); }}
+          className="pl-9 h-9 w-56 lg:w-72"
+          data-testid="input-global-search"
+        />
+      </div>
+      {open && results && (
+        <Card className="absolute top-full mt-1 left-0 right-0 z-50 shadow-lg max-h-80 overflow-y-auto" data-testid="search-results-dropdown">
+          <CardContent className="p-2">
+            {totalResults === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No results found</p>
+            ) : (
+              <>
+                {results.members.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Members</p>
+                    {results.members.map(m => (
+                      <button key={m.id} onClick={() => navigate(`/portal/directory/${m.id}`)} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-member-${m.id}`}>
+                        <span className="font-medium">{m.companyName}</span>
+                        <span className="text-muted-foreground ml-2">{m.contactName}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.projects.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Projects</p>
+                    {results.projects.map(p => (
+                      <button key={p.id} onClick={() => navigate("/portal/projects")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-project-${p.id}`}>
+                        <span className="font-medium">{p.title}</span>
+                        <span className="text-muted-foreground ml-2">{p.location}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.discussions.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Discussions</p>
+                    {results.discussions.map(d => (
+                      <button key={d.id} onClick={() => navigate("/portal/discussions")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-discussion-${d.id}`}>
+                        <span className="font-medium">{d.title}</span>
+                        <Badge variant="secondary" className="ml-2 text-[10px]">{d.category}</Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.events.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Events</p>
+                    {results.events.map(e => (
+                      <button key={e.id} onClick={() => navigate("/portal/calendar")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-event-${e.id}`}>
+                        <span className="font-medium">{e.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.newsletters.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Newsletters</p>
+                    {results.newsletters.map(n => (
+                      <button key={n.id} onClick={() => navigate("/portal/newsletters")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-newsletter-${n.id}`}>
+                        <span className="font-medium">{n.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
@@ -65,7 +205,12 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/portal/messages"],
   });
 
+  const { data: notifCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/portal/notifications/unread-count"],
+  });
+
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
+  const unreadNotifs = notifCount?.count ?? 0;
 
   const allNavItems = [
     ...navItems,
@@ -185,6 +330,16 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-bold">Member Portal</span>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/portal/notifications">
+            <div className="relative" data-testid="link-mobile-notifications">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              {unreadNotifs > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                </span>
+              )}
+            </div>
+          </Link>
           {unreadCount > 0 && (
             <Link href="/portal/messages">
               <div className="relative">
@@ -216,6 +371,22 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <main className="flex-1 lg:ml-64">
+        <div className="hidden lg:flex items-center justify-between px-6 py-3 border-b bg-card">
+          <GlobalSearch />
+          <div className="flex items-center gap-3">
+            <Link href="/portal/notifications">
+              <div className="relative cursor-pointer" data-testid="link-notifications-bell">
+                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                {unreadNotifs > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center" data-testid="badge-notification-count">
+                    {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                  </span>
+                )}
+              </div>
+            </Link>
+            <span className="text-sm text-muted-foreground">{user?.username}</span>
+          </div>
+        </div>
         <div className="pt-16 lg:pt-0">
           {children}
         </div>

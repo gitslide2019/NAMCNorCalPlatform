@@ -22,6 +22,9 @@ import ToolLibrary from "@/pages/portal/tools";
 import Courses from "@/pages/portal/courses";
 import MemberDetail from "@/pages/portal/member-detail";
 import ResetPasswordPage from "@/pages/reset-password";
+import Documents from "@/pages/portal/documents";
+import Campaigns from "@/pages/portal/campaigns";
+import Notifications from "@/pages/portal/notifications";
 
 function Router() {
   return (
@@ -64,6 +67,15 @@ function Router() {
       </Route>
       <Route path="/portal/courses">
         <ProtectedRoute><Courses /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/documents">
+        <ProtectedRoute><Documents /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/campaigns">
+        <ProtectedRoute><Campaigns /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/notifications">
+        <ProtectedRoute><Notifications /></ProtectedRoute>
       </Route>
       <Route component={NotFound} />
     </Switch>

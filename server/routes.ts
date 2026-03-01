@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, membershipApplications, discussionTopics, projectOpportunities, calendarEvents, newsletters } from "@shared/schema";
+import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin } from "./auth";

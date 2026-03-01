@@ -15,6 +15,9 @@ import {
   Briefcase,
   MessageSquare,
   RotateCcw,
+  Megaphone,
+  Target,
+  FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -60,6 +63,14 @@ interface DashboardTopic {
   replyCount?: number;
 }
 
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: string;
+  createdAt: string;
+}
+
 function getFirstName(contactName: string | undefined, username: string | undefined): string {
   if (contactName) {
     const first = contactName.split(" ")[0];
@@ -92,8 +103,13 @@ export default function Dashboard() {
     queryKey: ["/api/portal/discussions"],
   });
 
+  const { data: announcements } = useQuery<Announcement[]>({
+    queryKey: ["/api/portal/announcements"],
+  });
+
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
   const openProjects = projects?.filter((p) => p.status === "open") ?? [];
+  const recentAnnouncements = (announcements ?? []).slice(0, 3);
 
   const now = new Date();
   const upcomingEvents = (events ?? [])
@@ -140,6 +156,36 @@ export default function Dashboard() {
           </div>
         ) : application ? (
           <>
+            {recentAnnouncements.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" data-testid="text-announcements-heading">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                  Announcements
+                </h2>
+                <div className="space-y-2">
+                  {recentAnnouncements.map((ann) => (
+                    <Card key={ann.id} className={ann.priority === "urgent" ? "border-amber-400 bg-amber-50/50 dark:bg-amber-900/10" : ""} data-testid={`card-announcement-${ann.id}`}>
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${ann.priority === "urgent" ? "bg-amber-100 dark:bg-amber-900/30" : "bg-primary/10"}`}>
+                          <Megaphone className={`h-4 w-4 ${ann.priority === "urgent" ? "text-amber-600" : "text-primary"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{ann.title}</p>
+                            {ann.priority === "urgent" && <Badge className="bg-amber-500 text-white text-[10px]">Urgent</Badge>}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{ann.content}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(ann.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
               <Card data-testid="card-membership-status">
                 <CardHeader className="pb-3">
@@ -323,16 +369,16 @@ export default function Dashboard() {
             </div>
 
             <h2 className="text-lg font-semibold mb-4" data-testid="text-quick-links-heading">Quick Links</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Link href="/portal/projects">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-projects">
-                  <CardContent className="p-6 flex items-center gap-4">
+                  <CardContent className="p-5 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
                       <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-medium">Browse Projects</p>
-                      <p className="text-sm text-muted-foreground">Find bidding opportunities</p>
+                      <p className="font-medium text-sm">Browse Projects</p>
+                      <p className="text-xs text-muted-foreground">Find bidding opportunities</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -340,13 +386,13 @@ export default function Dashboard() {
 
               <Link href="/portal/messages">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-messages">
-                  <CardContent className="p-6 flex items-center gap-4">
+                  <CardContent className="p-5 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
                       <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="font-medium">Check Messages</p>
-                      <p className="text-sm text-muted-foreground">Read & send messages</p>
+                      <p className="font-medium text-sm">Check Messages</p>
+                      <p className="text-xs text-muted-foreground">Read & send messages</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -354,13 +400,55 @@ export default function Dashboard() {
 
               <Link href="/portal/directory">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-directory">
-                  <CardContent className="p-6 flex items-center gap-4">
+                  <CardContent className="p-5 flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <Users className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">Member Directory</p>
-                      <p className="text-sm text-muted-foreground">Find contractors & partners</p>
+                      <p className="font-medium text-sm">Member Directory</p>
+                      <p className="text-xs text-muted-foreground">Find contractors & partners</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/portal/documents">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-documents">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                      <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Documents</p>
+                      <p className="text-xs text-muted-foreground">Forms, guides & resources</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/portal/campaigns">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-campaigns">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/30">
+                      <Target className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Fundraising</p>
+                      <p className="text-xs text-muted-foreground">Capital campaigns & pledges</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/portal/profile">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid="link-quick-profile">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                      <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Update Profile</p>
+                      <p className="text-xs text-muted-foreground">Complete your company info</p>
                     </div>
                   </CardContent>
                 </Card>
