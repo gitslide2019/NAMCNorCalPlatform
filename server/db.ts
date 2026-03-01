@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq } from "drizzle-orm";
 import pg from "pg";
 import * as schema from "@shared/schema";
-import { users, membershipApplications, calendarEvents, newsletters, tools, courses, lessons, discussionTopics, projectOpportunities } from "@shared/schema";
+import { users, membershipApplications, calendarEvents, newsletters, tools, courses, lessons, discussionTopics, projectOpportunities, campaigns, campaignPledges } from "@shared/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { seedMemberData } from "./seed-members";
@@ -194,6 +194,81 @@ export async function seedSampleContent() {
         { title: "Affordable Housing Development — East 14th Street", description: "General contractor seeking subcontractors for a 65-unit affordable housing development. Five-story wood-frame over concrete podium construction.\n\nTrades needed:\n- Concrete and foundations\n- Framing\n- Plumbing and fire sprinklers\n- Electrical\n- Drywall and painting\n- Flooring and tile\n- Cabinets and countertops\n- Roofing\n\nLocal hire requirements apply. DBE/MBE participation encouraged.", location: "San Leandro, CA", budget: "$18M - $22M", deadline: "2026-05-01", contactEmail: "bids@namcnorcal.org", postedById: adminId, status: "open", latitude: "37.7249", longitude: "-122.1561" },
       ]);
       console.log("Seeded 4 project opportunities");
+    }
+
+    const campaignCount = await db.select({ count: sql<number>`count(*)` }).from(campaigns);
+    if (Number(campaignCount[0]?.count || 0) === 0) {
+      const memberUsers = await db.select().from(users).where(sql`${users.isAdmin} = false`);
+      const memberIds = memberUsers.map(u => u.id);
+
+      const [camp1] = await db.insert(campaigns).values({
+        title: "NAMC NorCal Workforce Development Fund 2026",
+        description: "Support our initiative to train the next generation of minority contractors in Northern California. Funds will provide scholarships for trade apprenticeship programs, cover costs for OSHA and safety certifications, and sponsor hands-on construction management workshops. Our goal is to place 50 new skilled workers into the construction pipeline this year.\n\nYour contributions directly support:\n- Trade apprenticeship tuition assistance\n- OSHA 10/30-Hour certification courses\n- Construction estimating and project management workshops\n- Mentorship pairing with experienced NAMC contractors\n- Job placement assistance and resume support",
+        goalAmount: "50000.00",
+        currentAmount: "0",
+        startDate: "2026-01-15",
+        endDate: "2026-12-31",
+        status: "active",
+        createdById: adminId,
+      }).returning();
+
+      const [camp2] = await db.insert(campaigns).values({
+        title: "East Oakland Community Center Renovation",
+        description: "NAMC NorCal members are coming together to renovate the East Oakland Youth Development Center. This project will demonstrate our collective capabilities while giving back to the community that supports us.\n\nProject scope includes:\n- Interior demolition and hazmat abatement\n- New HVAC system installation\n- Electrical upgrades to meet current code\n- ADA-compliant restroom renovation\n- Exterior painting and landscaping\n- New basketball court resurfacing\n\nAll labor will be donated by NAMC member companies. Funds raised cover materials, permits, and equipment rental.",
+        goalAmount: "25000.00",
+        currentAmount: "0",
+        startDate: "2026-02-01",
+        endDate: "2026-08-31",
+        status: "active",
+        createdById: adminId,
+      }).returning();
+
+      const [camp3] = await db.insert(campaigns).values({
+        title: "Annual Trade School Scholarship Fund",
+        description: "Every year, NAMC NorCal awards scholarships to students pursuing careers in the construction trades. These scholarships cover tuition, books, tools, and living expenses for students enrolled in accredited trade programs across Northern California.\n\n2026 Partner Schools:\n- Laney College — Construction Management Technology\n- Carpenters Training Committee for Northern California\n- IBEW Local 595 Electrical Apprenticeship\n- Plumbers & Steamfitters Local 342\n- Operating Engineers Local 3 Training Center\n\nPast recipients have gone on to become licensed contractors, project managers, and NAMC members themselves. This is how we build the next generation.",
+        goalAmount: "15000.00",
+        currentAmount: "0",
+        startDate: "2026-01-01",
+        endDate: "2026-06-30",
+        status: "active",
+        createdById: adminId,
+      }).returning();
+
+      if (memberIds.length >= 5) {
+        const pledges = [
+          { campaignId: camp1.id, userId: memberIds[0], amount: "5000.00", note: "Happy to support workforce development — this is how we grow our industry.", status: "received", paidAt: new Date("2026-02-01") },
+          { campaignId: camp1.id, userId: memberIds[1], amount: "2500.00", note: "Training the next generation is critical. Count us in.", status: "received", paidAt: new Date("2026-02-10") },
+          { campaignId: camp1.id, userId: memberIds[2], amount: "7500.00", note: "Our company benefited from mentorship programs — paying it forward.", status: "received", paidAt: new Date("2026-02-15") },
+          { campaignId: camp1.id, userId: memberIds[3], amount: "3000.00", note: "Looking forward to seeing more skilled workers in the pipeline.", status: "pledged", paidAt: null },
+          { campaignId: camp1.id, userId: memberIds[4], amount: "10000.00", note: "Major pledge for Q2. Will remit by end of April.", status: "pledged", paidAt: null },
+          { campaignId: camp1.id, userId: adminId, amount: "2000.00", note: "NAMC admin contribution.", status: "received", paidAt: new Date("2026-01-20") },
+
+          { campaignId: camp2.id, userId: memberIds[0], amount: "1500.00", note: "Great cause — our crew can also donate time on weekends.", status: "received", paidAt: new Date("2026-02-20") },
+          { campaignId: camp2.id, userId: memberIds[2], amount: "2000.00", note: "We'll cover materials for the HVAC portion.", status: "pledged", paidAt: null },
+          { campaignId: camp2.id, userId: memberIds[3], amount: "1000.00", note: "Glad to support community projects.", status: "received", paidAt: new Date("2026-02-25") },
+          { campaignId: camp2.id, userId: memberIds[4], amount: "3000.00", note: "We have connections with a paint supplier — can get materials at cost.", status: "pledged", paidAt: null },
+
+          { campaignId: camp3.id, userId: memberIds[0], amount: "2000.00", note: "Education changes lives. We sponsor a student every year.", status: "received", paidAt: new Date("2026-01-15") },
+          { campaignId: camp3.id, userId: memberIds[1], amount: "3000.00", note: "Our company started because of a scholarship. Full circle.", status: "received", paidAt: new Date("2026-01-25") },
+          { campaignId: camp3.id, userId: memberIds[2], amount: "2500.00", note: "Supporting Laney College students specifically.", status: "received", paidAt: new Date("2026-02-05") },
+          { campaignId: camp3.id, userId: memberIds[3], amount: "1500.00", note: "Trade schools need more investment.", status: "received", paidAt: new Date("2026-02-12") },
+          { campaignId: camp3.id, userId: memberIds[4], amount: "3000.00", note: "Matching our Q1 pledge. Will pay by March.", status: "pledged", paidAt: null },
+        ];
+
+        for (const pledge of pledges) {
+          await db.insert(campaignPledges).values(pledge);
+        }
+
+        const camp1Received = 5000 + 2500 + 7500 + 2000;
+        const camp2Received = 1500 + 1000;
+        const camp3Received = 2000 + 3000 + 2500 + 1500;
+
+        await db.update(campaigns).set({ currentAmount: camp1Received.toFixed(2) }).where(eq(campaigns.id, camp1.id));
+        await db.update(campaigns).set({ currentAmount: camp2Received.toFixed(2) }).where(eq(campaigns.id, camp2.id));
+        await db.update(campaigns).set({ currentAmount: camp3Received.toFixed(2) }).where(eq(campaigns.id, camp3.id));
+      }
+
+      console.log("Seeded 3 campaigns with pledges");
     }
 
     console.log("Sample content check complete");
