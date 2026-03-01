@@ -57,7 +57,13 @@ import {
   eventRsvps,
   documents,
   campaigns,
-  campaignPledges
+  campaignPledges,
+  budgetCategories,
+  fundingSources,
+  type BudgetCategory,
+  type InsertBudgetCategory,
+  type FundingSource,
+  type InsertFundingSource,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
@@ -176,6 +182,11 @@ export interface IStorage {
   updatePledgeStatus(id: string, status: string, paidAt?: Date): Promise<CampaignPledge | undefined>;
   deletePledge(id: string): Promise<void>;
   updateCampaignTotal(campaignId: string): Promise<void>;
+
+  getBudgetCategories(fiscalYear?: string): Promise<BudgetCategory[]>;
+  updateBudgetCategory(id: string, data: Partial<BudgetCategory>): Promise<BudgetCategory | undefined>;
+  getFundingSources(fiscalYear?: string): Promise<FundingSource[]>;
+  updateFundingSource(id: string, data: Partial<FundingSource>): Promise<FundingSource | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -682,6 +693,30 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` }).from(campaignPledges).where(and(eq(campaignPledges.campaignId, campaignId), eq(campaignPledges.status, "received")));
     const total = result[0]?.total || "0";
     await db.update(campaigns).set({ currentAmount: total }).where(eq(campaigns.id, campaignId));
+  }
+
+  async getBudgetCategories(fiscalYear?: string): Promise<BudgetCategory[]> {
+    if (fiscalYear) {
+      return await db.select().from(budgetCategories).where(eq(budgetCategories.fiscalYear, fiscalYear));
+    }
+    return await db.select().from(budgetCategories);
+  }
+
+  async updateBudgetCategory(id: string, data: Partial<BudgetCategory>): Promise<BudgetCategory | undefined> {
+    const [result] = await db.update(budgetCategories).set(data).where(eq(budgetCategories.id, id)).returning();
+    return result;
+  }
+
+  async getFundingSources(fiscalYear?: string): Promise<FundingSource[]> {
+    if (fiscalYear) {
+      return await db.select().from(fundingSources).where(eq(fundingSources.fiscalYear, fiscalYear));
+    }
+    return await db.select().from(fundingSources);
+  }
+
+  async updateFundingSource(id: string, data: Partial<FundingSource>): Promise<FundingSource | undefined> {
+    const [result] = await db.update(fundingSources).set(data).where(eq(fundingSources.id, id)).returning();
+    return result;
   }
 }
 

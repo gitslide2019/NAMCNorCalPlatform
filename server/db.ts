@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, eq } from "drizzle-orm";
 import pg from "pg";
 import * as schema from "@shared/schema";
-import { users, membershipApplications, calendarEvents, newsletters, tools, courses, lessons, discussionTopics, projectOpportunities, campaigns, campaignPledges } from "@shared/schema";
+import { users, membershipApplications, calendarEvents, newsletters, tools, courses, lessons, discussionTopics, projectOpportunities, campaigns, campaignPledges, budgetCategories, fundingSources } from "@shared/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { seedMemberData } from "./seed-members";
@@ -271,6 +271,36 @@ export async function seedSampleContent() {
       console.log("Seeded 3 campaigns with pledges");
     }
 
+    const budgetCount = await db.select({ count: sql<number>`count(*)` }).from(budgetCategories);
+    if (Number(budgetCount[0]?.count || 0) === 0) {
+      await db.insert(budgetCategories).values([
+        { name: "Staff Salaries", type: "expense", budgetedAmount: "180000.00", actualAmount: "135000.00", fiscalYear: "2025-2026", notes: "Executive Director, Program Manager, Administrative Assistant, part-time Outreach Coordinator" },
+        { name: "Office Rent & Utilities", type: "expense", budgetedAmount: "36000.00", actualAmount: "27000.00", fiscalYear: "2025-2026", notes: "977 66th Ave, Oakland — lease through June 2027, includes parking" },
+        { name: "Insurance & Bonding", type: "expense", budgetedAmount: "18000.00", actualAmount: "18000.00", fiscalYear: "2025-2026", notes: "General liability, D&O, workers comp — paid annually in July" },
+        { name: "Program Operations", type: "expense", budgetedAmount: "45000.00", actualAmount: "28500.00", fiscalYear: "2025-2026", notes: "Workforce development programs, certification prep workshops, mentorship coordination" },
+        { name: "Marketing & Outreach", type: "expense", budgetedAmount: "24000.00", actualAmount: "16200.00", fiscalYear: "2025-2026", notes: "Website maintenance, social media, print materials, membership drives" },
+        { name: "Events & Networking", type: "expense", budgetedAmount: "30000.00", actualAmount: "14500.00", fiscalYear: "2025-2026", notes: "Monthly meetings, annual golf tournament, mixers, awards gala" },
+        { name: "Professional Development", type: "expense", budgetedAmount: "15000.00", actualAmount: "8200.00", fiscalYear: "2025-2026", notes: "Staff training, conference attendance, NAMC National convention travel" },
+        { name: "Technology & IT", type: "expense", budgetedAmount: "12000.00", actualAmount: "9800.00", fiscalYear: "2025-2026", notes: "Member portal hosting, email services, CRM software, Zoom subscriptions" },
+        { name: "Legal & Accounting", type: "expense", budgetedAmount: "15000.00", actualAmount: "7500.00", fiscalYear: "2025-2026", notes: "Annual audit, tax preparation, contract review, legal counsel retainer" },
+        { name: "Miscellaneous & Contingency", type: "expense", budgetedAmount: "10000.00", actualAmount: "3800.00", fiscalYear: "2025-2026", notes: "Office supplies, travel reimbursements, emergency fund, miscellaneous" },
+      ]);
+      console.log("Seeded 10 budget categories");
+    }
+
+    const fundingCount = await db.select({ count: sql<number>`count(*)` }).from(fundingSources);
+    if (Number(fundingCount[0]?.count || 0) === 0) {
+      await db.insert(fundingSources).values([
+        { name: "Member Dues", type: "revenue", projectedAmount: "150000.00", receivedAmount: "112500.00", fiscalYear: "2025-2026", notes: "60 active members across Small ($500), Medium ($1,500), Large ($3,000), and Government ($2,500) tiers" },
+        { name: "Corporate Sponsors", type: "revenue", projectedAmount: "120000.00", receivedAmount: "85000.00", fiscalYear: "2025-2026", notes: "Turner Construction, PG&E, Kaiser Permanente, Webcor Builders, Clark Construction — annual sponsorship agreements" },
+        { name: "Government Grants", type: "revenue", projectedAmount: "75000.00", receivedAmount: "50000.00", fiscalYear: "2025-2026", notes: "City of Oakland Small Business Grant, CA Workforce Development Board, SBA Community Navigator grant" },
+        { name: "Fundraising Campaigns", type: "revenue", projectedAmount: "40000.00", receivedAmount: "28500.00", fiscalYear: "2025-2026", notes: "Workforce Development Fund, Community Center Renovation, Scholarship Fund — see Campaigns section" },
+        { name: "Event Revenue", type: "revenue", projectedAmount: "25000.00", receivedAmount: "18000.00", fiscalYear: "2025-2026", notes: "Golf tournament sponsorships, gala ticket sales, workshop registration fees" },
+        { name: "Individual Donations", type: "revenue", projectedAmount: "10000.00", receivedAmount: "6500.00", fiscalYear: "2025-2026", notes: "Board member contributions, alumni giving, community supporters" },
+      ]);
+      console.log("Seeded 6 funding sources");
+    }
+
     console.log("Sample content check complete");
   } catch (error) {
     console.error("Error seeding sample content:", error);
@@ -407,6 +437,30 @@ export async function ensureTables() {
         progress integer NOT NULL DEFAULT 0,
         completed_lessons text NOT NULL DEFAULT '',
         enrolled_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS budget_categories (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        type text NOT NULL DEFAULT 'expense',
+        budgeted_amount numeric(12,2) NOT NULL,
+        actual_amount numeric(12,2) NOT NULL DEFAULT 0,
+        fiscal_year text NOT NULL,
+        notes text,
+        created_at timestamp DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS funding_sources (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        type text NOT NULL DEFAULT 'revenue',
+        projected_amount numeric(12,2) NOT NULL,
+        received_amount numeric(12,2) NOT NULL DEFAULT 0,
+        fiscal_year text NOT NULL,
+        notes text,
+        created_at timestamp DEFAULT now()
       )
     `);
     console.log("All tables ensured successfully");

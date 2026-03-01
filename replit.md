@@ -8,7 +8,7 @@ Key capabilities include:
 - **Public Site**: Information on benefits, membership tiers, and an online application form.
 - **Member Portal**: A secure area offering a dashboard, editable profiles, a member directory, messaging, discussion boards, project opportunities with bidding, a calendar for events, newsletter archives, a document library, equipment sharing, training modules, fundraising campaign tracking, and notifications.
 - **Authentication**: Secure login, registration, and password recovery.
-- **Admin Panel**: Tools for managing applications, projects, events, newsletters, courses, and user data.
+- **Admin Panel**: Tabbed interface with Applications management (approve/reject, CSV export) and Finance dashboard (organizational budget, revenue tracking, pie charts, bar charts, editable expense/revenue tables, campaign progress, pledge status).
 
 ## User Preferences
 
@@ -39,7 +39,8 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for database interactions.
 - **Schema**: Defined in `shared/schema.ts`.
 - **Migrations**: Managed using Drizzle Kit.
-- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `courses`, `lessons`, `course_enrollments`.
+- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `courses`, `lessons`, `course_enrollments`, `announcements`, `notifications`, `endorsements`, `event_rsvps`, `documents`, `campaigns`, `campaign_pledges`, `budget_categories`, `funding_sources`.
+- **Charts**: Recharts library for pie charts, bar charts in admin Finance dashboard.
 
 ### Code Sharing
 - The `shared/` directory centralizes common code like database schema definitions, Zod validation schemas (generated from Drizzle), and TypeScript types, ensuring consistency between frontend and backend.

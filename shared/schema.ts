@@ -438,3 +438,41 @@ export const insertCampaignPledgeSchema = createInsertSchema(campaignPledges).om
 
 export type InsertCampaignPledge = z.infer<typeof insertCampaignPledgeSchema>;
 export type CampaignPledge = typeof campaignPledges.$inferSelect;
+
+export const budgetCategories = pgTable("budget_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull().default("expense"),
+  budgetedAmount: numeric("budgeted_amount", { precision: 12, scale: 2 }).notNull(),
+  actualAmount: numeric("actual_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  fiscalYear: text("fiscal_year").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBudgetCategorySchema = createInsertSchema(budgetCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBudgetCategory = z.infer<typeof insertBudgetCategorySchema>;
+export type BudgetCategory = typeof budgetCategories.$inferSelect;
+
+export const fundingSources = pgTable("funding_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull().default("revenue"),
+  projectedAmount: numeric("projected_amount", { precision: 12, scale: 2 }).notNull(),
+  receivedAmount: numeric("received_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  fiscalYear: text("fiscal_year").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertFundingSourceSchema = createInsertSchema(fundingSources).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFundingSource = z.infer<typeof insertFundingSourceSchema>;
+export type FundingSource = typeof fundingSources.$inferSelect;

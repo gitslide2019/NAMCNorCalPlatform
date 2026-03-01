@@ -1389,6 +1389,100 @@ export async function registerRoutes(
     }
   });
 
+  // === ADMIN BUDGET & FUNDING ===
+  app.get("/api/portal/admin/budget", requireAdmin, async (req, res) => {
+    try {
+      const fiscalYear = req.query.fiscalYear as string | undefined;
+      const categories = await storage.getBudgetCategories(fiscalYear || "2025-2026");
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch budget categories" });
+    }
+  });
+
+  app.get("/api/portal/admin/funding", requireAdmin, async (req, res) => {
+    try {
+      const fiscalYear = req.query.fiscalYear as string | undefined;
+      const sources = await storage.getFundingSources(fiscalYear || "2025-2026");
+      res.json(sources);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch funding sources" });
+    }
+  });
+
+  app.get("/api/portal/admin/financial-summary", requireAdmin, async (req, res) => {
+    try {
+      const budgetCats = await storage.getBudgetCategories("2025-2026");
+      const fundingSrcs = await storage.getFundingSources("2025-2026");
+      const allCampaigns = await storage.getCampaigns();
+
+      const totalBudgeted = budgetCats.reduce((sum, c) => sum + parseFloat(c.budgetedAmount), 0);
+      const totalActual = budgetCats.reduce((sum, c) => sum + parseFloat(c.actualAmount), 0);
+      const totalProjected = fundingSrcs.reduce((sum, s) => sum + parseFloat(s.projectedAmount), 0);
+      const totalReceived = fundingSrcs.reduce((sum, s) => sum + parseFloat(s.receivedAmount), 0);
+
+      const campaignTotalGoal = allCampaigns.reduce((sum, c) => sum + parseFloat(c.goalAmount), 0);
+      const campaignTotalRaised = allCampaigns.reduce((sum, c) => sum + parseFloat(c.currentAmount), 0);
+
+      let pledgedCount = 0, receivedCount = 0, pledgedAmount = 0, receivedAmount = 0;
+      for (const camp of allCampaigns) {
+        const pledges = await storage.getCampaignPledges(camp.id);
+        for (const p of pledges) {
+          if (p.status === "pledged") { pledgedCount++; pledgedAmount += parseFloat(p.amount); }
+          if (p.status === "received") { receivedCount++; receivedAmount += parseFloat(p.amount); }
+        }
+      }
+
+      res.json({
+        totalBudgeted,
+        totalActual,
+        totalProjected,
+        totalReceived,
+        surplus: totalReceived - totalActual,
+        campaignTotalGoal,
+        campaignTotalRaised,
+        pledgeBreakdown: {
+          pledgedCount, receivedCount, pledgedAmount, receivedAmount,
+        },
+        budgetCategories: budgetCats,
+        fundingSources: fundingSrcs,
+        campaigns: allCampaigns,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch financial summary" });
+    }
+  });
+
+  app.patch("/api/portal/admin/budget/:id", requireAdmin, async (req, res) => {
+    try {
+      const { actualAmount, budgetedAmount, notes } = req.body;
+      const updates: Record<string, any> = {};
+      if (actualAmount !== undefined) updates.actualAmount = actualAmount;
+      if (budgetedAmount !== undefined) updates.budgetedAmount = budgetedAmount;
+      if (notes !== undefined) updates.notes = notes;
+      const result = await storage.updateBudgetCategory(req.params.id, updates);
+      if (!result) { res.status(404).json({ message: "Budget category not found" }); return; }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update budget category" });
+    }
+  });
+
+  app.patch("/api/portal/admin/funding/:id", requireAdmin, async (req, res) => {
+    try {
+      const { receivedAmount, projectedAmount, notes } = req.body;
+      const updates: Record<string, any> = {};
+      if (receivedAmount !== undefined) updates.receivedAmount = receivedAmount;
+      if (projectedAmount !== undefined) updates.projectedAmount = projectedAmount;
+      if (notes !== undefined) updates.notes = notes;
+      const result = await storage.updateFundingSource(req.params.id, updates);
+      if (!result) { res.status(404).json({ message: "Funding source not found" }); return; }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update funding source" });
+    }
+  });
+
   // === ADMIN ANALYTICS ===
   app.get("/api/portal/admin/analytics", requireAdmin, async (req, res) => {
     try {
