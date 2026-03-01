@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Loader2, Building2, MapPin, Phone, Mail, Globe, Wrench, ArrowLeft } from "lucide-react";
+import { Save, Loader2, Building2, Mail, Wrench, ArrowLeft, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import type { MembershipApplication } from "@shared/schema";
@@ -98,42 +98,81 @@ export default function Profile() {
         </Button>
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-profile-title">My Profile</h1>
-          <p className="text-muted-foreground mt-1">View and manage your membership information.</p>
+          <p className="text-muted-foreground mt-1">Edit any section below and click "Save Changes" to update your information.</p>
+        </div>
+
+        <div className="mb-4 flex items-center gap-2">
+          <Badge variant="secondary" className="capitalize" data-testid="text-membership-category">{application.membershipCategory}</Badge>
+          {application.isBoardMember && (
+            <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
+          )}
         </div>
 
         <div className="space-y-6">
-          <Card data-testid="card-company-details">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Company Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Company Name</p>
-                  <p className="font-medium" data-testid="text-company-name">{application.companyName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Membership Category</p>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium capitalize" data-testid="text-membership-category">{application.membershipCategory}</p>
-                    {application.isBoardMember && (
-                      <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+          <CompanyRoleForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
           <BusinessDetailsForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
-
-          <ProfileEditForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
+          <ContactInfoForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
         </div>
       </div>
     </PortalLayout>
+  );
+}
+
+function CompanyRoleForm({
+  application,
+  onSubmit,
+  isPending,
+}: {
+  application: MembershipApplication;
+  onSubmit: (data: Record<string, string>) => void;
+  isPending: boolean;
+}) {
+  const form = useForm({
+    defaultValues: {
+      companyName: application.companyName,
+      title: application.title,
+    },
+  });
+
+  return (
+    <Card data-testid="card-company-role">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          Company & Role
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </CardTitle>
+        <CardDescription>Update your company name and job title.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField control={form.control} name="companyName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Name</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-profile-company" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="title" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Title</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-profile-title" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isPending} data-testid="button-save-company-role">
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -152,6 +191,7 @@ function BusinessDetailsForm({
       certifications: application.certifications || "",
       yearEstablished: application.yearEstablished || "",
       numberOfEmployees: application.numberOfEmployees || "",
+      annualRevenue: application.annualRevenue || "",
     },
   });
 
@@ -161,7 +201,9 @@ function BusinessDetailsForm({
         <CardTitle className="flex items-center gap-2">
           <Wrench className="h-5 w-5" />
           Business Details
+          <Pencil className="h-4 w-4 text-muted-foreground" />
         </CardTitle>
+        <CardDescription>Keep your services, certifications, and business info up to date.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -180,7 +222,7 @@ function BusinessDetailsForm({
                 <FormMessage />
               </FormItem>
             )} />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <FormField control={form.control} name="yearEstablished" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Year Established</FormLabel>
@@ -192,6 +234,13 @@ function BusinessDetailsForm({
                 <FormItem>
                   <FormLabel>Number of Employees</FormLabel>
                   <FormControl><Input {...field} data-testid="input-profile-employees" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="annualRevenue" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Annual Revenue</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-profile-revenue" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -209,7 +258,7 @@ function BusinessDetailsForm({
   );
 }
 
-function ProfileEditForm({ 
+function ContactInfoForm({ 
   application, 
   onSubmit, 
   isPending 
@@ -237,7 +286,9 @@ function ProfileEditForm({
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
           Contact Information
+          <Pencil className="h-4 w-4 text-muted-foreground" />
         </CardTitle>
+        <CardDescription>Update your contact details so other members can reach you.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
