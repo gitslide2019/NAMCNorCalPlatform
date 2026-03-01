@@ -477,9 +477,9 @@ function FinanceDashboard() {
             <CardDescription>FY 2025-2026 budget allocation by category</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={expensePieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name.length > 10 ? name.substring(0, 8) + "…" : name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                <Pie data={expensePieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={false} labelLine={false}>
                   {expensePieData.map((_, idx) => (
                     <Cell key={idx} fill={EXPENSE_COLORS[idx % EXPENSE_COLORS.length]} />
                   ))}
@@ -487,12 +487,12 @@ function FinanceDashboard() {
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4">
               {expensePieData.map((entry, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs">
+                <div key={idx} className="flex items-center gap-2 text-xs min-w-0">
                   <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: EXPENSE_COLORS[idx % EXPENSE_COLORS.length] }} />
-                  <span className="truncate">{entry.name}</span>
-                  <span className="text-muted-foreground ml-auto">{fmt(entry.value)}</span>
+                  <span className="truncate flex-1">{entry.name}</span>
+                  <span className="text-muted-foreground flex-shrink-0 tabular-nums">{fmt(entry.value)}</span>
                 </div>
               ))}
             </div>
@@ -508,9 +508,9 @@ function FinanceDashboard() {
             <CardDescription>Projected revenue by funding source</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={revenuePieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name.length > 12 ? name.substring(0, 10) + "…" : name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                <Pie data={revenuePieData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={false} labelLine={false}>
                   {revenuePieData.map((_, idx) => (
                     <Cell key={idx} fill={REVENUE_COLORS[idx % REVENUE_COLORS.length]} />
                   ))}
@@ -518,12 +518,12 @@ function FinanceDashboard() {
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-4">
               {revenuePieData.map((entry, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs">
+                <div key={idx} className="flex items-center gap-2 text-xs min-w-0">
                   <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: REVENUE_COLORS[idx % REVENUE_COLORS.length] }} />
-                  <span className="truncate">{entry.name}</span>
-                  <span className="text-muted-foreground ml-auto">{fmt(entry.value)}</span>
+                  <span className="truncate flex-1">{entry.name}</span>
+                  <span className="text-muted-foreground flex-shrink-0 tabular-nums">{fmt(entry.value)}</span>
                 </div>
               ))}
             </div>
@@ -540,13 +540,13 @@ function FinanceDashboard() {
           <CardDescription>Compare budgeted amounts against actual expenditures for each category</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={budgetVsActualData} margin={{ top: 5, right: 20, left: 10, bottom: 60 }}>
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={budgetVsActualData} margin={{ top: 5, right: 20, left: 10, bottom: 80 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="name" angle={-35} textAnchor="end" tick={{ fontSize: 11 }} interval={0} />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={0} height={80} />
               <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
               <Tooltip content={<BarTooltip />} />
-              <Legend />
+              <Legend verticalAlign="top" height={36} />
               <Bar dataKey="Budgeted" fill="#2563eb" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Actual" fill="#E5A830" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -561,13 +561,13 @@ function FinanceDashboard() {
             <CardDescription>Projected vs. received revenue by source</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={fundingPipelineData} margin={{ top: 5, right: 20, left: 10, bottom: 60 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={fundingPipelineData} margin={{ top: 5, right: 20, left: 10, bottom: 70 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" angle={-35} textAnchor="end" tick={{ fontSize: 11 }} interval={0} />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={0} height={70} />
                 <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
                 <Tooltip content={<BarTooltip />} />
-                <Legend />
+                <Legend verticalAlign="top" height={36} />
                 <Bar dataKey="Projected" fill="#9333ea" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Received" fill="#16a34a" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -583,7 +583,7 @@ function FinanceDashboard() {
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={pledgePieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={pledgePieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false} labelLine={false}>
                   <Cell fill="#16a34a" />
                   <Cell fill="#E5A830" />
                 </Pie>
