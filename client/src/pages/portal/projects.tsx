@@ -194,17 +194,14 @@ function ProjectMapView({
 
 function ProjectListView({
   onSelectProject,
-  viewMode,
-  onViewModeChange,
 }: {
   onSelectProject: (id: string) => void;
-  viewMode: "list" | "map";
-  onViewModeChange: (mode: "list" | "map") => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setProjectsLocation] = useWouterLocation();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showMap, setShowMap] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     title: "",
@@ -278,28 +275,15 @@ function ProjectListView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-md border" data-testid="view-mode-toggle">
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              className="rounded-r-none"
-              onClick={() => onViewModeChange("list")}
-              data-testid="button-view-list"
-            >
-              <List className="h-4 w-4 mr-1" />
-              List
-            </Button>
-            <Button
-              variant={viewMode === "map" ? "default" : "ghost"}
-              size="sm"
-              className="rounded-l-none"
-              onClick={() => onViewModeChange("map")}
-              data-testid="button-view-map"
-            >
-              <MapIcon className="h-4 w-4 mr-1" />
-              Map
-            </Button>
-          </div>
+          <Button
+            variant={showMap ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowMap(!showMap)}
+            data-testid="button-toggle-map"
+          >
+            <MapIcon className="h-4 w-4 mr-1" />
+            {showMap ? "Hide Map" : "Show Map"}
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
               <SelectValue placeholder="Filter" />
@@ -377,101 +361,107 @@ function ProjectListView({
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-24 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : viewMode === "map" ? (
-        filtered && filtered.length > 0 ? (
-          <ProjectMapView projects={filtered} onSelectProject={onSelectProject} />
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground" data-testid="text-no-projects">No projects to show on map.</p>
-            </CardContent>
-          </Card>
-        )
-      ) : filtered && filtered.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((project) => (
-            <Card
-              key={project.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => onSelectProject(project.id)}
-              data-testid={`card-project-${project.id}`}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg leading-snug">{project.title}</CardTitle>
-                  <Badge
-                    className={
-                      project.status === "open"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                    }
-                    data-testid={`badge-project-status-${project.id}`}
-                  >
-                    {project.status === "open" ? "Open" : "Closed"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-project-desc-${project.id}`}>
-                  {project.description}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {project.location}
-                  </span>
-                  {project.budget && (
-                    <span className="flex items-center gap-1" data-testid={`text-project-budget-${project.id}`}>
-                      <DollarSign className="h-3.5 w-3.5" />
-                      {formatBudget(project.budget)}
-                    </span>
-                  )}
-                  {project.deadline && (
-                    <span className="flex items-center gap-1" data-testid={`text-project-deadline-${project.id}`}>
-                      <Calendar className="h-3.5 w-3.5" />
-                      {formatDeadline(project.deadline)}
-                    </span>
-                  )}
-                </div>
-                {(() => {
-                  const urgency = getDeadlineUrgency(project.deadline);
-                  if (!urgency) return null;
-                  const urgencyClasses =
-                    urgency.variant === "red"
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      : urgency.variant === "amber"
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                  return (
-                    <Badge
-                      className={urgencyClasses}
-                      data-testid={`badge-project-urgency-${project.id}`}
-                    >
-                      {urgency.label}
-                    </Badge>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          <Skeleton className="h-[400px] w-full rounded-lg" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground" data-testid="text-no-projects">No projects found.</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {showMap && filtered && filtered.length > 0 && (
+            <ProjectMapView projects={filtered} onSelectProject={onSelectProject} />
+          )}
+
+          <div>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" data-testid="text-project-list-heading">
+              <List className="h-5 w-5" />
+              {filtered?.length || 0} Project{(filtered?.length || 0) !== 1 ? "s" : ""}
+            </h2>
+            {filtered && filtered.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((project) => (
+                  <Card
+                    key={project.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => onSelectProject(project.id)}
+                    data-testid={`card-project-${project.id}`}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg leading-snug">{project.title}</CardTitle>
+                        <Badge
+                          className={
+                            project.status === "open"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          }
+                          data-testid={`badge-project-status-${project.id}`}
+                        >
+                          {project.status === "open" ? "Open" : "Closed"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-project-desc-${project.id}`}>
+                        {project.description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {project.location}
+                        </span>
+                        {project.budget && (
+                          <span className="flex items-center gap-1" data-testid={`text-project-budget-${project.id}`}>
+                            <DollarSign className="h-3.5 w-3.5" />
+                            {formatBudget(project.budget)}
+                          </span>
+                        )}
+                        {project.deadline && (
+                          <span className="flex items-center gap-1" data-testid={`text-project-deadline-${project.id}`}>
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDeadline(project.deadline)}
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const urgency = getDeadlineUrgency(project.deadline);
+                        if (!urgency) return null;
+                        const urgencyClasses =
+                          urgency.variant === "red"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            : urgency.variant === "amber"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+                        return (
+                          <Badge
+                            className={urgencyClasses}
+                            data-testid={`badge-project-urgency-${project.id}`}
+                          >
+                            {urgency.label}
+                          </Badge>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground" data-testid="text-no-projects">No projects found.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -797,7 +787,6 @@ function ProjectDetailView({
 
 export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   return (
     <PortalLayout>
@@ -809,8 +798,6 @@ export default function Projects() {
       ) : (
         <ProjectListView
           onSelectProject={setSelectedProjectId}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
         />
       )}
     </PortalLayout>
