@@ -210,6 +210,8 @@ function ProjectListView({
     budget: "",
     deadline: "",
     contactEmail: "",
+    latitude: "",
+    longitude: "",
   });
 
   const { data: projects, isLoading } = useQuery<ProjectOpportunity[]>({
@@ -231,6 +233,8 @@ function ProjectListView({
         budget: "",
         deadline: "",
         contactEmail: "",
+        latitude: "",
+        longitude: "",
       });
     },
     onError: (error: Error) => {
@@ -345,6 +349,21 @@ function ProjectListView({
                     onChange={(e) => setNewProject({ ...newProject, contactEmail: e.target.value })}
                     data-testid="input-project-contact-email"
                   />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="Latitude (e.g. 37.80)"
+                      value={newProject.latitude}
+                      onChange={(e) => setNewProject({ ...newProject, latitude: e.target.value })}
+                      data-testid="input-project-latitude"
+                    />
+                    <Input
+                      placeholder="Longitude (e.g. -122.27)"
+                      value={newProject.longitude}
+                      onChange={(e) => setNewProject({ ...newProject, longitude: e.target.value })}
+                      data-testid="input-project-longitude"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-2">Add coordinates to show this project on the map. You can find them on Google Maps.</p>
                   <Button
                     className="w-full"
                     onClick={() => createMutation.mutate(newProject)}

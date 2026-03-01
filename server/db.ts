@@ -207,6 +207,22 @@ export async function seedSampleContent() {
         { title: "Affordable Housing Development — East 14th Street", description: "General contractor seeking subcontractors for a 65-unit affordable housing development. Five-story wood-frame over concrete podium construction.\n\nTrades needed:\n- Concrete and foundations\n- Framing\n- Plumbing and fire sprinklers\n- Electrical\n- Drywall and painting\n- Flooring and tile\n- Cabinets and countertops\n- Roofing\n\nLocal hire requirements apply. DBE/MBE participation encouraged.", location: "San Leandro, CA", budget: "$18M - $22M", deadline: "2026-05-01", contactEmail: "bids@namcnorcal.org", postedById: adminId, status: "open", latitude: "37.7249", longitude: "-122.1561" },
       ]);
       console.log("Seeded 4 project opportunities");
+    } else {
+      const coordMap: Record<string, { lat: string; lng: string }> = {
+        "Oakland, CA": { lat: "37.7941", lng: "-122.2306" },
+        "Berkeley, CA": { lat: "37.8716", lng: "-122.2727" },
+        "Various East Bay Stations": { lat: "37.8044", lng: "-122.2712" },
+        "San Leandro, CA": { lat: "37.7249", lng: "-122.1561" },
+      };
+      const existingProjects = await db.select().from(projectOpportunities);
+      for (const proj of existingProjects) {
+        if (!proj.latitude && !proj.longitude && proj.location && coordMap[proj.location]) {
+          await db.update(projectOpportunities)
+            .set({ latitude: coordMap[proj.location].lat, longitude: coordMap[proj.location].lng })
+            .where(sql`id = ${proj.id}`);
+          console.log(`Backfilled coordinates for project: ${proj.title}`);
+        }
+      }
     }
 
     const campaignCount = await db.select({ count: sql<number>`count(*)` }).from(campaigns);
