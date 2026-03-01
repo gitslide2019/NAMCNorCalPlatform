@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema } from "@shared/schema";
+import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
@@ -1520,6 +1520,176 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // === MEMBER PROFILE PHOTO ===
+  app.patch("/api/portal/profile/photo", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { profileImageUrl } = req.body;
+      if (!profileImageUrl) {
+        res.status(400).json({ message: "Photo data is required" });
+        return;
+      }
+      const user = await storage.getUser(userId);
+      if (!user?.memberApplicationId) {
+        res.status(400).json({ message: "No linked membership application" });
+        return;
+      }
+      const app = await storage.getMembershipApplication(user.memberApplicationId);
+      if (!app) {
+        res.status(404).json({ message: "Application not found" });
+        return;
+      }
+      const updated = await storage.updateMembershipApplication(app.id, { profileImageUrl });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update profile photo" });
+    }
+  });
+
+  // === MEMBER PROJECTS (PORTFOLIO) ===
+  app.get("/api/portal/my-projects", requireAuth, async (req, res) => {
+    try {
+      const projects = await storage.getMemberProjects(req.user!.id);
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  app.get("/api/portal/member-projects/:userId", requireAuth, async (req, res) => {
+    try {
+      const projects = await storage.getMemberProjects(req.params.userId);
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch member projects" });
+    }
+  });
+
+  app.get("/api/portal/featured-projects", requireAuth, async (req, res) => {
+    try {
+      const projects = await storage.getAllFeaturedProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch featured projects" });
+    }
+  });
+
+  app.post("/api/portal/my-projects", requireAuth, async (req, res) => {
+    try {
+      const project = await storage.createMemberProject({ ...req.body, userId: req.user!.id });
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+
+  app.patch("/api/portal/my-projects/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getMemberProject(req.params.id);
+      if (!existing || existing.userId !== req.user!.id) {
+        res.status(404).json({ message: "Project not found" });
+        return;
+      }
+      const { title, description, location, projectValue, completionDate, clientName, role, imageData, imageType } = req.body;
+      const updates: Record<string, any> = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (location !== undefined) updates.location = location;
+      if (projectValue !== undefined) updates.projectValue = projectValue;
+      if (completionDate !== undefined) updates.completionDate = completionDate;
+      if (clientName !== undefined) updates.clientName = clientName;
+      if (role !== undefined) updates.role = role;
+      if (imageData !== undefined) updates.imageData = imageData;
+      if (imageType !== undefined) updates.imageType = imageType;
+      const updated = await storage.updateMemberProject(req.params.id, updates);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update project" });
+    }
+  });
+
+  app.delete("/api/portal/my-projects/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getMemberProject(req.params.id);
+      if (!existing || existing.userId !== req.user!.id) {
+        res.status(404).json({ message: "Project not found" });
+        return;
+      }
+      await storage.deleteMemberProject(req.params.id);
+      res.json({ message: "Project deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete project" });
+    }
+  });
+
+  app.patch("/api/portal/admin/member-projects/:id/feature", requireAdmin, async (req, res) => {
+    try {
+      const { isFeatured } = req.body;
+      const updated = await storage.updateMemberProject(req.params.id, { isFeatured: !!isFeatured });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update featured status" });
+    }
+  });
+
+  // === MEMBER DOCUMENTS ===
+  app.get("/api/portal/my-documents", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getMemberDocuments(req.user!.id);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.get("/api/portal/member-documents/:userId", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getMemberDocuments(req.params.userId);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch member documents" });
+    }
+  });
+
+  app.post("/api/portal/my-documents", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.createMemberDocument({ ...req.body, userId: req.user!.id });
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  app.get("/api/portal/my-documents/:id/download", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getMemberDocument(req.params.id);
+      if (!doc) {
+        res.status(404).json({ message: "Document not found" });
+        return;
+      }
+      const buffer = Buffer.from(doc.fileData, "base64");
+      res.setHeader("Content-Disposition", `attachment; filename="${doc.fileName}"`);
+      res.setHeader("Content-Type", doc.fileType || "application/octet-stream");
+      res.send(buffer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  app.delete("/api/portal/my-documents/:id", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getMemberDocument(req.params.id);
+      if (!doc || doc.userId !== req.user!.id) {
+        res.status(404).json({ message: "Document not found" });
+        return;
+      }
+      await storage.deleteMemberDocument(req.params.id);
+      res.json({ message: "Document deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document" });
     }
   });
 

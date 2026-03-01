@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
@@ -11,10 +12,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Save, Loader2, Building2, Mail, Wrench, ArrowLeft, Pencil, AlertTriangle, CheckCircle2, User, Globe, Phone, MapPin } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Save, Loader2, Building2, Mail, Wrench, ArrowLeft, Pencil, AlertTriangle, CheckCircle2, User, Globe, Phone, MapPin, Camera, Upload, FileText, Trash2, Download, Plus, FolderOpen, Briefcase, Image } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import type { MembershipApplication } from "@shared/schema";
+import type { MembershipApplication, MemberDocument, MemberProject } from "@shared/schema";
 
 function getProfileCompleteness(app: MembershipApplication) {
   const fields = [
@@ -33,6 +35,7 @@ function getProfileCompleteness(app: MembershipApplication) {
     { key: "yearEstablished", label: "Year Established" },
     { key: "numberOfEmployees", label: "Employee Count" },
     { key: "annualRevenue", label: "Annual Revenue" },
+    { key: "profileImageUrl", label: "Profile Photo" },
   ];
   const filled = fields.filter(f => {
     const val = (app as any)[f.key];
@@ -43,6 +46,13 @@ function getProfileCompleteness(app: MembershipApplication) {
     return !val || val.toString().trim() === "";
   });
   return { total: fields.length, filled: filled.length, missing, percentage: Math.round((filled.length / fields.length) * 100) };
+}
+
+function formatFileSize(bytes: number | null | undefined): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
 export default function Profile() {
@@ -149,12 +159,523 @@ export default function Profile() {
         </Card>
 
         <div className="space-y-6">
+          <ProfilePhotoSection application={application} />
           <CompanyRoleForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
           <BusinessDetailsForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
           <ContactInfoForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />
+          <MyDocumentsSection />
+          <MyProjectsSection />
         </div>
       </div>
     </PortalLayout>
+  );
+}
+
+function ProfilePhotoSection({ application }: { application: MembershipApplication }) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const photoMutation = useMutation({
+    mutationFn: async (profileImageUrl: string) => {
+      const res = await apiRequest("PATCH", "/api/portal/profile/photo", { profileImageUrl });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-application"] });
+      toast({ title: "Photo updated", description: "Your profile photo has been saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file (JPG, PNG, etc.)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please select an image under 5MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      photoMutation.mutate(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Card data-testid="card-profile-photo">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Camera className="h-5 w-5" />
+          Profile Photo
+        </CardTitle>
+        <CardDescription>
+          Upload a professional photo of yourself. This photo is displayed on your member directory profile and helps other members recognize you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-6">
+          <div className="relative group">
+            {application.profileImageUrl ? (
+              <img
+                src={application.profileImageUrl}
+                alt="Profile"
+                className="w-24 h-24 rounded-full object-cover border-2 border-muted"
+                data-testid="img-profile-photo"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30" data-testid="img-profile-placeholder">
+                <User className="h-10 w-10 text-muted-foreground/50" />
+              </div>
+            )}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+              data-testid="button-change-photo"
+            >
+              <Camera className="h-6 w-6 text-white" />
+            </button>
+          </div>
+          <div className="flex-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+              data-testid="input-photo-file"
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={photoMutation.isPending}
+              data-testid="button-upload-photo"
+            >
+              {photoMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              {application.profileImageUrl ? "Change Photo" : "Upload Photo"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">JPG, PNG, or GIF. Max 5MB.</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyDocumentsSection() {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadCategory, setUploadCategory] = useState("general");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const { data: documents = [], isLoading } = useQuery<Omit<MemberDocument, "fileData">[]>({
+    queryKey: ["/api/portal/my-documents"],
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (data: { title: string; fileName: string; fileSize: number; fileType: string; fileData: string; category: string }) => {
+      const res = await apiRequest("POST", "/api/portal/my-documents", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-documents"] });
+      toast({ title: "Document uploaded", description: "Your document has been saved." });
+      setDialogOpen(false);
+      setPendingFile(null);
+      setUploadTitle("");
+      setUploadCategory("general");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/portal/my-documents/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-documents"] });
+      toast({ title: "Document deleted" });
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please select a file under 8MB.", variant: "destructive" });
+      return;
+    }
+    setPendingFile(file);
+    setUploadTitle(file.name.replace(/\.[^.]+$/, ""));
+    setDialogOpen(true);
+  };
+
+  const handleUpload = () => {
+    if (!pendingFile || !uploadTitle.trim()) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      uploadMutation.mutate({
+        title: uploadTitle.trim(),
+        fileName: pendingFile.name,
+        fileSize: pendingFile.size,
+        fileType: pendingFile.type,
+        fileData: base64,
+        category: uploadCategory,
+      });
+    };
+    reader.readAsDataURL(pendingFile);
+  };
+
+  const categories = [
+    { value: "general", label: "General" },
+    { value: "license", label: "Licenses & Certifications" },
+    { value: "insurance", label: "Insurance & Bonding" },
+    { value: "capability", label: "Capability Statement" },
+    { value: "project-photo", label: "Project Photos" },
+    { value: "company-photo", label: "Company Photos" },
+    { value: "proposal", label: "Proposals & Bids" },
+  ];
+
+  return (
+    <Card data-testid="card-my-documents">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              My Documents
+            </CardTitle>
+            <CardDescription>
+              Upload company documents like capability statements, certifications, insurance docs, or project photos. Other members can view these on your profile.
+            </CardDescription>
+          </div>
+          <div>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} data-testid="input-document-file" />
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-upload-document">
+              <Plus className="h-4 w-4 mr-1" />Upload
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p className="text-sm">No documents uploaded yet.</p>
+            <p className="text-xs mt-1">Upload capability statements, certifications, project photos, and more.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {documents.map(doc => (
+              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors" data-testid={`doc-item-${doc.id}`}>
+                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{doc.title}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{categories.find(c => c.value === doc.category)?.label || doc.category}</Badge>
+                    <span>{formatFileSize(doc.fileSize)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => window.open(`/api/portal/my-documents/${doc.id}/download`)} data-testid={`button-download-doc-${doc.id}`}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(doc.id)} data-testid={`button-delete-doc-${doc.id}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Title</label>
+                <Input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Document title" data-testid="input-doc-title" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={uploadCategory}
+                  onChange={e => setUploadCategory(e.target.value)}
+                  data-testid="select-doc-category"
+                >
+                  {categories.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              {pendingFile && (
+                <p className="text-xs text-muted-foreground">File: {pendingFile.name} ({formatFileSize(pendingFile.size)})</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleUpload} disabled={uploadMutation.isPending || !uploadTitle.trim()} data-testid="button-confirm-upload">
+                  {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Upload
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyProjectsSection() {
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [projectImage, setProjectImage] = useState<{ data: string; type: string } | null>(null);
+
+  const { data: projects = [], isLoading } = useQuery<MemberProject[]>({
+    queryKey: ["/api/portal/my-projects"],
+  });
+
+  const form = useForm({
+    defaultValues: {
+      title: "",
+      description: "",
+      location: "",
+      projectValue: "",
+      completionDate: "",
+      clientName: "",
+      role: "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/portal/my-projects", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-projects"] });
+      toast({ title: "Project added", description: "Your project has been added to your portfolio." });
+      setDialogOpen(false);
+      form.reset();
+      setProjectImage(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to add project", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/portal/my-projects/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-projects"] });
+      toast({ title: "Project removed" });
+    },
+  });
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please select an image under 5MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setProjectImage({ data: base64, type: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = (values: any) => {
+    createMutation.mutate({
+      ...values,
+      imageData: projectImage?.data || null,
+      imageType: projectImage?.type || null,
+    });
+  };
+
+  return (
+    <Card data-testid="card-my-projects">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              My Project Portfolio
+            </CardTitle>
+            <CardDescription>
+              Showcase your completed projects to other NAMC members. A strong portfolio helps you win bids and build your reputation.
+            </CardDescription>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" data-testid="button-add-project">
+                <Plus className="h-4 w-4 mr-1" />Add Project
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add a Project to Your Portfolio</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                  <FormField control={form.control} name="title" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Title</FormLabel>
+                      <FormControl><Input placeholder="e.g. Oakland Community Center Renovation" {...field} data-testid="input-project-title" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl><Textarea placeholder="Describe your scope of work, challenges, and results..." rows={3} {...field} data-testid="input-project-description" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="location" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location</FormLabel>
+                        <FormControl><Input placeholder="Oakland, CA" {...field} data-testid="input-project-location" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="projectValue" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Value</FormLabel>
+                        <FormControl><Input placeholder="$500,000" {...field} data-testid="input-project-value" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="clientName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client</FormLabel>
+                        <FormControl><Input placeholder="City of Oakland" {...field} data-testid="input-project-client" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="completionDate" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Completion Date</FormLabel>
+                        <FormControl><Input type="date" {...field} data-testid="input-project-date" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                  <FormField control={form.control} name="role" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Your Role</FormLabel>
+                      <FormControl><Input placeholder="e.g. General Contractor, Electrical Subcontractor" {...field} data-testid="input-project-role" /></FormControl>
+                    </FormItem>
+                  )} />
+                  <div>
+                    <label className="text-sm font-medium">Project Photo</label>
+                    <div className="mt-1">
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-project-image" />
+                      {projectImage ? (
+                        <div className="relative rounded-lg overflow-hidden border">
+                          <img src={`data:${projectImage.type};base64,${projectImage.data}`} alt="Preview" className="w-full h-40 object-cover" />
+                          <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => setProjectImage(null)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button type="button" variant="outline" className="w-full h-20" onClick={() => fileInputRef.current?.click()} data-testid="button-select-project-image">
+                          <Image className="h-5 w-5 mr-2" />Add Photo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-project">
+                      {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                      Save Project
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p className="text-sm">No projects in your portfolio yet.</p>
+            <p className="text-xs mt-1">Add completed projects to showcase your work to other NAMC members.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {projects.map(project => (
+              <div key={project.id} className="rounded-lg border overflow-hidden bg-card" data-testid={`project-card-${project.id}`}>
+                {project.imageData && project.imageType && (
+                  <img
+                    src={`data:${project.imageType};base64,${project.imageData}`}
+                    alt={project.title}
+                    className="w-full h-36 object-cover"
+                  />
+                )}
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-semibold text-sm">{project.title}</h4>
+                    {project.isFeatured && (
+                      <Badge className="bg-amber-500 text-white text-[10px] flex-shrink-0">Featured</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
+                    {project.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{project.location}</span>}
+                    {project.projectValue && <span className="flex items-center gap-1">💰 {project.projectValue}</span>}
+                    {project.clientName && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{project.clientName}</span>}
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(project.id)} data-testid={`button-delete-project-${project.id}`}>
+                      <Trash2 className="h-3 w-3 mr-1" />Remove
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -64,6 +64,12 @@ import {
   type InsertBudgetCategory,
   type FundingSource,
   type InsertFundingSource,
+  type MemberProject,
+  type InsertMemberProject,
+  type MemberDocument,
+  type InsertMemberDocument,
+  memberProjects,
+  memberDocuments,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
@@ -187,6 +193,18 @@ export interface IStorage {
   updateBudgetCategory(id: string, data: Partial<BudgetCategory>): Promise<BudgetCategory | undefined>;
   getFundingSources(fiscalYear?: string): Promise<FundingSource[]>;
   updateFundingSource(id: string, data: Partial<FundingSource>): Promise<FundingSource | undefined>;
+
+  getMemberProjects(userId: string): Promise<MemberProject[]>;
+  getMemberProject(id: string): Promise<MemberProject | undefined>;
+  createMemberProject(project: InsertMemberProject): Promise<MemberProject>;
+  updateMemberProject(id: string, data: Partial<MemberProject>): Promise<MemberProject | undefined>;
+  deleteMemberProject(id: string): Promise<void>;
+  getAllFeaturedProjects(): Promise<MemberProject[]>;
+
+  getMemberDocuments(userId: string): Promise<Omit<MemberDocument, "fileData">[]>;
+  getMemberDocument(id: string): Promise<MemberDocument | undefined>;
+  createMemberDocument(doc: InsertMemberDocument): Promise<MemberDocument>;
+  deleteMemberDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -717,6 +735,61 @@ export class DatabaseStorage implements IStorage {
   async updateFundingSource(id: string, data: Partial<FundingSource>): Promise<FundingSource | undefined> {
     const [result] = await db.update(fundingSources).set(data).where(eq(fundingSources.id, id)).returning();
     return result;
+  }
+
+  async getMemberProjects(userId: string): Promise<MemberProject[]> {
+    return await db.select().from(memberProjects).where(eq(memberProjects.userId, userId)).orderBy(desc(memberProjects.createdAt));
+  }
+
+  async getMemberProject(id: string): Promise<MemberProject | undefined> {
+    const [result] = await db.select().from(memberProjects).where(eq(memberProjects.id, id));
+    return result;
+  }
+
+  async createMemberProject(project: InsertMemberProject): Promise<MemberProject> {
+    const [result] = await db.insert(memberProjects).values(project).returning();
+    return result;
+  }
+
+  async updateMemberProject(id: string, data: Partial<MemberProject>): Promise<MemberProject | undefined> {
+    const [result] = await db.update(memberProjects).set(data).where(eq(memberProjects.id, id)).returning();
+    return result;
+  }
+
+  async deleteMemberProject(id: string): Promise<void> {
+    await db.delete(memberProjects).where(eq(memberProjects.id, id));
+  }
+
+  async getAllFeaturedProjects(): Promise<MemberProject[]> {
+    return await db.select().from(memberProjects).where(eq(memberProjects.isFeatured, true)).orderBy(desc(memberProjects.createdAt));
+  }
+
+  async getMemberDocuments(userId: string): Promise<Omit<MemberDocument, "fileData">[]> {
+    return await db.select({
+      id: memberDocuments.id,
+      userId: memberDocuments.userId,
+      title: memberDocuments.title,
+      description: memberDocuments.description,
+      fileName: memberDocuments.fileName,
+      fileSize: memberDocuments.fileSize,
+      fileType: memberDocuments.fileType,
+      category: memberDocuments.category,
+      createdAt: memberDocuments.createdAt,
+    }).from(memberDocuments).where(eq(memberDocuments.userId, userId)).orderBy(desc(memberDocuments.createdAt));
+  }
+
+  async getMemberDocument(id: string): Promise<MemberDocument | undefined> {
+    const [result] = await db.select().from(memberDocuments).where(eq(memberDocuments.id, id));
+    return result;
+  }
+
+  async createMemberDocument(doc: InsertMemberDocument): Promise<MemberDocument> {
+    const [result] = await db.insert(memberDocuments).values(doc).returning();
+    return result;
+  }
+
+  async deleteMemberDocument(id: string): Promise<void> {
+    await db.delete(memberDocuments).where(eq(memberDocuments.id, id));
   }
 }
 

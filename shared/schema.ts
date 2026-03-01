@@ -477,3 +477,49 @@ export const insertFundingSourceSchema = createInsertSchema(fundingSources).omit
 
 export type InsertFundingSource = z.infer<typeof insertFundingSourceSchema>;
 export type FundingSource = typeof fundingSources.$inferSelect;
+
+export const memberProjects = pgTable("member_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  location: text("location"),
+  projectValue: text("project_value"),
+  completionDate: text("completion_date"),
+  clientName: text("client_name"),
+  role: text("role"),
+  imageData: text("image_data"),
+  imageType: text("image_type"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMemberProjectSchema = createInsertSchema(memberProjects).omit({
+  id: true,
+  isFeatured: true,
+  createdAt: true,
+});
+
+export type InsertMemberProject = z.infer<typeof insertMemberProjectSchema>;
+export type MemberProject = typeof memberProjects.$inferSelect;
+
+export const memberDocuments = pgTable("member_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  fileType: text("file_type"),
+  fileData: text("file_data").notNull(),
+  category: text("category").notNull().default("general"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMemberDocumentSchema = createInsertSchema(memberDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMemberDocument = z.infer<typeof insertMemberDocumentSchema>;
+export type MemberDocument = typeof memberDocuments.$inferSelect;

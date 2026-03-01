@@ -487,6 +487,37 @@ export async function ensureTables() {
         created_at timestamp DEFAULT now()
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS member_projects (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        title text NOT NULL,
+        description text NOT NULL,
+        location text,
+        project_value text,
+        completion_date text,
+        client_name text,
+        role text,
+        image_data text,
+        image_type text,
+        is_featured boolean NOT NULL DEFAULT false,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS member_documents (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        title text NOT NULL,
+        description text,
+        file_name text NOT NULL,
+        file_size integer,
+        file_type text,
+        file_data text NOT NULL,
+        category text NOT NULL DEFAULT 'general',
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);
