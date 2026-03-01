@@ -64,16 +64,27 @@ export async function seedMemberAccounts() {
   try {
     console.log("Checking member user accounts...");
     const memberAccounts = [
-      { username: "james.jackson", companyName: "Digital Disclosure AV" },
-      { username: "tana.harris", companyName: "Harris Hoisting" },
-      { username: "bruce.giron", companyName: "Giron Construction" },
-      { username: "bianca.johnson", companyName: "Turner Construction" },
-      { username: "kimberly.wilson", companyName: "Port of Oakland" },
+      { username: "james.jackson", companyName: "Digital Disclosure AV", isBoardMember: false },
+      { username: "tana.harris", companyName: "Harris Hoisting", isBoardMember: false },
+      { username: "bruce.giron", companyName: "Giron Construction", isBoardMember: false },
+      { username: "bianca.johnson", companyName: "Turner Construction", isBoardMember: false },
+      { username: "kimberly.wilson", companyName: "Port of Oakland", isBoardMember: false },
+      { username: "mario.wagner", companyName: "RF Contractors dba Royal Floors", isBoardMember: true, password: "NamcPresident2026!" },
+      { username: "mark.hall", companyName: "Revalue.i o", isBoardMember: true },
+      { username: "carl.gordon", companyName: "Gordon Plastering", isBoardMember: true },
+      { username: "ronald.batiste", companyName: "Eagle Environmental Construction", isBoardMember: true },
+      { username: "anoush.jackson", companyName: "Micah Jackson-Sattler dba - Micah Electric Co.", isBoardMember: true },
     ];
 
     for (const account of memberAccounts) {
       const [existing] = await db.select().from(users).where(eq(users.username, account.username));
-      if (existing) continue;
+      if (existing) {
+        if (account.isBoardMember && !existing.isBoardMember) {
+          await db.update(users).set({ isBoardMember: true }).where(eq(users.id, existing.id));
+          console.log(`Updated ${account.username} as board member`);
+        }
+        continue;
+      }
 
       const [app] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, account.companyName));
       if (!app) {
@@ -81,16 +92,18 @@ export async function seedMemberAccounts() {
         continue;
       }
 
+      const pw = (account as any).password || "member123";
       const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync("member123", salt, 64)) as Buffer;
+      const buf = (await scryptAsync(pw, salt, 64)) as Buffer;
       const hashedPassword = buf.toString("hex") + "." + salt;
       await db.insert(users).values({
         username: account.username,
         password: hashedPassword,
         isAdmin: false,
+        isBoardMember: account.isBoardMember,
         memberApplicationId: app.id,
       });
-      console.log(`Created member account: ${account.username} (${account.companyName} - ${app.membershipCategory})`);
+      console.log(`Created member account: ${account.username} (${account.companyName}${account.isBoardMember ? " - BOARD MEMBER" : ""})`);
     }
   } catch (error) {
     console.error("Error seeding member accounts:", error);
@@ -311,6 +324,9 @@ export async function ensureTables() {
   try {
     console.log("Ensuring database tables exist...");
     await db.execute(sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_board_member boolean NOT NULL DEFAULT false
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS messages (
         id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
         sender_id varchar NOT NULL,
@@ -352,8 +368,16 @@ export async function ensureTables() {
         contact_email text,
         posted_by_id varchar NOT NULL,
         status text NOT NULL DEFAULT 'open',
+        latitude text,
+        longitude text,
         created_at timestamp NOT NULL DEFAULT now()
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE project_opportunities ADD COLUMN IF NOT EXISTS latitude text
+    `);
+    await db.execute(sql`
+      ALTER TABLE project_opportunities ADD COLUMN IF NOT EXISTS longitude text
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS project_bids (

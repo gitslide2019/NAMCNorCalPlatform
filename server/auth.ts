@@ -290,3 +290,15 @@ export function requireAdmin(req: any, res: any, next: any) {
   }
   next();
 }
+
+export function requireAdminOrBoard(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ message: "Authentication required" });
+    return;
+  }
+  if (!req.user?.isAdmin && !req.user?.isBoardMember) {
+    res.status(403).json({ message: "Admin or board member access required" });
+    return;
+  }
+  next();
+}

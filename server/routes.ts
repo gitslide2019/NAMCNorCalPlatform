@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { requireAuth, requireAdmin } from "./auth";
+import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
 import { sendNewsletterEmail, sendDigestEmail } from "./email";
 
 export async function registerRoutes(
@@ -1390,7 +1390,7 @@ export async function registerRoutes(
   });
 
   // === ADMIN BUDGET & FUNDING ===
-  app.get("/api/portal/admin/budget", requireAdmin, async (req, res) => {
+  app.get("/api/portal/admin/budget", requireAdminOrBoard, async (req, res) => {
     try {
       const fiscalYear = req.query.fiscalYear as string | undefined;
       const categories = await storage.getBudgetCategories(fiscalYear || "2025-2026");
@@ -1400,7 +1400,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/portal/admin/funding", requireAdmin, async (req, res) => {
+  app.get("/api/portal/admin/funding", requireAdminOrBoard, async (req, res) => {
     try {
       const fiscalYear = req.query.fiscalYear as string | undefined;
       const sources = await storage.getFundingSources(fiscalYear || "2025-2026");
@@ -1410,7 +1410,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/portal/admin/financial-summary", requireAdmin, async (req, res) => {
+  app.get("/api/portal/admin/financial-summary", requireAdminOrBoard, async (req, res) => {
     try {
       const budgetCats = await storage.getBudgetCategories("2025-2026");
       const fundingSrcs = await storage.getFundingSources("2025-2026");

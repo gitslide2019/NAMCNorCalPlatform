@@ -216,7 +216,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
     ...navItems,
     ...communityItems,
     ...resourceItems,
-    ...(user?.isAdmin ? adminNavItems : []),
+    ...((user?.isAdmin || user?.isBoardMember) ? adminNavItems : []),
   ];
 
   const handleLogout = () => {
@@ -274,7 +274,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         </div>
         {renderSection("Community", communityItems, onClick)}
         {renderSection("Resources", resourceItems, onClick)}
-        {user?.isAdmin && renderSection("Admin", adminNavItems, onClick)}
+        {(user?.isAdmin || user?.isBoardMember) && renderSection("Admin", adminNavItems, onClick)}
       </nav>
 
       <div className="p-3 border-t space-y-1">

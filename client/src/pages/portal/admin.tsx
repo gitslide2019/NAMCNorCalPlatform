@@ -97,6 +97,7 @@ export default function Admin() {
 
   const { data: applications, isLoading } = useQuery<MembershipApplication[]>({
     queryKey: ["/api/membership-applications"],
+    enabled: !!user?.isAdmin,
   });
 
   const statusMutation = useMutation({
@@ -113,7 +114,8 @@ export default function Admin() {
     },
   });
 
-  if (!user?.isAdmin) {
+  const isAdminOrBoard = user?.isAdmin || user?.isBoardMember;
+  if (!isAdminOrBoard) {
     return <Redirect to="/portal" />;
   }
 
@@ -133,15 +135,17 @@ export default function Admin() {
               <ShieldCheck className="h-7 w-7 text-primary" />
               Admin Panel
             </h1>
-            <p className="text-muted-foreground mt-1">Manage membership applications and organizational finances.</p>
+            <p className="text-muted-foreground mt-1">{user?.isAdmin ? "Manage membership applications and organizational finances." : "View organizational financial dashboard."}</p>
           </div>
         </div>
 
-        <Tabs defaultValue="applications" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="applications" data-testid="tab-applications">
-              <Users className="h-4 w-4 mr-2" />Applications
-            </TabsTrigger>
+        <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
+          <TabsList className={`grid w-full max-w-md ${user?.isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
+            {user?.isAdmin && (
+              <TabsTrigger value="applications" data-testid="tab-applications">
+                <Users className="h-4 w-4 mr-2" />Applications
+              </TabsTrigger>
+            )}
             <TabsTrigger value="finance" data-testid="tab-finance">
               <DollarSign className="h-4 w-4 mr-2" />Finance
             </TabsTrigger>
@@ -300,6 +304,7 @@ export default function Admin() {
 }
 
 function FinanceDashboard() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const { data: summary, isLoading } = useQuery<FinancialSummary>({
     queryKey: ["/api/portal/admin/financial-summary"],
@@ -661,7 +666,7 @@ function FinanceDashboard() {
                   <th className="text-right p-3 font-medium">Actual</th>
                   <th className="text-right p-3 font-medium">Variance</th>
                   <th className="text-right p-3 font-medium">% Used</th>
-                  <th className="text-right p-3 font-medium w-16"></th>
+                  {user?.isAdmin && <th className="text-right p-3 font-medium w-16"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -698,13 +703,15 @@ function FinanceDashboard() {
                           <span className={`text-xs ${usedPct > 100 ? "text-red-600 font-medium" : ""}`}>{usedPct}%</span>
                         </div>
                       </td>
-                      <td className="p-3 text-right">
-                        {!isEditing && (
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingBudget(cat.id); setEditValue(cat.actualAmount); }} data-testid={`button-edit-budget-${cat.id}`}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </td>
+                      {user?.isAdmin && (
+                        <td className="p-3 text-right">
+                          {!isEditing && (
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingBudget(cat.id); setEditValue(cat.actualAmount); }} data-testid={`button-edit-budget-${cat.id}`}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -718,7 +725,7 @@ function FinanceDashboard() {
                     {summary.totalBudgeted - summary.totalActual >= 0 ? "+" : ""}{fmt(summary.totalBudgeted - summary.totalActual)}
                   </td>
                   <td className="p-3 text-right text-xs">{budgetUsedPct}%</td>
-                  <td className="p-3"></td>
+                  {user?.isAdmin && <td className="p-3"></td>}
                 </tr>
               </tfoot>
             </table>
@@ -741,7 +748,7 @@ function FinanceDashboard() {
                   <th className="text-right p-3 font-medium">Received</th>
                   <th className="text-right p-3 font-medium">Remaining</th>
                   <th className="text-right p-3 font-medium">% Collected</th>
-                  <th className="text-right p-3 font-medium w-16"></th>
+                  {user?.isAdmin && <th className="text-right p-3 font-medium w-16"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -776,13 +783,15 @@ function FinanceDashboard() {
                           <span className="text-xs">{collectedPct}%</span>
                         </div>
                       </td>
-                      <td className="p-3 text-right">
-                        {!isEditing && (
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingFunding(src.id); setEditValue(src.receivedAmount); }} data-testid={`button-edit-funding-${src.id}`}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </td>
+                      {user?.isAdmin && (
+                        <td className="p-3 text-right">
+                          {!isEditing && (
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditingFunding(src.id); setEditValue(src.receivedAmount); }} data-testid={`button-edit-funding-${src.id}`}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -794,7 +803,7 @@ function FinanceDashboard() {
                   <td className="p-3 text-right">{fmt(summary.totalReceived)}</td>
                   <td className="p-3 text-right text-muted-foreground">{fmt(summary.totalProjected - summary.totalReceived)}</td>
                   <td className="p-3 text-right text-xs">{revenueCollectedPct}%</td>
-                  <td className="p-3"></td>
+                  {user?.isAdmin && <td className="p-3"></td>}
                 </tr>
               </tfoot>
             </table>

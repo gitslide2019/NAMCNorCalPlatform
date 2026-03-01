@@ -64,6 +64,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isBoardMember: boolean("is_board_member").notNull().default(false),
   memberApplicationId: varchar("member_application_id"),
 });
 

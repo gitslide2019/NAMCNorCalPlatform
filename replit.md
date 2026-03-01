@@ -8,7 +8,7 @@ Key capabilities include:
 - **Public Site**: Information on benefits, membership tiers, and an online application form.
 - **Member Portal**: A secure area offering a dashboard, editable profiles, a member directory, messaging, discussion boards, project opportunities with bidding, a calendar for events, newsletter archives, a document library, equipment sharing, training modules, fundraising campaign tracking, and notifications.
 - **Authentication**: Secure login, registration, and password recovery.
-- **Admin Panel**: Tabbed interface with Applications management (approve/reject, CSV export) and Finance dashboard (organizational budget, revenue tracking, pie charts, bar charts, editable expense/revenue tables, campaign progress, pledge status).
+- **Admin Panel**: Tabbed interface with Applications management (approve/reject, CSV export, admin-only) and Finance dashboard (organizational budget, revenue tracking, pie charts, bar charts, editable expense/revenue tables, campaign progress, pledge status — accessible to admins and board members, with editing restricted to admins).
 
 ## User Preferences
 
