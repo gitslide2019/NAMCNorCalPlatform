@@ -573,6 +573,30 @@ export async function ensureTables() {
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    await db.execute(sql`
+      ALTER TABLE sms_invitations ADD COLUMN IF NOT EXISTS channel text NOT NULL DEFAULT 'sms'
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS sms_contacts (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        business_name text NOT NULL,
+        contact_name text,
+        phone text NOT NULL,
+        email text,
+        address text,
+        city text,
+        county text,
+        state text,
+        zip_code text,
+        business_type text,
+        classifications text,
+        license_number text,
+        website text,
+        minority_owned text,
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);

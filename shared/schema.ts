@@ -565,6 +565,7 @@ export const smsInvitations = pgTable("sms_invitations", {
   sentAt: timestamp("sent_at"),
   sentById: varchar("sent_by_id").notNull(),
   batchId: varchar("batch_id").notNull(),
+  channel: text("channel").notNull().default("sms"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -578,3 +579,32 @@ export const insertSmsInvitationSchema = createInsertSchema(smsInvitations).omit
 
 export type InsertSmsInvitation = z.infer<typeof insertSmsInvitationSchema>;
 export type SmsInvitation = typeof smsInvitations.$inferSelect;
+
+export const smsContacts = pgTable("sms_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  businessName: text("business_name").notNull(),
+  contactName: text("contact_name"),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  address: text("address"),
+  city: text("city"),
+  county: text("county"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  businessType: text("business_type"),
+  classifications: text("classifications"),
+  licenseNumber: text("license_number"),
+  website: text("website"),
+  minorityOwned: text("minority_owned"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSmsContactSchema = createInsertSchema(smsContacts).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export type InsertSmsContact = z.infer<typeof insertSmsContactSchema>;
+export type SmsContact = typeof smsContacts.$inferSelect;

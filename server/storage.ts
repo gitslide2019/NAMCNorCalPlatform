@@ -72,13 +72,16 @@ import {
   type InsertToolBorrowRequest,
   type SmsInvitation,
   type InsertSmsInvitation,
+  type SmsContact,
+  type InsertSmsContact,
   memberProjects,
   memberDocuments,
   toolBorrowRequests,
   smsInvitations,
+  smsContacts,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, ilike, count } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -223,6 +226,14 @@ export interface IStorage {
   getSmsInvitations(): Promise<SmsInvitation[]>;
   getSmsInvitationsByBatch(batchId: string): Promise<SmsInvitation[]>;
   updateSmsInvitationStatus(id: string, status: string, twilioSid?: string): Promise<SmsInvitation | undefined>;
+
+  createSmsContact(data: InsertSmsContact): Promise<SmsContact>;
+  getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }>;
+  getSmsContact(id: string): Promise<SmsContact | undefined>;
+  getSmsContactByPhone(phone: string): Promise<SmsContact | undefined>;
+  updateSmsContact(id: string, data: Partial<SmsContact>): Promise<SmsContact | undefined>;
+  deleteSmsContact(id: string): Promise<void>;
+  getSmsContactCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -861,6 +872,75 @@ export class DatabaseStorage implements IStorage {
     if (twilioSid) updateData.twilioSid = twilioSid;
     const [result] = await db.update(smsInvitations).set(updateData).where(eq(smsInvitations.id, id)).returning();
     return result;
+  }
+
+  async createSmsContact(data: InsertSmsContact): Promise<SmsContact> {
+    const [result] = await db.insert(smsContacts).values(data).returning();
+    return result;
+  }
+
+  async getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }> {
+    const conditions: any[] = [];
+
+    if (filters?.search) {
+      const term = `%${filters.search}%`;
+      conditions.push(or(
+        ilike(smsContacts.businessName, term),
+        ilike(smsContacts.contactName, term),
+        ilike(smsContacts.phone, term),
+        ilike(smsContacts.email, term),
+      ));
+    }
+    if (filters?.county) {
+      conditions.push(ilike(smsContacts.county, filters.county));
+    }
+    if (filters?.city) {
+      conditions.push(ilike(smsContacts.city, `%${filters.city}%`));
+    }
+    if (filters?.hasEmail) {
+      conditions.push(sql`${smsContacts.email} IS NOT NULL AND ${smsContacts.email} != ''`);
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [totalResult] = await db.select({ value: count() }).from(smsContacts).where(whereClause);
+    const total = Number(totalResult?.value || 0);
+
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const offset = (page - 1) * limit;
+
+    const contacts = await db.select().from(smsContacts)
+      .where(whereClause)
+      .orderBy(asc(smsContacts.businessName))
+      .limit(limit)
+      .offset(offset);
+
+    return { contacts, total };
+  }
+
+  async getSmsContact(id: string): Promise<SmsContact | undefined> {
+    const [result] = await db.select().from(smsContacts).where(eq(smsContacts.id, id));
+    return result;
+  }
+
+  async getSmsContactByPhone(phone: string): Promise<SmsContact | undefined> {
+    const [result] = await db.select().from(smsContacts).where(eq(smsContacts.phone, phone));
+    return result;
+  }
+
+  async updateSmsContact(id: string, data: Partial<SmsContact>): Promise<SmsContact | undefined> {
+    const [result] = await db.update(smsContacts).set(data).where(eq(smsContacts.id, id)).returning();
+    return result;
+  }
+
+  async deleteSmsContact(id: string): Promise<void> {
+    await db.delete(smsContacts).where(eq(smsContacts.id, id));
+  }
+
+  async getSmsContactCount(): Promise<number> {
+    const [result] = await db.select({ value: count() }).from(smsContacts);
+    return Number(result?.value || 0);
   }
 }
 

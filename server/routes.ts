@@ -6,7 +6,9 @@ import { sendSms } from "./twilio";
 import { z, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
-import { sendNewsletterEmail, sendDigestEmail } from "./email";
+import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail } from "./email";
+import * as fs from "fs";
+import * as path from "path";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -2237,5 +2239,249 @@ export async function registerRoutes(
     }
   });
 
+  // === SMS CONTACTS ===
+  app.get("/api/portal/admin/sms/contacts", requireAdmin, async (req, res) => {
+    try {
+      const rawPage = req.query.page ? parseInt(req.query.page as string) : 1;
+      const rawLimit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const filters = {
+        search: req.query.search as string | undefined,
+        county: req.query.county as string | undefined,
+        city: req.query.city as string | undefined,
+        hasEmail: req.query.hasEmail === "true",
+        page: Math.max(1, isNaN(rawPage) ? 1 : rawPage),
+        limit: Math.min(200, Math.max(1, isNaN(rawLimit) ? 50 : rawLimit)),
+      };
+      const result = await storage.getSmsContacts(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching SMS contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.delete("/api/portal/admin/sms/contacts/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteSmsContact(req.params.id);
+      res.json({ message: "Contact deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete contact" });
+    }
+  });
+
+  app.post("/api/portal/admin/sms/contacts/import", requireAdmin, async (req, res) => {
+    try {
+      const { csvContent } = req.body;
+      if (!csvContent) {
+        res.status(400).json({ message: "CSV content is required" });
+        return;
+      }
+      const result = await importCsvContacts(csvContent);
+      res.json(result);
+    } catch (error) {
+      console.error("Error importing contacts:", error);
+      res.status(500).json({ message: "Failed to import contacts" });
+    }
+  });
+
+  // === BULK EMAIL SEND ===
+  app.post("/api/portal/admin/sms/send-email", requireAdmin, async (req, res) => {
+    try {
+      const { recipients, subject, messageTemplate } = req.body;
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        res.status(400).json({ message: "Recipients are required" });
+        return;
+      }
+      if (!subject || !messageTemplate) {
+        res.status(400).json({ message: "Subject and message are required" });
+        return;
+      }
+
+      const batchId = `email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const results: { name: string; email: string; status: string; error?: string }[] = [];
+
+      for (const recipient of recipients) {
+        if (!recipient.email) continue;
+
+        const personalizedMessage = messageTemplate
+          .replace(/\{\{name\}\}/gi, recipient.contactName || recipient.businessName || "")
+          .replace(/\{\{business\}\}/gi, recipient.businessName || "")
+          .replace(/\{\{company\}\}/gi, recipient.businessName || "");
+
+        const personalizedSubject = subject
+          .replace(/\{\{name\}\}/gi, recipient.contactName || recipient.businessName || "")
+          .replace(/\{\{business\}\}/gi, recipient.businessName || "")
+          .replace(/\{\{company\}\}/gi, recipient.businessName || "");
+
+        const htmlBody = personalizedMessage.replace(/\n/g, "<br>");
+
+        const invitation = await storage.createSmsInvitation({
+          name: recipient.contactName || recipient.businessName,
+          phone: recipient.phone || "",
+          companyName: recipient.businessName || null,
+          email: recipient.email,
+          message: personalizedMessage,
+          sentById: req.user!.id,
+          batchId,
+          channel: "email",
+        });
+
+        const emailResult = await sendInvitationEmail(recipient.email, personalizedSubject, htmlBody);
+
+        if (emailResult.success) {
+          await storage.updateSmsInvitationStatus(invitation.id, "sent");
+          results.push({ name: recipient.businessName, email: recipient.email, status: "sent" });
+        } else {
+          await storage.updateSmsInvitationStatus(invitation.id, "failed");
+          results.push({ name: recipient.businessName, email: recipient.email, status: "failed", error: emailResult.error });
+        }
+      }
+
+      const sent = results.filter(r => r.status === "sent").length;
+      const failed = results.filter(r => r.status === "failed").length;
+
+      res.json({ batchId, total: results.length, sent, failed, results });
+    } catch (error) {
+      console.error("Error sending emails:", error);
+      res.status(500).json({ message: "Failed to send emails" });
+    }
+  });
+
+  // Auto-seed contacts from CSV on startup
+  seedContacts();
+
   return httpServer;
+}
+
+function parseCsvLineGlobal(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { fields.push(current.trim()); current = ""; }
+      else { current += ch; }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+function normalizePhoneE164(phone: string): string {
+  const digits = phone.replace(/[^\d]/g, "");
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  if (phone.startsWith("+")) return phone.replace(/[^\d+]/g, "");
+  return digits.length > 0 ? "+" + digits : "";
+}
+
+async function importCsvContacts(csvContent: string): Promise<{ imported: number; skipped: number; invalid: number }> {
+  const lines = csvContent.trim().split(/\r?\n/);
+  if (lines.length <= 1) return { imported: 0, skipped: 0, invalid: 0 };
+
+  const headers = parseCsvLineGlobal(lines[0]).map(h => h.toLowerCase().trim());
+
+  const colMap = {
+    businessName: headers.findIndex(h => h.includes("businessname") || h === "business name"),
+    phoneNumber: headers.findIndex(h => h === "phonenumber" || h === "phone number"),
+    contactName: headers.findIndex(h => h === "contact name"),
+    email: headers.findIndex(h => h.includes("email")),
+    phone: headers.findIndex(h => h === "phone"),
+    address: headers.findIndex(h => h === "address"),
+    city: headers.findIndex(h => h === "city"),
+    county: headers.findIndex(h => h === "county"),
+    state: headers.findIndex(h => h === "state"),
+    zipCode: headers.findIndex(h => h === "zip code"),
+    businessType: headers.findIndex(h => h === "businesstype" || h === "business type"),
+    classifications: headers.findIndex(h => h.includes("classification")),
+    licenseNumber: headers.findIndex(h => h.includes("licensenumber") || h === "license number"),
+    website: headers.findIndex(h => h === "website"),
+    minorityOwned: headers.findIndex(h => h.includes("minority") || h.includes("ethnic")),
+  };
+
+  let imported = 0, skipped = 0, invalid = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const parts = parseCsvLineGlobal(line);
+    const get = (idx: number) => idx >= 0 ? (parts[idx] || "").trim() : "";
+
+    const businessName = get(colMap.businessName);
+    const rawPhone = get(colMap.phone) || get(colMap.phoneNumber);
+    const phone = normalizePhoneE164(rawPhone);
+
+    if (!businessName || !phone || phone.length < 11) {
+      invalid++;
+      continue;
+    }
+
+    const existing = await storage.getSmsContactByPhone(phone);
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    const contactName = get(colMap.contactName) || null;
+    const email = get(colMap.email) || null;
+    const address = get(colMap.address) || null;
+    const city = get(colMap.city) || null;
+    const county = get(colMap.county) || null;
+    const state = get(colMap.state) || null;
+    const zipCode = get(colMap.zipCode) || null;
+    const businessType = get(colMap.businessType) || null;
+    const classifications = get(colMap.classifications) || null;
+    const licenseNumber = get(colMap.licenseNumber) || null;
+    const website = get(colMap.website) || null;
+    const minorityOwned = get(colMap.minorityOwned) || null;
+
+    await storage.createSmsContact({
+      businessName,
+      contactName,
+      phone,
+      email,
+      address,
+      city,
+      county,
+      state,
+      zipCode,
+      businessType,
+      classifications,
+      licenseNumber,
+      website,
+      minorityOwned,
+    });
+    imported++;
+  }
+
+  return { imported, skipped, invalid };
+}
+
+async function seedContacts() {
+  try {
+    const count = await storage.getSmsContactCount();
+    if (count > 0) {
+      console.log(`SMS contacts already seeded (${count} contacts)`);
+      return;
+    }
+
+    const csvPath = path.join(process.cwd(), "attached_assets", "bay_area_master_finished_current_1772430364379.csv");
+    if (!fs.existsSync(csvPath)) {
+      console.log("SMS contacts CSV not found, skipping seed");
+      return;
+    }
+
+    const csvContent = fs.readFileSync(csvPath, "utf-8");
+    const result = await importCsvContacts(csvContent);
+    console.log(`SMS contacts seeded: ${result.imported} imported, ${result.skipped} skipped, ${result.invalid} invalid`);
+  } catch (error) {
+    console.error("Error seeding SMS contacts:", error);
+  }
 }
