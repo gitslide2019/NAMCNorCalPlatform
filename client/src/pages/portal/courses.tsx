@@ -769,6 +769,7 @@ export default function Courses() {
                 <Card
                   key={course.id}
                   className="hover-elevate cursor-pointer"
+                  onClick={() => openCourseDetail(course.id)}
                   data-testid={`card-course-${course.id}`}
                 >
                   <CardHeader className="pb-3">
@@ -802,12 +803,15 @@ export default function Courses() {
                       </div>
                     )}
                     <Button
-                      onClick={() => openCourseDetail(course.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCourseDetail(course.id);
+                      }}
                       variant={enrollment ? "default" : "outline"}
                       className="w-full"
                       data-testid={`button-view-course-${course.id}`}
                     >
-                      {enrollment ? "Continue" : "Enroll"}
+                      {enrollment ? "Continue" : "View Course"}
                     </Button>
                   </CardContent>
                 </Card>

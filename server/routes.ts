@@ -266,7 +266,14 @@ export async function registerRoutes(
     try {
       const user = req.user!;
       const inbox = await storage.getInbox(user.id);
-      res.json(inbox);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      const enriched = inbox.map(msg => ({
+        ...msg,
+        senderUsername: userMap.get(msg.senderId) || "Unknown",
+        recipientUsername: userMap.get(msg.recipientId) || "Unknown",
+      }));
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch messages" });
     }
@@ -276,7 +283,14 @@ export async function registerRoutes(
     try {
       const user = req.user!;
       const sent = await storage.getSentMessages(user.id);
-      res.json(sent);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      const enriched = sent.map(msg => ({
+        ...msg,
+        senderUsername: userMap.get(msg.senderId) || "Unknown",
+        recipientUsername: userMap.get(msg.recipientId) || "Unknown",
+      }));
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch sent messages" });
     }
@@ -297,7 +311,13 @@ export async function registerRoutes(
       if (message.recipientId === user.id && !message.isRead) {
         await storage.markAsRead(message.id);
       }
-      res.json(message);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      res.json({
+        ...message,
+        senderUsername: userMap.get(message.senderId) || "Unknown",
+        recipientUsername: userMap.get(message.recipientId) || "Unknown",
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch message" });
     }
@@ -324,7 +344,8 @@ export async function registerRoutes(
       const topicsWithCounts = await Promise.all(
         topics.map(async (topic) => {
           const replyCount = await storage.getReplyCount(topic.id);
-          return { ...topic, replyCount };
+          const author = await storage.getUser(topic.authorId);
+          return { ...topic, replyCount, authorUsername: author?.username };
         })
       );
       res.json(topicsWithCounts);

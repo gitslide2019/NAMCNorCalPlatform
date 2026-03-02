@@ -58,7 +58,7 @@ export default function Campaigns() {
   const isBoardOrAdmin = isAdmin;
 
   const { data: campaignsList, isLoading } = useQuery<Campaign[]>({ queryKey: ["/api/portal/campaigns"] });
-  const { data: selectedCampaign } = useQuery<CampaignWithPledges>({
+  const { data: selectedCampaign, isLoading: isLoadingDetail } = useQuery<CampaignWithPledges>({
     queryKey: ["/api/portal/campaigns", selectedId],
     enabled: !!selectedId,
   });
@@ -129,7 +129,24 @@ export default function Campaigns() {
     return Math.min(100, Math.round((c / g) * 100));
   };
 
-  if (selectedId && selectedCampaign) {
+  if (selectedId) {
+    if (isLoadingDetail || !selectedCampaign) {
+      return (
+        <PortalLayout>
+          <div className="p-6 sm:p-8 lg:p-10 max-w-5xl">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)} className="mb-4" data-testid="button-back-campaigns">
+              <ArrowLeft className="h-4 w-4 mr-2" />Back to Campaigns
+            </Button>
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-96" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        </PortalLayout>
+      );
+    }
     const campaign = selectedCampaign;
     const progress = pct(campaign.currentAmount, campaign.goalAmount);
     return (
@@ -155,12 +172,12 @@ export default function Campaigns() {
 
           <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-2xl font-bold text-primary">{fmt(campaign.currentAmount)}</span>
                 <span className="text-muted-foreground">of {fmt(campaign.goalAmount)} goal</span>
               </div>
               <Progress value={progress} className="h-3 mb-2" />
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
                 <span>{progress}% funded</span>
                 <span>{campaign.pledges.length} pledge(s)</span>
               </div>
@@ -171,7 +188,7 @@ export default function Campaigns() {
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-xl font-semibold">Pledges</h2>
             {campaign.status === "active" && (
               <Dialog open={pledgeOpen} onOpenChange={setPledgeOpen}>
@@ -198,7 +215,7 @@ export default function Campaigns() {
             <div className="space-y-3">
               {campaign.pledges.map(pledge => (
                 <Card key={pledge.id} data-testid={`card-pledge-${pledge.id}`}>
-                  <CardContent className="p-4 flex items-center justify-between">
+                  <CardContent className="p-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="font-medium">{pledge.companyName || pledge.username}</p>
                       <p className="text-sm text-muted-foreground">{fmt(pledge.amount)} — {new Date(pledge.createdAt).toLocaleDateString()}</p>
@@ -275,16 +292,16 @@ export default function Campaigns() {
             {campaignsList.map(campaign => {
               const progress = pct(campaign.currentAmount, campaign.goalAmount);
               return (
-                <Card key={campaign.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedId(campaign.id)} data-testid={`card-campaign-${campaign.id}`}>
+                <Card key={campaign.id} className="cursor-pointer hover-elevate" onClick={() => setSelectedId(campaign.id)} data-testid={`card-campaign-${campaign.id}`}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-lg">{campaign.title}</CardTitle>
                       <Badge variant={campaign.status === "active" ? "default" : "secondary"}>{campaign.status}</Badge>
                     </div>
                     <CardDescription className="line-clamp-2">{campaign.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between mb-2 text-sm">
+                    <div className="flex items-center justify-between gap-2 mb-2 text-sm">
                       <span className="font-semibold text-primary">{fmt(campaign.currentAmount)}</span>
                       <span className="text-muted-foreground">of {fmt(campaign.goalAmount)}</span>
                     </div>

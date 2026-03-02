@@ -138,7 +138,7 @@ export interface IStorage {
   deleteTool(id: string): Promise<void>;
   updateToolStatus(id: string, status: string): Promise<Tool | undefined>;
   createToolLoan(loan: InsertToolLoan): Promise<ToolLoan>;
-  returnToolLoan(loanId: string): Promise<ToolLoan | undefined>;
+  returnToolLoan(loanId: string, returnNotes?: string): Promise<ToolLoan | undefined>;
   getMyLoans(userId: string): Promise<ToolLoan[]>;
   getActiveLoanForTool(toolId: string): Promise<ToolLoan | undefined>;
   getActiveLoansForTool(toolId: string): Promise<ToolLoan[]>;

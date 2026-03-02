@@ -152,16 +152,16 @@ function ProjectMapView({
               <div className="min-w-[200px]" data-testid={`popup-project-${project.id}`}>
                 <h3 className="font-semibold text-sm mb-1">{project.title}</h3>
                 <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
-                  <span>📍</span> {project.location}
+                  <MapPin className="h-3 w-3 inline-block" /> {project.location}
                 </p>
                 {project.budget && (
-                  <p className="text-xs text-gray-600 mb-1">
-                    💰 {formatBudget(project.budget)}
+                  <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                    <DollarSign className="h-3 w-3 inline-block" /> {formatBudget(project.budget)}
                   </p>
                 )}
                 {project.deadline && (
-                  <p className="text-xs text-gray-600 mb-1">
-                    📅 {formatDeadline(project.deadline)}
+                  <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                    <Calendar className="h-3 w-3 inline-block" /> {formatDeadline(project.deadline)}
                     {(() => {
                       const urgency = getDeadlineUrgency(project.deadline);
                       if (!urgency) return null;
@@ -408,7 +408,7 @@ function ProjectListView({
                 {filtered.map((project) => (
                   <Card
                     key={project.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    className="cursor-pointer hover-elevate"
                     onClick={() => onSelectProject(project.id)}
                     data-testid={`card-project-${project.id}`}
                   >

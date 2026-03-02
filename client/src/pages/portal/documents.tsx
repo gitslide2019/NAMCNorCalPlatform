@@ -144,7 +144,9 @@ export default function Documents() {
         {isLoading ? (
           <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
         ) : filtered.length === 0 ? (
-          <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">No documents found.</p></CardContent></Card>
+          <Card data-testid="card-empty-documents"><CardContent className="p-8 text-center"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">No documents found</h3><p className="text-muted-foreground">
+            {filterCat !== "all" ? "No documents in this category. Try selecting a different category." : "No documents have been uploaded yet."}
+          </p></CardContent></Card>
         ) : (
           <div className="space-y-3">
             {filtered.map(doc => (

@@ -1,14 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Building2, MapPin, Phone, Mail, Globe, Send, Award, Briefcase,
   User, Crown, Calendar, Users, DollarSign, Shield, FileText, Download,
-  ExternalLink, Wrench
+  ExternalLink, Wrench, ThumbsUp, Trash2, Star, Plus
 } from "lucide-react";
 
 interface MemberProject {
@@ -319,6 +332,8 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         </Card>
       )}
 
+      <EndorsementsSection applicationId={member.id} isCorporate={true} />
+
       {member.memberDocuments && member.memberDocuments.length > 0 && (
         <Card data-testid="card-corporate-documents">
           <CardHeader>
@@ -514,6 +529,8 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
         </Card>
       )}
 
+      <EndorsementsSection applicationId={member.id} isCorporate={false} />
+
       {member.memberDocuments && member.memberDocuments.length > 0 && (
         <Card data-testid="card-member-documents">
           <CardHeader>
@@ -551,4 +568,157 @@ function formatFileSize(bytes: number | null | undefined): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+interface EndorsementData {
+  id: string;
+  fromUserId: string;
+  toApplicationId: string;
+  skill: string;
+  message: string | null;
+  createdAt: string;
+  fromUsername?: string;
+}
+
+function EndorsementsSection({ applicationId, isCorporate }: { applicationId: string; isCorporate: boolean }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [skill, setSkill] = useState("");
+  const [message, setMessage] = useState("");
+
+  const { data: endorsements } = useQuery<EndorsementData[]>({
+    queryKey: ["/api/portal/endorsements", applicationId],
+    enabled: !!applicationId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/portal/endorsements", {
+        fromUserId: user!.id,
+        toApplicationId: applicationId,
+        skill,
+        message: message || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/endorsements", applicationId] });
+      toast({ title: "Endorsement added!" });
+      setDialogOpen(false);
+      setSkill("");
+      setMessage("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to endorse", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/portal/endorsements/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/endorsements", applicationId] });
+      toast({ title: "Endorsement removed" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to remove endorsement", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const alreadyEndorsed = endorsements?.some((e) => e.fromUserId === user?.id);
+
+  return (
+    <Card data-testid="card-endorsements">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className={`flex items-center gap-2 text-lg`}>
+            <ThumbsUp className={`h-5 w-5 ${isCorporate ? "text-[#E5A830]" : ""}`} />
+            Endorsements
+            {endorsements && endorsements.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{endorsements.length}</Badge>
+            )}
+          </CardTitle>
+          {!alreadyEndorsed && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" data-testid="button-endorse">
+                  <Plus className="h-4 w-4 mr-1" />Endorse
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Endorse This Member</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Skill or Specialty</label>
+                    <Input
+                      placeholder="e.g., Concrete Work, Project Management, Safety"
+                      value={skill}
+                      onChange={(e) => setSkill(e.target.value)}
+                      data-testid="input-endorsement-skill"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Message (optional)</label>
+                    <Textarea
+                      placeholder="Share your experience working with this company..."
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      data-testid="input-endorsement-message"
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => createMutation.mutate()}
+                    disabled={!skill.trim() || createMutation.isPending}
+                    data-testid="button-submit-endorsement"
+                  >
+                    {createMutation.isPending ? "Submitting..." : "Submit Endorsement"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!endorsements || endorsements.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="text-no-endorsements">
+            No endorsements yet. Be the first to endorse this member!
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {endorsements.map((e) => (
+              <div key={e.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card" data-testid={`endorsement-${e.id}`}>
+                <Star className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{e.skill}</Badge>
+                    <span className="text-xs text-muted-foreground">by {e.fromUsername || "Member"}</span>
+                  </div>
+                  {e.message && (
+                    <p className="text-sm text-muted-foreground mt-1">{e.message}</p>
+                  )}
+                </div>
+                {e.fromUserId === user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 flex-shrink-0"
+                    onClick={() => deleteMutation.mutate(e.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-endorsement-${e.id}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

@@ -27,6 +27,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  UserCheck,
+  Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { CalendarEvent } from "@shared/schema";
@@ -82,6 +84,8 @@ export default function CalendarPage() {
   const { data: events, isLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/portal/events"],
   });
+
+  const [expandedRsvps, setExpandedRsvps] = useState<Record<string, boolean>>({});
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -334,66 +338,17 @@ export default function CalendarPage() {
           ) : events && events.length > 0 ? (
             <div className="space-y-4">
               {events.map((event) => (
-                <Card key={event.id} data-testid={`card-event-${event.id}`}>
-                  <CardContent className="p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg" data-testid={`text-event-title-${event.id}`}>
-                          {event.title}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <CalendarIcon className="h-3.5 w-3.5" />
-                            {formatDisplayDate(event.eventDate)}
-                          </span>
-                          {event.eventTime && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {formatTime(event.eventTime)}
-                            </span>
-                          )}
-                          {event.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3.5 w-3.5" />
-                              {event.location}
-                            </span>
-                          )}
-                        </div>
-                        {event.description && (
-                          <p className="mt-3 text-sm text-muted-foreground" data-testid={`text-event-desc-${event.id}`}>
-                            {event.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge data-testid={`badge-event-date-${event.id}`}>
-                          {event.eventDate}
-                        </Badge>
-                        {user?.isAdmin && (
-                          <>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEditDialog(event)}
-                              data-testid={`button-edit-event-${event.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => deleteMutation.mutate(event.id)}
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-event-${event.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  isAdmin={!!user?.isAdmin}
+                  userId={user?.id || ""}
+                  onEdit={openEditDialog}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                  deleteDisabled={deleteMutation.isPending}
+                  expanded={!!expandedRsvps[event.id]}
+                  onToggleExpand={() => setExpandedRsvps(prev => ({ ...prev, [event.id]: !prev[event.id] }))}
+                />
               ))}
             </div>
           ) : (
@@ -458,5 +413,177 @@ export default function CalendarPage() {
           </DialogContent>
         </Dialog>
     </PortalLayout>
+  );
+}
+
+interface RsvpData {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: string;
+  username?: string;
+}
+
+function EventCard({
+  event,
+  isAdmin,
+  userId,
+  onEdit,
+  onDelete,
+  deleteDisabled,
+  expanded,
+  onToggleExpand,
+}: {
+  event: CalendarEvent;
+  isAdmin: boolean;
+  userId: string;
+  onEdit: (event: CalendarEvent) => void;
+  onDelete: (id: string) => void;
+  deleteDisabled: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const { toast } = useToast();
+
+  const { data: rsvps } = useQuery<RsvpData[]>({
+    queryKey: ["/api/portal/events", event.id, "rsvps"],
+  });
+
+  const myRsvp = rsvps?.find((r) => r.userId === userId);
+  const attendeeCount = rsvps?.length || 0;
+
+  const rsvpMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/portal/events/${event.id}/rsvp`, { status: "attending" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/events", event.id, "rsvps"] });
+      toast({ title: "RSVP confirmed!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to RSVP", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cancelRsvpMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/portal/events/${event.id}/rsvp`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/events", event.id, "rsvps"] });
+      toast({ title: "RSVP cancelled" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to cancel RSVP", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card data-testid={`card-event-${event.id}`}>
+      <CardContent className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-lg" data-testid={`text-event-title-${event.id}`}>
+              {event.title}
+            </h3>
+            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {formatDisplayDate(event.eventDate)}
+              </span>
+              {event.eventTime && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTime(event.eventTime)}
+                </span>
+              )}
+              {event.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {event.location}
+                </span>
+              )}
+            </div>
+            {event.description && (
+              <p className="mt-3 text-sm text-muted-foreground" data-testid={`text-event-desc-${event.id}`}>
+                {event.description}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge data-testid={`badge-event-date-${event.id}`}>
+              {event.eventDate}
+            </Badge>
+            {isAdmin && (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onEdit(event)}
+                  data-testid={`button-edit-event-${event.id}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onDelete(event.id)}
+                  disabled={deleteDisabled}
+                  data-testid={`button-delete-event-${event.id}`}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t">
+          {myRsvp ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => cancelRsvpMutation.mutate()}
+              disabled={cancelRsvpMutation.isPending}
+              data-testid={`button-cancel-rsvp-${event.id}`}
+            >
+              <UserCheck className="h-4 w-4 mr-2 text-green-600" />
+              {cancelRsvpMutation.isPending ? "Cancelling..." : "Attending ✓"}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => rsvpMutation.mutate()}
+              disabled={rsvpMutation.isPending}
+              data-testid={`button-rsvp-${event.id}`}
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              {rsvpMutation.isPending ? "Confirming..." : "RSVP"}
+            </Button>
+          )}
+          <button
+            onClick={onToggleExpand}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid={`button-show-attendees-${event.id}`}
+          >
+            <Users className="h-4 w-4" />
+            <span data-testid={`text-attendee-count-${event.id}`}>{attendeeCount} attendee{attendeeCount !== 1 ? "s" : ""}</span>
+          </button>
+        </div>
+
+        {expanded && rsvps && rsvps.length > 0 && (
+          <div className="mt-3 pt-3 border-t" data-testid={`list-attendees-${event.id}`}>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Attendees:</p>
+            <div className="flex flex-wrap gap-2">
+              {rsvps.map((r) => (
+                <Badge key={r.id} variant="secondary" className="text-xs">
+                  {r.username || "Unknown"}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
