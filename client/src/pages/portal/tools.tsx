@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,11 @@ import {
   AlertTriangle,
   Clock,
   ArrowLeft,
+  Camera,
+  X,
+  Send,
+  Share2,
+  ImageIcon,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,6 +134,78 @@ function getDaysRemaining(expectedReturnDate: string | null | undefined) {
   return diff;
 }
 
+function PhotoUpload({ imageData, imageType, onImageChange, onImageRemove }: {
+  imageData: string | null;
+  imageType: string | null;
+  onImageChange: (data: string, type: string) => void;
+  onImageRemove: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be under 5MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      onImageChange(base64, file.type);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div>
+      <label className="text-sm font-medium mb-1.5 block">Equipment Photo</label>
+      {imageData && imageType ? (
+        <div className="relative rounded-lg overflow-hidden border bg-muted">
+          <img
+            src={`data:${imageType};base64,${imageData}`}
+            alt="Equipment"
+            className="w-full h-40 object-cover"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            className="absolute top-2 right-2 h-7 w-7"
+            onClick={onImageRemove}
+            data-testid="button-remove-tool-photo"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full h-32 rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center gap-2 hover:border-muted-foreground/50 transition-colors cursor-pointer"
+          data-testid="button-upload-tool-photo"
+        >
+          <Camera className="h-8 w-8 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Click to add photo</span>
+          <span className="text-xs text-muted-foreground">Shows condition to borrowers</span>
+        </button>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+        data-testid="input-tool-photo-file"
+      />
+    </div>
+  );
+}
+
 export default function ToolLibrary() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -141,6 +218,8 @@ export default function ToolLibrary() {
   const [newToolCategory, setNewToolCategory] = useState("general");
   const [newToolLocation, setNewToolLocation] = useState("");
   const [newToolCondition, setNewToolCondition] = useState("good");
+  const [newToolImageData, setNewToolImageData] = useState<string | null>(null);
+  const [newToolImageType, setNewToolImageType] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTool, setEditingTool] = useState<EnrichedTool | null>(null);
   const [editName, setEditName] = useState("");
@@ -149,6 +228,8 @@ export default function ToolLibrary() {
   const [editStatus, setEditStatus] = useState("available");
   const [editLocation, setEditLocation] = useState("");
   const [editCondition, setEditCondition] = useState("good");
+  const [editImageData, setEditImageData] = useState<string | null>(null);
+  const [editImageType, setEditImageType] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingTool, setDeletingTool] = useState<EnrichedTool | null>(null);
   const [borrowDialogOpen, setBorrowDialogOpen] = useState(false);
@@ -170,6 +251,10 @@ export default function ToolLibrary() {
     queryKey: ["/api/portal/tools/my-loans"],
   });
 
+  const { data: myShared = [], isLoading: sharedLoading } = useQuery<EnrichedTool[]>({
+    queryKey: ["/api/portal/tools/my-shared"],
+  });
+
   const activeLoanToolIds = new Set(
     myLoans.filter((l) => l.status === "active").map((l) => l.toolId)
   );
@@ -183,6 +268,7 @@ export default function ToolLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-shared"] });
       const returnDateStr = borrowReturnDate ? formatDate(borrowReturnDate) : "";
       toast({ title: "Equipment borrowed", description: returnDateStr ? `Return by ${returnDateStr}` : undefined });
       setBorrowDialogOpen(false);
@@ -204,6 +290,7 @@ export default function ToolLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-shared"] });
       toast({ title: "Equipment returned successfully" });
       setReturnDialogOpen(false);
       setReturningToolId("");
@@ -217,10 +304,11 @@ export default function ToolLibrary() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; description: string; category: string; location?: string; condition?: string }) =>
+    mutationFn: (data: { name: string; description: string; category: string; location?: string; condition?: string; imageData?: string | null; imageType?: string | null }) =>
       apiRequest("POST", "/api/portal/tools", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-shared"] });
       toast({ title: "Equipment added successfully" });
       setDialogOpen(false);
       setNewToolName("");
@@ -228,6 +316,8 @@ export default function ToolLibrary() {
       setNewToolCategory("general");
       setNewToolLocation("");
       setNewToolCondition("good");
+      setNewToolImageData(null);
+      setNewToolImageType(null);
     },
     onError: (error: Error) => {
       toast({ title: "Failed to add equipment", description: error.message, variant: "destructive" });
@@ -235,7 +325,7 @@ export default function ToolLibrary() {
   });
 
   const editMutation = useMutation({
-    mutationFn: (data: { id: string; name: string; description: string; category: string; status: string; location?: string; condition?: string }) =>
+    mutationFn: (data: { id: string; name: string; description: string; category: string; status: string; location?: string; condition?: string; imageData?: string | null; imageType?: string | null }) =>
       apiRequest("PATCH", `/api/portal/tools/${data.id}`, {
         name: data.name,
         description: data.description,
@@ -243,9 +333,12 @@ export default function ToolLibrary() {
         status: data.status,
         location: data.location,
         condition: data.condition,
+        imageData: data.imageData,
+        imageType: data.imageType,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-shared"] });
       toast({ title: "Equipment updated successfully" });
       setEditDialogOpen(false);
       setEditingTool(null);
@@ -261,6 +354,7 @@ export default function ToolLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/tools/my-shared"] });
       toast({ title: "Equipment deleted" });
       setDeleteDialogOpen(false);
       setDeletingTool(null);
@@ -294,6 +388,8 @@ export default function ToolLibrary() {
     setEditStatus(tool.status);
     setEditLocation(tool.location || "");
     setEditCondition(tool.condition || "good");
+    setEditImageData(tool.imageData || null);
+    setEditImageType(tool.imageType || null);
     setEditDialogOpen(true);
   }
 
@@ -319,6 +415,10 @@ export default function ToolLibrary() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split("T")[0];
+
+  const lentOut = myShared.filter(t => t.status === "borrowed" && t.activeLoan);
+  const availableShared = myShared.filter(t => t.status === "available");
+  const maintenanceShared = myShared.filter(t => t.status === "maintenance");
 
   return (
     <PortalLayout>
@@ -349,19 +449,25 @@ export default function ToolLibrary() {
                 Share Equipment
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Share Equipment</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
+                <PhotoUpload
+                  imageData={newToolImageData}
+                  imageType={newToolImageType}
+                  onImageChange={(data, type) => { setNewToolImageData(data); setNewToolImageType(type); }}
+                  onImageRemove={() => { setNewToolImageData(null); setNewToolImageType(null); }}
+                />
                 <Input
-                  placeholder="Equipment name (e.g. Laser Level)"
+                  placeholder="Equipment name (e.g. DeWalt 20V Laser Level)"
                   value={newToolName}
                   onChange={(e) => setNewToolName(e.target.value)}
                   data-testid="input-tool-name"
                 />
                 <Textarea
-                  placeholder="Description — include make, model, and what it's best for"
+                  placeholder="Description — include make, model, accessories included, and what it's best for"
                   value={newToolDescription}
                   onChange={(e) => setNewToolDescription(e.target.value)}
                   data-testid="input-tool-description"
@@ -403,6 +509,8 @@ export default function ToolLibrary() {
                       category: newToolCategory,
                       location: newToolLocation || undefined,
                       condition: newToolCondition,
+                      imageData: newToolImageData,
+                      imageType: newToolImageType,
                     })
                   }
                   disabled={!newToolName.trim() || createMutation.isPending}
@@ -419,11 +527,15 @@ export default function ToolLibrary() {
           <TabsList>
             <TabsTrigger value="catalog" data-testid="tab-catalog">
               <Package className="h-4 w-4 mr-2" />
-              Equipment Catalog
+              Catalog
             </TabsTrigger>
             <TabsTrigger value="my-loans" data-testid="tab-my-loans">
               <ArrowLeftRight className="h-4 w-4 mr-2" />
               My Loans{activeLoans.length > 0 && ` (${activeLoans.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="my-shared" data-testid="tab-my-shared">
+              <Share2 className="h-4 w-4 mr-2" />
+              My Equipment{myShared.length > 0 && ` (${myShared.length})`}
             </TabsTrigger>
           </TabsList>
 
@@ -458,8 +570,12 @@ export default function ToolLibrary() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i}>
-                    <CardContent className="p-6">
-                      <Skeleton className="h-32 w-full" />
+                    <CardContent className="p-0">
+                      <Skeleton className="h-40 w-full rounded-t-lg" />
+                      <div className="p-4">
+                        <Skeleton className="h-4 w-3/4 mb-2" />
+                        <Skeleton className="h-3 w-full" />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -479,19 +595,36 @@ export default function ToolLibrary() {
                 {filteredTools.map((tool) => {
                   const daysRemaining = tool.activeLoan ? getDaysRemaining(tool.activeLoan.expectedReturnDate) : null;
                   return (
-                    <Card key={tool.id} data-testid={`card-tool-${tool.id}`}>
-                      <CardHeader className="pb-2">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <CardTitle className="text-base">{tool.name}</CardTitle>
-                          {getStatusBadge(tool.status)}
+                    <Card key={tool.id} className="overflow-hidden" data-testid={`card-tool-${tool.id}`}>
+                      {tool.imageData && tool.imageType ? (
+                        <div className="relative">
+                          <img
+                            src={`data:${tool.imageType};base64,${tool.imageData}`}
+                            alt={tool.name}
+                            className="w-full h-40 object-cover"
+                            data-testid={`img-tool-${tool.id}`}
+                          />
+                          <div className="absolute top-2 right-2">
+                            {getStatusBadge(tool.status)}
+                          </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {tool.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {tool.description}
-                          </p>
-                        )}
+                      ) : (
+                        <div className="h-28 bg-muted/50 flex items-center justify-center relative">
+                          <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
+                          <div className="absolute top-2 right-2">
+                            {getStatusBadge(tool.status)}
+                          </div>
+                        </div>
+                      )}
+                      <CardContent className="p-4 space-y-3">
+                        <div>
+                          <h3 className="font-semibold text-base" data-testid={`text-tool-name-${tool.id}`}>{tool.name}</h3>
+                          {tool.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {tool.description}
+                            </p>
+                          )}
+                        </div>
 
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className="text-xs">
@@ -525,7 +658,7 @@ export default function ToolLibrary() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-1 pt-1">
-                          {tool.status === "available" && !activeLoanToolIds.has(tool.id) && (
+                          {tool.status === "available" && !activeLoanToolIds.has(tool.id) && tool.ownerId !== user?.id && (
                             <Button
                               size="sm"
                               onClick={() => openBorrowDialog(tool)}
@@ -550,6 +683,20 @@ export default function ToolLibrary() {
                             >
                               <Check className="h-3 w-3 mr-1" />
                               Return
+                            </Button>
+                          )}
+                          {tool.ownerId !== user?.id && tool.status === "borrowed" && !activeLoanToolIds.has(tool.id) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const ownerUser = tools.find(t => t.ownerId)?.ownerUsername;
+                                setLocation(`/portal/messages?to=${tool.ownerId}`);
+                              }}
+                              data-testid={`button-contact-owner-${tool.id}`}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Contact Owner
                             </Button>
                           )}
                           {canManageTool(tool) && (
@@ -713,6 +860,172 @@ export default function ToolLibrary() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="my-shared" className="mt-6">
+            {sharedLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <Skeleton className="h-24 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : myShared.length === 0 ? (
+              <Card data-testid="card-no-shared">
+                <CardContent className="p-8 text-center">
+                  <Share2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No equipment shared yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Share your equipment with fellow NAMC members.
+                  </p>
+                  <Button onClick={() => setDialogOpen(true)} data-testid="button-share-first-tool">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Share Equipment
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                {lentOut.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" data-testid="text-lent-out-heading">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Currently Lent Out ({lentOut.length})
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {lentOut.map((tool) => {
+                        const daysRemaining = tool.activeLoan?.expectedReturnDate ? getDaysRemaining(tool.activeLoan.expectedReturnDate) : null;
+                        const isOverdue = daysRemaining !== null && daysRemaining < 0;
+                        return (
+                          <Card key={tool.id} className={isOverdue ? "border-red-300 dark:border-red-700" : "border-amber-200 dark:border-amber-800"} data-testid={`card-shared-${tool.id}`}>
+                            {tool.imageData && tool.imageType && (
+                              <img src={`data:${tool.imageType};base64,${tool.imageData}`} alt={tool.name} className="w-full h-32 object-cover rounded-t-lg" />
+                            )}
+                            <CardHeader className="pb-2">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <CardTitle className="text-base">{tool.name}</CardTitle>
+                                {isOverdue ? (
+                                  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />Overdue
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                    Lent Out
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+                                <div className="flex items-center gap-1.5">
+                                  <User className="h-3 w-3" />
+                                  <span>Borrowed by <span className="font-medium text-foreground">{tool.activeLoan?.borrowerUsername}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <CalendarDays className="h-3 w-3" />
+                                  <span>Since {formatDate(tool.activeLoan?.borrowDate || "")}</span>
+                                </div>
+                                {tool.activeLoan?.expectedReturnDate && (
+                                  <div className={`flex items-center gap-1.5 ${isOverdue ? "text-red-600 dark:text-red-400 font-medium" : ""}`}>
+                                    <Clock className="h-3 w-3" />
+                                    <span>
+                                      Due back {formatDate(tool.activeLoan.expectedReturnDate)}
+                                      {isOverdue && ` (${Math.abs(daysRemaining!)} days overdue)`}
+                                    </span>
+                                  </div>
+                                )}
+                                {tool.activeLoan?.notes && (
+                                  <p className="text-xs italic mt-1">"{tool.activeLoan.notes}"</p>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setLocation(`/portal/messages?to=${tool.activeLoan?.borrowerId}`)}
+                                data-testid={`button-message-borrower-${tool.id}`}
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Message Borrower
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {availableShared.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" data-testid="text-available-shared-heading">
+                      <Check className="h-5 w-5 text-green-600" />
+                      Available ({availableShared.length})
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {availableShared.map((tool) => (
+                        <Card key={tool.id} data-testid={`card-shared-${tool.id}`}>
+                          {tool.imageData && tool.imageType && (
+                            <img src={`data:${tool.imageType};base64,${tool.imageData}`} alt={tool.name} className="w-full h-32 object-cover rounded-t-lg" />
+                          )}
+                          <CardHeader className="pb-2">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <CardTitle className="text-base">{tool.name}</CardTitle>
+                              {getConditionBadge(tool.condition || "good")}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-1 text-xs text-muted-foreground mb-3">
+                              {tool.location && (
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin className="h-3 w-3" /><span>{tool.location}</span>
+                                </div>
+                              )}
+                              <Badge variant="outline" className="text-xs">{categoryLabels[tool.category] || tool.category}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => openEditDialog(tool)} data-testid={`button-edit-shared-${tool.id}`}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => openDeleteDialog(tool)} data-testid={`button-delete-shared-${tool.id}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {maintenanceShared.length > 0 && (
+                  <div>
+                    <h2 className="text-lg font-semibold mb-4 text-muted-foreground" data-testid="text-maintenance-heading">
+                      Under Maintenance ({maintenanceShared.length})
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {maintenanceShared.map((tool) => (
+                        <Card key={tool.id} className="opacity-75" data-testid={`card-shared-${tool.id}`}>
+                          <CardHeader className="pb-2">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <CardTitle className="text-base">{tool.name}</CardTitle>
+                              {getStatusBadge("maintenance")}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <Button size="icon" variant="ghost" onClick={() => openEditDialog(tool)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -723,17 +1036,33 @@ export default function ToolLibrary() {
           </DialogHeader>
           {borrowingTool && (
             <div className="space-y-4 pt-2">
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="font-medium">{borrowingTool.name}</p>
-                {borrowingTool.description && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{borrowingTool.description}</p>
-                )}
-                {borrowingTool.location && (
-                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    Pickup: {borrowingTool.location}
-                  </p>
-                )}
+              <div className="rounded-lg border overflow-hidden">
+                {borrowingTool.imageData && borrowingTool.imageType ? (
+                  <img
+                    src={`data:${borrowingTool.imageType};base64,${borrowingTool.imageData}`}
+                    alt={borrowingTool.name}
+                    className="w-full h-40 object-cover"
+                    data-testid="img-borrow-tool-photo"
+                  />
+                ) : null}
+                <div className="p-4 bg-muted/50">
+                  <p className="font-medium">{borrowingTool.name}</p>
+                  {borrowingTool.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{borrowingTool.description}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {getConditionBadge(borrowingTool.condition || "good")}
+                    {borrowingTool.ownerUsername && (
+                      <span className="text-xs text-muted-foreground">Shared by {borrowingTool.ownerUsername}</span>
+                    )}
+                  </div>
+                  {borrowingTool.location && (
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Pickup: {borrowingTool.location}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -839,11 +1168,17 @@ export default function ToolLibrary() {
       </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Equipment</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
+            <PhotoUpload
+              imageData={editImageData}
+              imageType={editImageType}
+              onImageChange={(data, type) => { setEditImageData(data); setEditImageType(type); }}
+              onImageRemove={() => { setEditImageData(null); setEditImageType(null); }}
+            />
             <Input
               placeholder="Equipment name"
               value={editName}
@@ -905,6 +1240,8 @@ export default function ToolLibrary() {
                   status: editStatus,
                   location: editLocation,
                   condition: editCondition,
+                  imageData: editImageData,
+                  imageType: editImageType,
                 })
               }
               disabled={!editName.trim() || editMutation.isPending}

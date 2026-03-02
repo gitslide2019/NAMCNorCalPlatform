@@ -756,7 +756,7 @@ export async function registerRoutes(
         res.status(403).json({ message: "Not authorized to edit this tool" });
         return;
       }
-      const allowedFields = ["name", "description", "category", "status", "condition", "location"];
+      const allowedFields = ["name", "description", "category", "status", "condition", "location", "imageData", "imageType"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -832,6 +832,15 @@ export async function registerRoutes(
         expectedReturnDate: returnBy,
         notes: notes || null,
       });
+      try {
+        await storage.createNotification({
+          userId: tool.ownerId,
+          type: "tool",
+          title: "Equipment Borrowed",
+          message: `${user.username} borrowed your "${tool.name}". Expected return: ${returnBy.toLocaleDateString()}.`,
+          link: "/portal/tools",
+        });
+      } catch {}
       res.status(201).json(loan);
     } catch (error) {
       res.status(500).json({ message: "Failed to borrow tool" });
@@ -852,6 +861,19 @@ export async function registerRoutes(
         await storage.updateTool(req.params.id, { condition, status: "available" });
       } else {
         await storage.updateToolStatus(req.params.id, "available");
+      }
+      const tool = await storage.getTool(req.params.id);
+      if (tool) {
+        try {
+          const conditionText = condition ? ` Condition: ${condition}.` : "";
+          await storage.createNotification({
+            userId: tool.ownerId,
+            type: "tool",
+            title: "Equipment Returned",
+            message: `${user.username} returned your "${tool.name}".${conditionText}`,
+            link: "/portal/tools",
+          });
+        } catch {}
       }
       res.json({ success: true });
     } catch (error) {
@@ -874,6 +896,33 @@ export async function registerRoutes(
       res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch loans" });
+    }
+  });
+
+  app.get("/api/portal/tools/my-shared", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const allTools = await storage.getTools();
+      const myTools = allTools.filter(t => t.ownerId === user.id);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      const enriched = await Promise.all(myTools.map(async (tool) => {
+        const activeLoan = await storage.getActiveLoanForTool(tool.id);
+        return {
+          ...tool,
+          activeLoan: activeLoan ? {
+            id: activeLoan.id,
+            borrowerId: activeLoan.borrowerId,
+            borrowerUsername: userMap.get(activeLoan.borrowerId) || "Unknown",
+            borrowDate: activeLoan.borrowDate,
+            expectedReturnDate: activeLoan.expectedReturnDate,
+            notes: activeLoan.notes,
+          } : null,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch shared equipment" });
     }
   });
 

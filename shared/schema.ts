@@ -230,6 +230,8 @@ export const tools = pgTable("tools", {
   status: text("status").notNull().default("available"),
   condition: text("condition").notNull().default("good"),
   location: text("location"),
+  imageData: text("image_data"),
+  imageType: text("image_type"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
