@@ -154,16 +154,16 @@ export default function Admin() {
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
           <TabsList className={`grid w-full max-w-lg ${user?.isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
             {user?.isAdmin && (
-              <TabsTrigger value="applications" data-testid="tab-applications">
-                <Users className="h-4 w-4 mr-2" />Applications
+              <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
+                <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="finance" data-testid="tab-finance">
-              <DollarSign className="h-4 w-4 mr-2" />Finance
+            <TabsTrigger value="finance" className="text-xs sm:text-sm" data-testid="tab-finance">
+              <DollarSign className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Finance</span>
             </TabsTrigger>
             {user?.isAdmin && (
-              <TabsTrigger value="sms" data-testid="tab-sms">
-                <MessageSquare className="h-4 w-4 mr-2" />SMS Invites
+              <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
+                <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS Invites</span>
               </TabsTrigger>
             )}
           </TabsList>
@@ -1211,37 +1211,37 @@ function SmsInvitations() {
         </TabsList>
 
         <TabsContent value="contacts" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Input
-                placeholder="Search by business name, contact, phone..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                data-testid="input-contact-search"
-              />
+          <div className="space-y-3">
+            <Input
+              placeholder="Search by business name, contact, phone..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              data-testid="input-contact-search"
+            />
+            <div className="flex flex-wrap gap-2">
+              <select
+                className="border rounded-md px-3 py-2 text-sm bg-background min-w-0 flex-1 sm:flex-none"
+                value={countyFilter}
+                onChange={(e) => { setCountyFilter(e.target.value); setPage(1); }}
+                data-testid="select-county-filter"
+              >
+                <option value="">All Counties</option>
+                {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select
+                className="border rounded-md px-3 py-2 text-sm bg-background min-w-0 flex-1 sm:flex-none"
+                value={businessTypeFilter}
+                onChange={(e) => { setBusinessTypeFilter(e.target.value); setPage(1); }}
+                data-testid="select-business-type-filter"
+              >
+                <option value="">All Business Types</option>
+                {(businessTypesQuery.data || []).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <label className="flex items-center gap-2 text-sm cursor-pointer border rounded-md px-3 py-2 whitespace-nowrap">
+                <Checkbox checked={hasEmailFilter} onCheckedChange={(c) => { setHasEmailFilter(!!c); setPage(1); }} data-testid="checkbox-has-email" />
+                Has Email
+              </label>
             </div>
-            <select
-              className="border rounded-md px-3 py-2 text-sm bg-background"
-              value={countyFilter}
-              onChange={(e) => { setCountyFilter(e.target.value); setPage(1); }}
-              data-testid="select-county-filter"
-            >
-              <option value="">All Counties</option>
-              {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select
-              className="border rounded-md px-3 py-2 text-sm bg-background"
-              value={businessTypeFilter}
-              onChange={(e) => { setBusinessTypeFilter(e.target.value); setPage(1); }}
-              data-testid="select-business-type-filter"
-            >
-              <option value="">All Business Types</option>
-              {(businessTypesQuery.data || []).map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <label className="flex items-center gap-2 text-sm cursor-pointer border rounded-md px-3 py-2">
-              <Checkbox checked={hasEmailFilter} onCheckedChange={(c) => { setHasEmailFilter(!!c); setPage(1); }} data-testid="checkbox-has-email" />
-              Has Email
-            </label>
           </div>
 
           {selectedIds.size > 0 && (

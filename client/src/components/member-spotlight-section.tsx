@@ -63,7 +63,7 @@ export function MemberSpotlightSection() {
             >
               <div className="flex flex-col lg:flex-row">
                 <div className="lg:w-5/12">
-                  <div className="relative h-80 sm:h-96 lg:h-full lg:min-h-[560px]">
+                  <div className="relative h-64 sm:h-80 lg:h-full lg:min-h-[560px]">
                     <img
                       src={member.photo}
                       alt={`${member.name}, ${member.title} of ${member.company}`}
@@ -85,7 +85,7 @@ export function MemberSpotlightSection() {
                   </div>
                 </div>
 
-                <div className="lg:w-7/12 p-8 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-center">
+                <div className="lg:w-7/12 p-5 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-center">
                   <div className="hidden lg:flex flex-wrap gap-2 mb-6">
                     {member.certifications.map((cert) => (
                       <Badge
@@ -123,7 +123,7 @@ export function MemberSpotlightSection() {
 
                   <div className="relative mb-8">
                     <Quote className="absolute -top-2 -left-1 h-8 w-8 text-primary/15 rotate-180" />
-                    <div className="space-y-4 pl-6">
+                    <div className="space-y-4 pl-4 sm:pl-6">
                       {member.narrative.map((paragraph, i) => (
                         <p
                           key={i}
@@ -136,12 +136,12 @@ export function MemberSpotlightSection() {
                     </div>
                   </div>
 
-                  <div className="pl-6">
+                  <div className="pl-4 sm:pl-6">
                     <a
                       href={member.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-medium px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-medium px-5 py-3 rounded-lg hover:bg-primary/90 transition-colors text-sm sm:text-base"
                       data-testid={`link-spotlight-website-${member.id}`}
                     >
                       Visit {member.company.split(" ")[0]} {member.company.split(" ")[1]}

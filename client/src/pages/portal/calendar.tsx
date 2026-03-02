@@ -302,7 +302,7 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={dateStr}
-                    className={`relative p-2 text-center text-sm rounded-md ${
+                    className={`relative p-1 sm:p-2 text-center text-xs sm:text-sm rounded-md min-h-[36px] sm:min-h-[40px] flex flex-col items-center justify-center ${
                       isToday ? "bg-primary/10 font-bold" : ""
                     }`}
                     data-testid={`calendar-day-${dateStr}`}
@@ -310,7 +310,7 @@ export default function CalendarPage() {
                     {day}
                     {count > 0 && (
                       <span
-                        className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-primary"
+                        className="absolute bottom-0.5 sm:bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-primary"
                         data-testid={`event-dot-${dateStr}`}
                       />
                     )}

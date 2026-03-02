@@ -40,7 +40,7 @@ export function Header() {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-white" data-testid="text-org-name">NAMC NorCal</span>
-              <span className="text-xs text-neutral-600 dark:text-neutral-400 leading-tight">General Membership</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400 leading-tight hidden sm:block">General Membership</span>
             </div>
           </div>
 

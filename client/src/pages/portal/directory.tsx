@@ -323,7 +323,7 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden" data-testid="map-directory">
-        <div style={{ height: "500px" }}>
+        <div className="h-[350px] sm:h-[500px]">
           <MapContainer
             center={BAY_AREA_CENTER}
             zoom={10}

@@ -125,7 +125,7 @@ function GlobalSearch() {
           value={query}
           onChange={e => handleSearch(e.target.value)}
           onFocus={() => { if (results && query) setOpen(true); }}
-          className="pl-9 h-9 w-56 lg:w-72"
+          className="pl-9 h-9 w-full lg:w-72"
           data-testid="input-global-search"
         />
       </div>
@@ -237,7 +237,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
     return (
       <Link key={item.href} href={item.href}>
         <div
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors min-h-[44px] ${
             active
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -282,7 +282,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       <div className="p-3 border-t space-y-1">
         <Link href="/">
           <div
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors min-h-[44px]"
             data-testid="link-portal-main-site"
             onClick={onClick}
           >
@@ -292,7 +292,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         </Link>
         <button
           onClick={() => { onClick?.(); handleLogout(); }}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors w-full min-h-[44px]"
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4" />
@@ -324,19 +324,19 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 border">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b px-3 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 border shrink-0">
             <img src={namcLogo} alt="NAMC NorCal" className="h-full w-full object-contain" />
           </div>
-          <span className="text-sm font-bold">Member Portal</span>
+          <span className="text-sm font-bold truncate">Member Portal</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
           <Link href="/portal/notifications">
-            <div className="relative" data-testid="link-mobile-notifications">
+            <div className="relative flex items-center justify-center h-10 w-10" data-testid="link-mobile-notifications">
               <Bell className="h-5 w-5 text-muted-foreground" />
               {unreadNotifs > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                <span className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                   {unreadNotifs > 9 ? "9+" : unreadNotifs}
                 </span>
               )}
@@ -344,15 +344,15 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           </Link>
           {unreadCount > 0 && (
             <Link href="/portal/messages">
-              <div className="relative">
+              <div className="relative flex items-center justify-center h-10 w-10">
                 <Mail className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center" data-testid="badge-mobile-unread">
+                <span className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center" data-testid="badge-mobile-unread">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               </div>
             </Link>
           )}
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} data-testid="button-portal-mobile-menu">
+          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setMobileOpen(true)} data-testid="button-portal-mobile-menu">
             <Menu className="h-5 w-5" />
           </Button>
         </div>

@@ -131,7 +131,7 @@ export function MembershipTiersSection() {
                   onClick={scrollToApply}
                   data-testid={`button-select-${tier.id}`}
                 >
-                  Select {tier.name}
+                  <span className="hidden sm:inline">Select </span>{tier.name}
                 </Button>
               </CardFooter>
             </Card>

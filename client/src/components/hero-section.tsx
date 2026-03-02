@@ -17,12 +17,12 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           <div className="flex-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/20 border border-neutral-900/30 px-4 py-2 text-sm font-medium text-neutral-900 mb-6">
-              <Award className="h-4 w-4" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/20 border border-neutral-900/30 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-900 mb-6">
+              <Award className="h-4 w-4 shrink-0" />
               <span>Est. 1969 - The Oldest Minority Construction Trade Association</span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-neutral-900" data-testid="text-hero-title">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-neutral-900" data-testid="text-hero-title">
               Build Your Future with{" "}
               <span className="text-neutral-900">NAMC NorCal</span>
             </h1>
@@ -60,7 +60,7 @@ export function HeroSection() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <StatCard
                 icon={Building}
                 value="$1B+"
@@ -107,12 +107,12 @@ function StatCard({
   testId: string;
 }) {
   return (
-    <div className="bg-white/20 rounded-lg border border-neutral-900/20 p-5 text-center hover-elevate" data-testid={testId}>
-      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900/20">
-        <Icon className="h-6 w-6 text-neutral-900" />
+    <div className="bg-white/20 rounded-lg border border-neutral-900/20 p-3 sm:p-5 text-center hover-elevate" data-testid={testId}>
+      <div className="mx-auto mb-2 sm:mb-3 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-neutral-900/20">
+        <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-neutral-900" />
       </div>
-      <p className="text-2xl font-bold text-neutral-900">{value}</p>
-      <p className="text-sm text-neutral-800">{label}</p>
+      <p className="text-xl sm:text-2xl font-bold text-neutral-900">{value}</p>
+      <p className="text-xs sm:text-sm text-neutral-800">{label}</p>
     </div>
   );
 }
