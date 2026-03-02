@@ -39,7 +39,8 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for database interactions.
 - **Schema**: Defined in `shared/schema.ts`.
 - **Migrations**: Managed using Drizzle Kit.
-- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `tool_borrow_requests`, `courses`, `lessons`, `course_enrollments`, `announcements`, `notifications`, `endorsements`, `event_rsvps`, `documents`, `campaigns`, `campaign_pledges`, `budget_categories`, `funding_sources`, `member_projects`, `member_documents`, `sms_invitations`.
+- **Tables**: `users`, `membership_applications`, `password_reset_tokens`, `session`, `messages`, `discussion_topics`, `discussion_replies`, `project_opportunities`, `project_bids`, `calendar_events`, `newsletters`, `tools`, `tool_loans`, `tool_borrow_requests`, `courses`, `lessons`, `course_enrollments`, `announcements`, `notifications`, `endorsements`, `event_rsvps`, `documents`, `campaigns`, `campaign_pledges`, `budget_categories`, `funding_sources`, `member_projects`, `member_documents`, `sms_invitations`, `sms_contacts`.
+- **SMS Contacts Intelligence**: The `sms_contacts` table stores 1,395 Bay Area contractors with outreach intelligence fields: `outreach_description`, `specialties`, `project_focus`, `energy_relevance`, `why_namc_relevant`, `membership_value`, `membership_pitch`, `best_outreach_angle`, `sms_template`, `email_template`, `preferred_contact_name`, `professional_salutation`, `primary_license_types`, `google_search_url`. Auto-seeded from CSV on startup; enriched from a second intelligence CSV.
 - **Charts**: Recharts library for pie charts, bar charts in admin Finance dashboard.
 
 ### Code Sharing

@@ -597,6 +597,16 @@ export async function ensureTables() {
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    const intelligenceColumns = [
+      "google_search_url", "specialties", "outreach_description", "project_focus",
+      "energy_relevance", "why_namc_relevant", "membership_value", "membership_pitch",
+      "best_outreach_angle", "sms_template", "email_template", "preferred_contact_name",
+      "professional_salutation", "primary_license_types"
+    ];
+    for (const col of intelligenceColumns) {
+      await db.execute(sql.raw(`ALTER TABLE sms_contacts ADD COLUMN IF NOT EXISTS ${col} text`));
+    }
+
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);

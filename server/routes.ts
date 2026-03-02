@@ -2347,8 +2347,8 @@ export async function registerRoutes(
     }
   });
 
-  // Auto-seed contacts from CSV on startup
-  seedContacts();
+  // Auto-seed contacts from CSV on startup, then enrich with intelligence data
+  seedContacts().then(() => seedContactIntelligence());
 
   return httpServer;
 }
@@ -2483,5 +2483,100 @@ async function seedContacts() {
     console.log(`SMS contacts seeded: ${result.imported} imported, ${result.skipped} skipped, ${result.invalid} invalid`);
   } catch (error) {
     console.error("Error seeding SMS contacts:", error);
+  }
+}
+
+async function seedContactIntelligence() {
+  try {
+    const enrichedCsvPath = path.join(process.cwd(), "attached_assets", "bay_area_namc_outreach_intelligence_with_salutations_1772436281002.csv");
+    if (!fs.existsSync(enrichedCsvPath)) {
+      console.log("Enriched intelligence CSV not found, skipping");
+      return;
+    }
+
+    const sampleContacts = await storage.getSmsContacts({ page: 1, limit: 1 });
+    if (sampleContacts.contacts.length > 0 && sampleContacts.contacts[0].outreachDescription) {
+      console.log("Contact intelligence already enriched, skipping");
+      return;
+    }
+
+    console.log("Enriching contacts with outreach intelligence...");
+    const csvContent = fs.readFileSync(enrichedCsvPath, "utf-8");
+    const lines = csvContent.trim().split(/\r?\n/);
+    if (lines.length <= 1) return;
+
+    const headers = parseCsvLineGlobal(lines[0]).map(h => h.trim());
+    const colIdx: Record<string, number> = {};
+    headers.forEach((h, i) => { colIdx[h] = i; });
+
+    let enriched = 0;
+    let inserted = 0;
+    let skipped = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const parts = parseCsvLineGlobal(line);
+      const get = (colName: string) => {
+        const idx = colIdx[colName];
+        if (idx === undefined || idx >= parts.length) return "";
+        return (parts[idx] || "").trim();
+      };
+
+      const companyName = get("Company Name");
+      const rawPhone = get("Phone");
+      const phone = normalizePhoneE164(rawPhone);
+
+      if (!companyName || !phone || phone.length < 11) {
+        skipped++;
+        continue;
+      }
+
+      const intelligenceData: Record<string, string | null> = {
+        googleSearchUrl: get("Google Search URL") || null,
+        specialties: get("Specialties (Plain English)") || null,
+        outreachDescription: get("NAMC Outreach Description") || null,
+        projectFocus: get("Project Focus (Residential / Commercial)") || null,
+        energyRelevance: get("Energy Efficiency / Electrification Relevance") || null,
+        whyNamcRelevant: get("Why NAMC is Relevant") || null,
+        membershipValue: get("NAMC General Membership Value") || null,
+        membershipPitch: get("NAMC General Membership Pitch") || null,
+        bestOutreachAngle: get("Best Outreach Angle") || null,
+        smsTemplate: get("SMS Invite (Short)") || null,
+        emailTemplate: get("Email Invite Opener") || null,
+        preferredContactName: get("Preferred Contact Name") || null,
+        professionalSalutation: get("Professional Salutation") || null,
+        primaryLicenseTypes: get("Primary License Type(s)") || null,
+      };
+
+      const website = get("Website") || null;
+      const city = get("City") || null;
+      const classifications = get("Classification(s)") || null;
+
+      const existing = await storage.getSmsContactByPhone(phone);
+      if (existing) {
+        const updateData: any = { ...intelligenceData };
+        if (website && !existing.website) updateData.website = website;
+        if (city && !existing.city) updateData.city = city;
+        if (classifications && !existing.classifications) updateData.classifications = classifications;
+        await storage.updateSmsContact(existing.id, updateData);
+        enriched++;
+      } else {
+        await storage.createSmsContact({
+          businessName: companyName,
+          phone,
+          city,
+          classifications,
+          website,
+          ...intelligenceData,
+        } as any);
+        inserted++;
+      }
+    }
+
+    console.log(`Contact intelligence enrichment complete: ${enriched} updated, ${inserted} new, ${skipped} skipped`);
+  } catch (error) {
+    console.error("Error seeding contact intelligence:", error);
   }
 }

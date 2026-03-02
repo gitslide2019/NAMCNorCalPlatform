@@ -50,7 +50,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Redirect, useLocation } from "wouter";
-import { useState, useRef } from "react";
+import { useState, useRef, Fragment } from "react";
 import type { MembershipApplication, BudgetCategory, FundingSource, Campaign } from "@shared/schema";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -850,8 +850,21 @@ interface SmsContactRecord {
   classifications: string | null;
   website: string | null;
   minorityOwned: string | null;
+  googleSearchUrl: string | null;
+  specialties: string | null;
+  outreachDescription: string | null;
+  projectFocus: string | null;
+  energyRelevance: string | null;
+  whyNamcRelevant: string | null;
+  membershipValue: string | null;
+  membershipPitch: string | null;
+  bestOutreachAngle: string | null;
+  smsTemplate: string | null;
+  emailTemplate: string | null;
+  preferredContactName: string | null;
+  professionalSalutation: string | null;
+  primaryLicenseTypes: string | null;
   status: string;
-  selected?: boolean;
 }
 
 interface SmsBatch {
@@ -896,6 +909,7 @@ function SmsInvitations() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [sendResults, setSendResults] = useState<{ total: number; sent: number; failed: number; results: any[] } | null>(null);
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+  const [expandedContactId, setExpandedContactId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const contactsQuery = useQuery<{ contacts: SmsContactRecord[]; total: number }>({
@@ -1063,13 +1077,32 @@ function SmsInvitations() {
               </span>
             )}
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button size="sm" variant="outline" onClick={() => insertVariable("{{name}}")} data-testid="button-insert-name">
               <Plus className="h-3 w-3 mr-1" />{"{{name}}"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => insertVariable("{{business}}")} data-testid="button-insert-business">
               <Plus className="h-3 w-3 mr-1" />{"{{business}}"}
             </Button>
+            {composeMode === "sms" && selectedContacts.some(c => c.smsTemplate) && (
+              <Button size="sm" variant="secondary" onClick={() => {
+                const tpl = selectedContacts.find(c => c.smsTemplate)?.smsTemplate;
+                if (tpl) setMessageTemplate(tpl);
+              }} data-testid="button-use-sms-template">
+                <FileText className="h-3 w-3 mr-1" />Use Pre-Written SMS Template
+              </Button>
+            )}
+            {composeMode === "email" && selectedContacts.some(c => c.emailTemplate) && (
+              <Button size="sm" variant="secondary" onClick={() => {
+                const contact = selectedContacts.find(c => c.emailTemplate);
+                if (contact?.emailTemplate) {
+                  const salutation = contact.professionalSalutation || "Dear Contractor,";
+                  setMessageTemplate(`${salutation}\n\n${contact.emailTemplate}\n\nAs a member, you'll gain access to:\n- Exclusive networking opportunities\n- Project bidding and partnerships\n- Training and certification resources\n- Industry events and workshops\n\nLearn more and apply at https://namcnorcal.org\n\nBest regards,\nNAMC NorCal`);
+                }
+              }} data-testid="button-use-email-template">
+                <FileText className="h-3 w-3 mr-1" />Use Pre-Written Email Template
+              </Button>
+            )}
           </div>
           <Textarea
             ref={textareaRef}
@@ -1230,32 +1263,119 @@ function SmsInvitations() {
                     <tr>
                       <th className="p-2 w-10"></th>
                       <th className="p-2 text-left">Business Name</th>
-                      <th className="p-2 text-left">Contact</th>
+                      <th className="p-2 text-left">Specialties</th>
                       <th className="p-2 text-left">Phone</th>
                       <th className="p-2 text-left">City</th>
-                      <th className="p-2 text-left">County</th>
-                      <th className="p-2 text-left">Email</th>
+                      <th className="p-2 text-left">Focus</th>
+                      <th className="p-2 text-left w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {contacts.map((c) => (
-                      <tr key={c.id} className={`border-t hover:bg-muted/20 ${selectedIds.has(c.id) ? "bg-primary/5" : ""}`}>
-                        <td className="p-2">
-                          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} data-testid={`checkbox-contact-${c.id}`} />
-                        </td>
-                        <td className="p-2 font-medium" data-testid={`text-business-${c.id}`}>{c.businessName}</td>
-                        <td className="p-2 text-muted-foreground">{c.contactName || "-"}</td>
-                        <td className="p-2 font-mono text-xs">{c.phone}</td>
-                        <td className="p-2 text-muted-foreground text-xs">{c.city || "-"}</td>
-                        <td className="p-2 text-muted-foreground text-xs">{c.county || "-"}</td>
-                        <td className="p-2">
-                          {c.email ? (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs"><Mail className="h-3 w-3 mr-1" />{c.email}</Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </td>
-                      </tr>
+                      <Fragment key={c.id}>
+                        <tr className={`border-t hover:bg-muted/20 cursor-pointer ${selectedIds.has(c.id) ? "bg-primary/5" : ""}`}
+                          onClick={() => setExpandedContactId(expandedContactId === c.id ? null : c.id)}
+                        >
+                          <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} data-testid={`checkbox-contact-${c.id}`} />
+                          </td>
+                          <td className="p-2" data-testid={`text-business-${c.id}`}>
+                            <div className="font-medium">{c.businessName}</div>
+                            {c.outreachDescription && <div className="text-xs text-muted-foreground truncate max-w-[300px]">{c.outreachDescription}</div>}
+                          </td>
+                          <td className="p-2 text-muted-foreground text-xs max-w-[150px] truncate">{c.specialties || c.classifications || "-"}</td>
+                          <td className="p-2 font-mono text-xs">{c.phone}</td>
+                          <td className="p-2 text-muted-foreground text-xs">{c.city || "-"}</td>
+                          <td className="p-2 text-xs">
+                            {c.projectFocus ? (
+                              <Badge variant="outline" className="text-xs whitespace-nowrap">{c.projectFocus.replace("Primarily ", "")}</Badge>
+                            ) : "-"}
+                          </td>
+                          <td className="p-2">
+                            {expandedContactId === c.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                          </td>
+                        </tr>
+                        {expandedContactId === c.id && (
+                          <tr className="bg-muted/10">
+                            <td colSpan={7} className="p-4">
+                              <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-3">
+                                  {c.outreachDescription && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Description</p>
+                                      <p className="text-sm" data-testid={`text-description-${c.id}`}>{c.outreachDescription}</p>
+                                    </div>
+                                  )}
+                                  {c.bestOutreachAngle && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Best Outreach Angle</p>
+                                      <p className="text-sm">{c.bestOutreachAngle}</p>
+                                    </div>
+                                  )}
+                                  {c.whyNamcRelevant && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Why NAMC is Relevant</p>
+                                      <p className="text-sm">{c.whyNamcRelevant}</p>
+                                    </div>
+                                  )}
+                                  {c.membershipPitch && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Membership Pitch</p>
+                                      <p className="text-sm">{c.membershipPitch}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Contact</p>
+                                      <p>{c.preferredContactName || c.contactName || "-"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Salutation</p>
+                                      <p>{c.professionalSalutation || "-"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">County</p>
+                                      <p>{c.county || "-"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Email</p>
+                                      <p className="truncate">{c.email || "-"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Project Focus</p>
+                                      <p>{c.projectFocus || "-"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Energy Relevance</p>
+                                      <p>{c.energyRelevance || "-"}</p>
+                                    </div>
+                                  </div>
+                                  {c.smsTemplate && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pre-Written SMS</p>
+                                      <p className="text-xs bg-muted/50 rounded p-2 italic">{c.smsTemplate}</p>
+                                    </div>
+                                  )}
+                                  {c.emailTemplate && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pre-Written Email Opener</p>
+                                      <p className="text-xs bg-muted/50 rounded p-2 italic">{c.emailTemplate}</p>
+                                    </div>
+                                  )}
+                                  {c.website && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Website</p>
+                                      <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">{c.website}</a>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
