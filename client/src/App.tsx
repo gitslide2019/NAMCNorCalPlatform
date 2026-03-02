@@ -25,6 +25,7 @@ import ResetPasswordPage from "@/pages/reset-password";
 import Documents from "@/pages/portal/documents";
 import Campaigns from "@/pages/portal/campaigns";
 import Notifications from "@/pages/portal/notifications";
+import Store from "@/pages/portal/store";
 
 function Router() {
   return (
@@ -73,6 +74,9 @@ function Router() {
       </Route>
       <Route path="/portal/campaigns">
         <ProtectedRoute><Campaigns /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/store">
+        <ProtectedRoute><Store /></ProtectedRoute>
       </Route>
       <Route path="/portal/notifications">
         <ProtectedRoute><Notifications /></ProtectedRoute>

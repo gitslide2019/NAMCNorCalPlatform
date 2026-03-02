@@ -20,6 +20,7 @@ import {
   FileText,
   Target,
   Search,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ const resourceItems = [
   { href: "/portal/tools", label: "Equipment Sharing", icon: Wrench },
   { href: "/portal/courses", label: "Training", icon: GraduationCap },
   { href: "/portal/campaigns", label: "Fundraising", icon: Target },
+  { href: "/portal/store", label: "Store", icon: ShoppingBag },
 ];
 
 const adminNavItems = [
