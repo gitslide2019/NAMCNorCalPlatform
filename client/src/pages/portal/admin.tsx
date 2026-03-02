@@ -900,6 +900,7 @@ function SmsInvitations() {
   const [innerTab, setInnerTab] = useState<"contacts" | "history">("contacts");
   const [search, setSearch] = useState("");
   const [countyFilter, setCountyFilter] = useState("");
+  const [businessTypeFilter, setBusinessTypeFilter] = useState("");
   const [hasEmailFilter, setHasEmailFilter] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -912,12 +913,22 @@ function SmsInvitations() {
   const [expandedContactId, setExpandedContactId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const businessTypesQuery = useQuery<string[]>({
+    queryKey: ["/api/portal/admin/sms/contacts/types"],
+    queryFn: async () => {
+      const res = await fetch("/api/portal/admin/sms/contacts/types", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch business types");
+      return res.json();
+    },
+  });
+
   const contactsQuery = useQuery<{ contacts: SmsContactRecord[]; total: number }>({
-    queryKey: ["/api/portal/admin/sms/contacts", { search, county: countyFilter, hasEmail: hasEmailFilter, page }],
+    queryKey: ["/api/portal/admin/sms/contacts", { search, county: countyFilter, businessType: businessTypeFilter, hasEmail: hasEmailFilter, page }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (countyFilter) params.set("county", countyFilter);
+      if (businessTypeFilter) params.set("businessType", businessTypeFilter);
       if (hasEmailFilter) params.set("hasEmail", "true");
       params.set("page", String(page));
       params.set("limit", "50");
@@ -1218,6 +1229,15 @@ function SmsInvitations() {
               <option value="">All Counties</option>
               {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+            <select
+              className="border rounded-md px-3 py-2 text-sm bg-background"
+              value={businessTypeFilter}
+              onChange={(e) => { setBusinessTypeFilter(e.target.value); setPage(1); }}
+              data-testid="select-business-type-filter"
+            >
+              <option value="">All Business Types</option>
+              {(businessTypesQuery.data || []).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
             <label className="flex items-center gap-2 text-sm cursor-pointer border rounded-md px-3 py-2">
               <Checkbox checked={hasEmailFilter} onCheckedChange={(c) => { setHasEmailFilter(!!c); setPage(1); }} data-testid="checkbox-has-email" />
               Has Email
@@ -1252,6 +1272,22 @@ function SmsInvitations() {
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex gap-2">
                   <Button size="sm" variant="ghost" onClick={selectAllOnPage} data-testid="button-select-page">Select Page</Button>
+                  <Button size="sm" variant="ghost" onClick={async () => {
+                    try {
+                      const params = new URLSearchParams();
+                      if (search) params.set("search", search);
+                      if (countyFilter) params.set("county", countyFilter);
+                      if (businessTypeFilter) params.set("businessType", businessTypeFilter);
+                      if (hasEmailFilter) params.set("hasEmail", "true");
+                      const res = await fetch(`/api/portal/admin/sms/contacts/ids?${params.toString()}`, { credentials: "include" });
+                      if (!res.ok) throw new Error("Failed");
+                      const ids: string[] = await res.json();
+                      setSelectedIds(new Set(ids));
+                      toast({ title: `Selected ${ids.length} contacts` });
+                    } catch {
+                      toast({ title: "Failed to select all", variant: "destructive" });
+                    }
+                  }} data-testid="button-select-all-matching">Select All Matching ({totalContacts})</Button>
                   {selectedIds.size > 0 && <Button size="sm" variant="ghost" onClick={deselectAll}>Deselect All</Button>}
                 </div>
                 <span>Page {page} of {totalPages || 1} ({totalContacts} contacts)</span>

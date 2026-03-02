@@ -2248,6 +2248,7 @@ export async function registerRoutes(
         search: req.query.search as string | undefined,
         county: req.query.county as string | undefined,
         city: req.query.city as string | undefined,
+        businessType: req.query.businessType as string | undefined,
         hasEmail: req.query.hasEmail === "true",
         page: Math.max(1, isNaN(rawPage) ? 1 : rawPage),
         limit: Math.min(200, Math.max(1, isNaN(rawLimit) ? 50 : rawLimit)),
@@ -2257,6 +2258,31 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching SMS contacts:", error);
       res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.get("/api/portal/admin/sms/contacts/types", requireAdmin, async (req, res) => {
+    try {
+      const types = await storage.getSmsContactBusinessTypes();
+      res.json(types);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch business types" });
+    }
+  });
+
+  app.get("/api/portal/admin/sms/contacts/ids", requireAdmin, async (req, res) => {
+    try {
+      const filters = {
+        search: req.query.search as string | undefined,
+        county: req.query.county as string | undefined,
+        city: req.query.city as string | undefined,
+        businessType: req.query.businessType as string | undefined,
+        hasEmail: req.query.hasEmail === "true",
+      };
+      const ids = await storage.getSmsContactIds(filters);
+      res.json(ids);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contact IDs" });
     }
   });
 

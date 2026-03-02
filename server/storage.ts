@@ -228,7 +228,9 @@ export interface IStorage {
   updateSmsInvitationStatus(id: string, status: string, twilioSid?: string): Promise<SmsInvitation | undefined>;
 
   createSmsContact(data: InsertSmsContact): Promise<SmsContact>;
-  getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }>;
+  getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; businessType?: string; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }>;
+  getSmsContactIds(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; businessType?: string }): Promise<string[]>;
+  getSmsContactBusinessTypes(): Promise<string[]>;
   getSmsContact(id: string): Promise<SmsContact | undefined>;
   getSmsContactByPhone(phone: string): Promise<SmsContact | undefined>;
   updateSmsContact(id: string, data: Partial<SmsContact>): Promise<SmsContact | undefined>;
@@ -879,9 +881,8 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }> {
+  private buildSmsContactConditions(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; businessType?: string }) {
     const conditions: any[] = [];
-
     if (filters?.search) {
       const term = `%${filters.search}%`;
       conditions.push(or(
@@ -900,8 +901,14 @@ export class DatabaseStorage implements IStorage {
     if (filters?.hasEmail) {
       conditions.push(sql`${smsContacts.email} IS NOT NULL AND ${smsContacts.email} != ''`);
     }
+    if (filters?.businessType) {
+      conditions.push(ilike(smsContacts.businessType, filters.businessType));
+    }
+    return conditions.length > 0 ? and(...conditions) : undefined;
+  }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  async getSmsContacts(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; businessType?: string; page?: number; limit?: number }): Promise<{ contacts: SmsContact[]; total: number }> {
+    const whereClause = this.buildSmsContactConditions(filters);
 
     const [totalResult] = await db.select({ value: count() }).from(smsContacts).where(whereClause);
     const total = Number(totalResult?.value || 0);
@@ -917,6 +924,20 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     return { contacts, total };
+  }
+
+  async getSmsContactIds(filters?: { search?: string; county?: string; city?: string; hasEmail?: boolean; businessType?: string }): Promise<string[]> {
+    const whereClause = this.buildSmsContactConditions(filters);
+    const results = await db.select({ id: smsContacts.id }).from(smsContacts).where(whereClause).orderBy(asc(smsContacts.businessName));
+    return results.map(r => r.id);
+  }
+
+  async getSmsContactBusinessTypes(): Promise<string[]> {
+    const results = await db.selectDistinct({ businessType: smsContacts.businessType })
+      .from(smsContacts)
+      .where(sql`${smsContacts.businessType} IS NOT NULL AND ${smsContacts.businessType} != ''`)
+      .orderBy(asc(smsContacts.businessType));
+    return results.map(r => r.businessType!);
   }
 
   async getSmsContact(id: string): Promise<SmsContact | undefined> {
