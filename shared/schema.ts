@@ -552,3 +552,29 @@ export const insertMemberDocumentSchema = createInsertSchema(memberDocuments).om
 
 export type InsertMemberDocument = z.infer<typeof insertMemberDocumentSchema>;
 export type MemberDocument = typeof memberDocuments.$inferSelect;
+
+export const smsInvitations = pgTable("sms_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  companyName: text("company_name"),
+  email: text("email"),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("pending"),
+  twilioSid: text("twilio_sid"),
+  sentAt: timestamp("sent_at"),
+  sentById: varchar("sent_by_id").notNull(),
+  batchId: varchar("batch_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSmsInvitationSchema = createInsertSchema(smsInvitations).omit({
+  id: true,
+  status: true,
+  twilioSid: true,
+  sentAt: true,
+  createdAt: true,
+});
+
+export type InsertSmsInvitation = z.infer<typeof insertSmsInvitationSchema>;
+export type SmsInvitation = typeof smsInvitations.$inferSelect;

@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -29,6 +31,16 @@ import {
   Pencil,
   Save,
   Users,
+  MessageSquare,
+  Upload,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Phone,
+  Building2,
+  Mail,
+  Plus,
 } from "lucide-react";
 import {
   Dialog,
@@ -38,7 +50,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Redirect, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { MembershipApplication, BudgetCategory, FundingSource, Campaign } from "@shared/schema";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -140,7 +152,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
-          <TabsList className={`grid w-full max-w-md ${user?.isAdmin ? "grid-cols-2" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full max-w-lg ${user?.isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
             {user?.isAdmin && (
               <TabsTrigger value="applications" data-testid="tab-applications">
                 <Users className="h-4 w-4 mr-2" />Applications
@@ -149,6 +161,11 @@ export default function Admin() {
             <TabsTrigger value="finance" data-testid="tab-finance">
               <DollarSign className="h-4 w-4 mr-2" />Finance
             </TabsTrigger>
+            {user?.isAdmin && (
+              <TabsTrigger value="sms" data-testid="tab-sms">
+                <MessageSquare className="h-4 w-4 mr-2" />SMS Invites
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="applications">
@@ -297,6 +314,12 @@ export default function Admin() {
           <TabsContent value="finance">
             <FinanceDashboard />
           </TabsContent>
+
+          {user?.isAdmin && (
+            <TabsContent value="sms">
+              <SmsInvitations />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </PortalLayout>
@@ -808,6 +831,541 @@ function FinanceDashboard() {
               </tfoot>
             </table>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface CsvContact {
+  name: string;
+  phone: string;
+  companyName?: string;
+  email?: string;
+  valid: boolean;
+  error?: string;
+  selected?: boolean;
+}
+
+interface SmsBatch {
+  batchId: string;
+  sentAt: string | null;
+  sentBy: string;
+  sentByName: string;
+  total: number;
+  sent: number;
+  failed: number;
+  pending: number;
+  messagePreview: string;
+}
+
+interface SmsInvitationRecord {
+  id: string;
+  name: string;
+  phone: string;
+  companyName: string | null;
+  email: string | null;
+  message: string;
+  status: string;
+  twilioSid: string | null;
+  sentAt: string | null;
+  createdAt: string;
+}
+
+function SmsInvitations() {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [step, setStep] = useState<"upload" | "compose" | "preview" | "results">("upload");
+  const [contacts, setContacts] = useState<CsvContact[]>([]);
+  const [messageTemplate, setMessageTemplate] = useState(
+    "Hi {{name}}, you're invited to join NAMC NorCal! As a member, you'll access exclusive networking, project opportunities, and resources for minority contractors. Learn more and apply at https://namcnorcal.org"
+  );
+  const [sendResults, setSendResults] = useState<{ total: number; sent: number; failed: number; results: any[] } | null>(null);
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  const { data: history, isLoading: historyLoading } = useQuery<SmsBatch[]>({
+    queryKey: ["/api/portal/admin/sms/history"],
+  });
+
+  const { data: batchDetails } = useQuery<SmsInvitationRecord[]>({
+    queryKey: ["/api/portal/admin/sms/batch", expandedBatch],
+    enabled: !!expandedBatch,
+  });
+
+  const parseMutation = useMutation({
+    mutationFn: async (csvContent: string) => {
+      const res = await apiRequest("POST", "/api/portal/admin/sms/parse-csv", { csvContent });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      const withSelection = data.contacts.map((c: CsvContact) => ({ ...c, selected: c.valid }));
+      setContacts(withSelection);
+      if (data.validRows > 0) {
+        setStep("compose");
+        toast({ title: "CSV parsed", description: `Found ${data.validRows} valid contacts out of ${data.totalRows} rows.` });
+      } else {
+        toast({ title: "No valid contacts", description: "The CSV didn't contain any valid contacts. Make sure each row has a name and phone number.", variant: "destructive" });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Parse failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async ({ recipients, messageTemplate }: { recipients: CsvContact[]; messageTemplate: string }) => {
+      const res = await apiRequest("POST", "/api/portal/admin/sms/send", { recipients, messageTemplate });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      setSendResults(data);
+      setStep("results");
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/admin/sms/history"] });
+      toast({
+        title: "SMS invitations sent",
+        description: `${data.sent} sent, ${data.failed} failed out of ${data.total} total.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Send failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      parseMutation.mutate(content);
+    };
+    reader.readAsText(file);
+  };
+
+  const selectedContacts = contacts.filter(c => c.selected && c.valid);
+
+  const insertVariable = (variable: string) => {
+    if (textareaRef.current) {
+      const ta = textareaRef.current;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const newValue = messageTemplate.substring(0, start) + variable + messageTemplate.substring(end);
+      setMessageTemplate(newValue);
+      setTimeout(() => {
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = start + variable.length;
+      }, 0);
+    } else {
+      setMessageTemplate(prev => prev + variable);
+    }
+  };
+
+  const getPreviewMessage = () => {
+    if (selectedContacts.length === 0) return messageTemplate;
+    const sample = selectedContacts[0];
+    return messageTemplate
+      .replace(/\{\{name\}\}/gi, sample.name)
+      .replace(/\{\{company\}\}/gi, sample.companyName || "your company");
+  };
+
+  const handleSend = () => {
+    setShowConfirmDialog(false);
+    sendMutation.mutate({ recipients: selectedContacts, messageTemplate });
+  };
+
+  const resetFlow = () => {
+    setStep("upload");
+    setContacts([]);
+    setSendResults(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5 text-primary" />
+            Send SMS Invitations
+          </CardTitle>
+          <CardDescription>Upload a CSV of prospective members, compose your message, and send SMS invitations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {step === "upload" && (
+            <div className="space-y-4">
+              <div
+                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="csv-upload-area"
+              >
+                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="font-medium">Click to upload CSV file</p>
+                <p className="text-sm text-muted-foreground mt-1">Expected columns: Name, Phone, Company (optional), Email (optional)</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  data-testid="input-csv-file"
+                />
+              </div>
+              {parseMutation.isPending && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Parsing CSV...</span>
+                </div>
+              )}
+              {contacts.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {contacts.filter(c => c.valid).length} valid / {contacts.length} total contacts
+                    </p>
+                    <Button size="sm" variant="outline" onClick={resetFlow} data-testid="button-reset-csv">Reset</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === "compose" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Recipients ({selectedContacts.length} selected)</h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: c.valid })))} data-testid="button-select-all">Select All</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: false })))} data-testid="button-deselect-all">Deselect All</Button>
+                </div>
+              </div>
+
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="p-2 text-left w-10"></th>
+                      <th className="p-2 text-left">Name</th>
+                      <th className="p-2 text-left">Phone</th>
+                      <th className="p-2 text-left">Company</th>
+                      <th className="p-2 text-left">Email</th>
+                      <th className="p-2 text-left w-20">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contacts.map((contact, idx) => (
+                      <tr key={idx} className={`border-t ${!contact.valid ? "opacity-50 bg-red-50 dark:bg-red-900/10" : ""}`}>
+                        <td className="p-2">
+                          <Checkbox
+                            checked={contact.selected || false}
+                            disabled={!contact.valid}
+                            onCheckedChange={(checked) => {
+                              setContacts(prev => prev.map((c, i) => i === idx ? { ...c, selected: !!checked } : c));
+                            }}
+                            data-testid={`checkbox-contact-${idx}`}
+                          />
+                        </td>
+                        <td className="p-2" data-testid={`text-contact-name-${idx}`}>{contact.name}</td>
+                        <td className="p-2 font-mono text-xs">{contact.phone}</td>
+                        <td className="p-2 text-muted-foreground">{contact.companyName || "-"}</td>
+                        <td className="p-2 text-muted-foreground text-xs">{contact.email || "-"}</td>
+                        <td className="p-2">
+                          {contact.valid ? (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">Valid</Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs">{contact.error}</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-medium">Message</label>
+                  <span className={`text-xs ${messageTemplate.length > 160 ? "text-amber-600" : "text-muted-foreground"}`}>
+                    {messageTemplate.length} / 160 chars {messageTemplate.length > 160 && "(multi-segment SMS)"}
+                  </span>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={() => insertVariable("{{name}}")} data-testid="button-insert-name">
+                    <Plus className="h-3 w-3 mr-1" />{"{{name}}"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => insertVariable("{{company}}")} data-testid="button-insert-company">
+                    <Plus className="h-3 w-3 mr-1" />{"{{company}}"}
+                  </Button>
+                </div>
+                <Textarea
+                  ref={textareaRef}
+                  value={messageTemplate}
+                  onChange={(e) => setMessageTemplate(e.target.value)}
+                  rows={4}
+                  placeholder="Type your invitation message..."
+                  data-testid="textarea-sms-message"
+                />
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep("upload")} data-testid="button-back-to-upload">
+                  <ArrowLeft className="h-4 w-4 mr-2" />Back
+                </Button>
+                <Button
+                  onClick={() => setStep("preview")}
+                  disabled={selectedContacts.length === 0 || !messageTemplate.trim()}
+                  data-testid="button-preview-sms"
+                >
+                  Preview & Send
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === "preview" && (
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold" data-testid="text-recipient-count">{selectedContacts.length}</p>
+                    <p className="text-xs text-muted-foreground">Recipients</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold">{messageTemplate.length}</p>
+                    <p className="text-xs text-muted-foreground">Characters</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold">{Math.ceil(messageTemplate.length / 160)}</p>
+                    <p className="text-xs text-muted-foreground">SMS Segments</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Message Preview (sample)</label>
+                <div className="bg-muted/50 rounded-lg p-4 text-sm whitespace-pre-wrap" data-testid="text-sms-preview">
+                  {getPreviewMessage()}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 flex gap-2 items-start">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  This will send {selectedContacts.length} SMS message{selectedContacts.length !== 1 ? "s" : ""} via Twilio. Standard messaging rates apply.
+                </p>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep("compose")} data-testid="button-back-to-compose">
+                  <ArrowLeft className="h-4 w-4 mr-2" />Back
+                </Button>
+                <Button
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={sendMutation.isPending}
+                  data-testid="button-send-sms"
+                >
+                  {sendMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                  ) : (
+                    <><Send className="h-4 w-4 mr-2" />Send {selectedContacts.length} SMS</>
+                  )}
+                </Button>
+              </div>
+
+              <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm SMS Send</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to send {selectedContacts.length} SMS invitation{selectedContacts.length !== 1 ? "s" : ""}? This action cannot be undone.
+                  </p>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setShowConfirmDialog(false)} data-testid="button-cancel-send">Cancel</Button>
+                    <Button onClick={handleSend} data-testid="button-confirm-send">
+                      <Send className="h-4 w-4 mr-2" />Yes, Send All
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {step === "results" && sendResults && (
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Send className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold" data-testid="text-total-sent">{sendResults.total}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-green-600">{sendResults.sent}</p>
+                      <p className="text-xs text-muted-foreground">Sent</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-red-600">{sendResults.failed}</p>
+                      <p className="text-xs text-muted-foreground">Failed</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="p-2 text-left">Name</th>
+                      <th className="p-2 text-left">Phone</th>
+                      <th className="p-2 text-left">Status</th>
+                      <th className="p-2 text-left">Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sendResults.results.map((r: any, idx: number) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-2">{r.name}</td>
+                        <td className="p-2 font-mono text-xs">{r.phone}</td>
+                        <td className="p-2">
+                          {r.status === "sent" ? (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">Sent</Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs">Failed</Badge>
+                          )}
+                        </td>
+                        <td className="p-2 text-xs text-muted-foreground">{r.error || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <Button onClick={resetFlow} data-testid="button-new-batch">
+                <Plus className="h-4 w-4 mr-2" />Send Another Batch
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Invitation History
+          </CardTitle>
+          <CardDescription>View past SMS invitation batches and their delivery status.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {historyLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : !history || history.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-history">No SMS invitations have been sent yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {history.map((batch) => (
+                <div key={batch.batchId} className="border rounded-lg">
+                  <div
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => setExpandedBatch(expandedBatch === batch.batchId ? null : batch.batchId)}
+                    data-testid={`batch-row-${batch.batchId}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-sm truncate">{batch.messagePreview}</p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>{batch.sentAt ? new Date(batch.sentAt).toLocaleDateString() : "N/A"}</span>
+                        <span>by {batch.sentByName}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      <div className="flex gap-2">
+                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs">{batch.total} total</Badge>
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">{batch.sent} sent</Badge>
+                        {batch.failed > 0 && (
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs">{batch.failed} failed</Badge>
+                        )}
+                      </div>
+                      {expandedBatch === batch.batchId ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedBatch === batch.batchId && (
+                    <div className="border-t px-4 pb-4">
+                      {!batchDetails ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm mt-3">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="p-2 text-left">Name</th>
+                              <th className="p-2 text-left">Phone</th>
+                              <th className="p-2 text-left">Company</th>
+                              <th className="p-2 text-left">Status</th>
+                              <th className="p-2 text-left">Sent At</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {batchDetails.map((inv) => (
+                              <tr key={inv.id} className="border-t">
+                                <td className="p-2">{inv.name}</td>
+                                <td className="p-2 font-mono text-xs">{inv.phone}</td>
+                                <td className="p-2 text-muted-foreground">{inv.companyName || "-"}</td>
+                                <td className="p-2">
+                                  {inv.status === "sent" ? (
+                                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">Sent</Badge>
+                                  ) : inv.status === "failed" ? (
+                                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs">Failed</Badge>
+                                  ) : (
+                                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs">{inv.status}</Badge>
+                                  )}
+                                </td>
+                                <td className="p-2 text-xs text-muted-foreground">
+                                  {inv.sentAt ? new Date(inv.sentAt).toLocaleString() : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

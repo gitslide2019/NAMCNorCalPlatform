@@ -70,9 +70,12 @@ import {
   type InsertMemberDocument,
   type ToolBorrowRequest,
   type InsertToolBorrowRequest,
+  type SmsInvitation,
+  type InsertSmsInvitation,
   memberProjects,
   memberDocuments,
   toolBorrowRequests,
+  smsInvitations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
@@ -215,6 +218,11 @@ export interface IStorage {
   getMemberDocument(id: string): Promise<MemberDocument | undefined>;
   createMemberDocument(doc: InsertMemberDocument): Promise<MemberDocument>;
   deleteMemberDocument(id: string): Promise<void>;
+
+  createSmsInvitation(data: InsertSmsInvitation): Promise<SmsInvitation>;
+  getSmsInvitations(): Promise<SmsInvitation[]>;
+  getSmsInvitationsByBatch(batchId: string): Promise<SmsInvitation[]>;
+  updateSmsInvitationStatus(id: string, status: string, twilioSid?: string): Promise<SmsInvitation | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -833,6 +841,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMemberDocument(id: string): Promise<void> {
     await db.delete(memberDocuments).where(eq(memberDocuments.id, id));
+  }
+
+  async createSmsInvitation(data: InsertSmsInvitation): Promise<SmsInvitation> {
+    const [result] = await db.insert(smsInvitations).values(data).returning();
+    return result;
+  }
+
+  async getSmsInvitations(): Promise<SmsInvitation[]> {
+    return db.select().from(smsInvitations).orderBy(desc(smsInvitations.createdAt));
+  }
+
+  async getSmsInvitationsByBatch(batchId: string): Promise<SmsInvitation[]> {
+    return db.select().from(smsInvitations).where(eq(smsInvitations.batchId, batchId)).orderBy(desc(smsInvitations.createdAt));
+  }
+
+  async updateSmsInvitationStatus(id: string, status: string, twilioSid?: string): Promise<SmsInvitation | undefined> {
+    const updateData: any = { status, sentAt: new Date() };
+    if (twilioSid) updateData.twilioSid = twilioSid;
+    const [result] = await db.update(smsInvitations).set(updateData).where(eq(smsInvitations.id, id)).returning();
+    return result;
   }
 }
 

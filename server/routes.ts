@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema } from "@shared/schema";
-import { ZodError } from "zod";
+import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema, insertSmsInvitationSchema } from "@shared/schema";
+import { sendSms } from "./twilio";
+import { z, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
 import { sendNewsletterEmail, sendDigestEmail } from "./email";
@@ -2008,6 +2009,231 @@ export async function registerRoutes(
       res.json({ message: "Document deleted" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // === SMS INVITATIONS (Admin only) ===
+  app.post("/api/portal/admin/sms/parse-csv", requireAdmin, async (req, res) => {
+    try {
+      const { csvContent } = req.body;
+      if (!csvContent) {
+        res.status(400).json({ message: "CSV content is required" });
+        return;
+      }
+
+      function parseCsvLine(line: string): string[] {
+        const fields: string[] = [];
+        let current = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQuotes) {
+            if (ch === '"' && line[i + 1] === '"') {
+              current += '"';
+              i++;
+            } else if (ch === '"') {
+              inQuotes = false;
+            } else {
+              current += ch;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true;
+            } else if (ch === ',') {
+              fields.push(current.trim());
+              current = "";
+            } else {
+              current += ch;
+            }
+          }
+        }
+        fields.push(current.trim());
+        return fields;
+      }
+
+      function normalizePhone(phone: string): string {
+        const digits = phone.replace(/[^\d]/g, "");
+        if (digits.length === 10) return "+1" + digits;
+        if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+        if (phone.startsWith("+")) return phone.replace(/[^\d+]/g, "");
+        return "+" + digits;
+      }
+
+      const lines = csvContent.trim().split(/\r?\n/);
+      if (lines.length === 0) {
+        res.status(400).json({ message: "CSV is empty" });
+        return;
+      }
+
+      const headerLine = lines[0].toLowerCase();
+      const hasHeaders = headerLine.includes("name") || headerLine.includes("phone") || headerLine.includes("email") || headerLine.includes("company");
+
+      const startIdx = hasHeaders ? 1 : 0;
+      const headers = hasHeaders
+        ? parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, ""))
+        : [];
+
+      const nameIdx = headers.findIndex(h => h.includes("name") && !h.includes("company"));
+      const phoneIdx = headers.findIndex(h => h.includes("phone") || h.includes("mobile") || h.includes("cell") || h.includes("number"));
+      const companyIdx = headers.findIndex(h => h.includes("company") || h.includes("business") || h.includes("org"));
+      const emailIdx = headers.findIndex(h => h.includes("email") || h.includes("e-mail"));
+
+      const contacts: { name: string; phone: string; companyName?: string; email?: string; valid: boolean; error?: string }[] = [];
+
+      for (let i = startIdx; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const parts = parseCsvLine(line);
+
+        let name = "", phone = "", companyName = "", email = "";
+
+        if (hasHeaders && headers.length > 0) {
+          name = nameIdx >= 0 ? parts[nameIdx] || "" : "";
+          phone = phoneIdx >= 0 ? parts[phoneIdx] || "" : "";
+          companyName = companyIdx >= 0 ? parts[companyIdx] || "" : "";
+          email = emailIdx >= 0 ? parts[emailIdx] || "" : "";
+        } else {
+          name = parts[0] || "";
+          phone = parts[1] || "";
+          companyName = parts[2] || "";
+          email = parts[3] || "";
+        }
+
+        const digits = phone.replace(/[^\d]/g, "");
+        const validPhone = digits.length >= 10 && digits.length <= 15;
+        const normalizedPhone = validPhone ? normalizePhone(phone) : phone.replace(/[^\d+]/g, "");
+        const valid = name.length > 0 && validPhone;
+
+        contacts.push({
+          name,
+          phone: normalizedPhone,
+          companyName: companyName || undefined,
+          email: email || undefined,
+          valid,
+          error: !valid ? (!name ? "Missing name" : "Invalid phone number") : undefined,
+        });
+      }
+
+      res.json({ contacts, totalRows: contacts.length, validRows: contacts.filter(c => c.valid).length });
+    } catch (error) {
+      console.error("Error parsing CSV:", error);
+      res.status(500).json({ message: "Failed to parse CSV" });
+    }
+  });
+
+  const smsRecipientSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    phone: z.string().min(10, "Phone must be at least 10 characters").regex(/^\+?\d{10,15}$/, "Invalid phone format"),
+    companyName: z.string().nullable().optional(),
+    email: z.string().email().nullable().optional().or(z.literal("")),
+  });
+
+  const smsSendSchema = z.object({
+    recipients: z.array(smsRecipientSchema).min(1, "At least one recipient is required"),
+    messageTemplate: z.string().min(1, "Message template is required").max(1600, "Message too long"),
+  });
+
+  app.post("/api/portal/admin/sms/send", requireAdmin, async (req, res) => {
+    try {
+      const parsed = smsSendSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const validationError = fromZodError(parsed.error);
+        res.status(400).json({ message: validationError.message });
+        return;
+      }
+
+      const { recipients, messageTemplate } = parsed.data;
+
+      const batchId = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const results: { name: string; phone: string; status: string; error?: string }[] = [];
+
+      for (const recipient of recipients) {
+        const personalizedMessage = messageTemplate
+          .replace(/\{\{name\}\}/gi, recipient.name || "")
+          .replace(/\{\{company\}\}/gi, recipient.companyName || "");
+
+        const invitation = await storage.createSmsInvitation({
+          name: recipient.name,
+          phone: recipient.phone,
+          companyName: recipient.companyName || null,
+          email: recipient.email || null,
+          message: personalizedMessage,
+          sentById: req.user!.id,
+          batchId,
+        });
+
+        const smsResult = await sendSms(recipient.phone, personalizedMessage);
+
+        if (smsResult.success) {
+          await storage.updateSmsInvitationStatus(invitation.id, "sent", smsResult.sid);
+          results.push({ name: recipient.name, phone: recipient.phone, status: "sent" });
+        } else {
+          await storage.updateSmsInvitationStatus(invitation.id, "failed");
+          results.push({ name: recipient.name, phone: recipient.phone, status: "failed", error: smsResult.error });
+        }
+      }
+
+      const sent = results.filter(r => r.status === "sent").length;
+      const failed = results.filter(r => r.status === "failed").length;
+
+      res.json({ batchId, total: results.length, sent, failed, results });
+    } catch (error) {
+      console.error("Error sending SMS invitations:", error);
+      res.status(500).json({ message: "Failed to send SMS invitations" });
+    }
+  });
+
+  app.get("/api/portal/admin/sms/history", requireAdmin, async (req, res) => {
+    try {
+      const allInvitations = await storage.getSmsInvitations();
+
+      const batchMap: Record<string, { batchId: string; sentAt: Date | null; sentBy: string; total: number; sent: number; failed: number; pending: number; messagePreview: string }> = {};
+
+      for (const inv of allInvitations) {
+        if (!batchMap[inv.batchId]) {
+          batchMap[inv.batchId] = {
+            batchId: inv.batchId,
+            sentAt: inv.createdAt,
+            sentBy: inv.sentById,
+            total: 0,
+            sent: 0,
+            failed: 0,
+            pending: 0,
+            messagePreview: inv.message.substring(0, 80) + (inv.message.length > 80 ? "..." : ""),
+          };
+        }
+        batchMap[inv.batchId].total++;
+        if (inv.status === "sent") batchMap[inv.batchId].sent++;
+        else if (inv.status === "failed") batchMap[inv.batchId].failed++;
+        else batchMap[inv.batchId].pending++;
+      }
+
+      const adminIds = [...new Set(Object.values(batchMap).map(b => b.sentBy))];
+      const adminNames: Record<string, string> = {};
+      for (const id of adminIds) {
+        const user = await storage.getUser(id);
+        if (user) adminNames[id] = user.fullName || user.username;
+      }
+
+      const batches = Object.values(batchMap)
+        .map(b => ({ ...b, sentByName: adminNames[b.sentBy] || b.sentBy }))
+        .sort((a, b) => (b.sentAt?.getTime() || 0) - (a.sentAt?.getTime() || 0));
+
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching SMS history:", error);
+      res.status(500).json({ message: "Failed to fetch SMS history" });
+    }
+  });
+
+  app.get("/api/portal/admin/sms/batch/:batchId", requireAdmin, async (req, res) => {
+    try {
+      const invitations = await storage.getSmsInvitationsByBatch(req.params.batchId);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching batch details:", error);
+      res.status(500).json({ message: "Failed to fetch batch details" });
     }
   });
 
