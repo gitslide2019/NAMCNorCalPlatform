@@ -6,9 +6,120 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft, Crown } from "lucide-react";
+import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft, Crown, List, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#E5A830"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
+const blueMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#3b82f6"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
+
+const corporateMarkerIcon = new L.Icon({
+  iconUrl: `data:image/svg+xml,${goldMarkerSvg}`,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: markerShadow,
+  shadowSize: [41, 41],
+});
+
+const standardMarkerIcon = new L.Icon({
+  iconUrl: `data:image/svg+xml,${blueMarkerSvg}`,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: markerShadow,
+  shadowSize: [41, 41],
+});
+
+const BAY_AREA_COORDS: Record<string, [number, number]> = {
+  "oakland": [37.8044, -122.2712],
+  "san francisco": [37.7749, -122.4194],
+  "san jose": [37.3382, -121.8863],
+  "berkeley": [37.8716, -122.2727],
+  "richmond": [37.9358, -122.3478],
+  "fremont": [37.5485, -121.9886],
+  "hayward": [37.6688, -122.0808],
+  "sunnyvale": [37.3688, -122.0363],
+  "santa clara": [37.3541, -121.9552],
+  "concord": [37.9780, -122.0311],
+  "vallejo": [38.1041, -122.2566],
+  "daly city": [37.6879, -122.4702],
+  "san mateo": [37.5630, -122.3255],
+  "redwood city": [37.4852, -122.2364],
+  "palo alto": [37.4419, -122.1430],
+  "mountain view": [37.3861, -122.0839],
+  "milpitas": [37.4323, -121.8996],
+  "walnut creek": [37.9101, -122.0652],
+  "pleasanton": [37.6604, -121.8758],
+  "livermore": [37.6819, -121.7680],
+  "union city": [37.5934, -122.0438],
+  "newark": [37.5296, -122.0402],
+  "san leandro": [37.7249, -122.1561],
+  "alameda": [37.7652, -122.2416],
+  "emeryville": [37.8313, -122.2853],
+  "san rafael": [37.9735, -122.5311],
+  "south san francisco": [37.6547, -122.4077],
+  "pacifica": [37.6138, -122.4869],
+  "menlo park": [37.4530, -122.1817],
+  "foster city": [37.5585, -122.2711],
+  "burlingame": [37.5841, -122.3661],
+  "san bruno": [37.6305, -122.4111],
+  "antioch": [38.0049, -121.8058],
+  "pittsburg": [38.0280, -121.8847],
+  "brentwood": [37.9318, -121.6958],
+  "dublin": [37.7022, -121.9358],
+  "san ramon": [37.7799, -121.9780],
+  "danville": [37.8216, -121.9999],
+  "martinez": [38.0194, -122.1341],
+  "hercules": [38.0172, -122.2887],
+  "el cerrito": [37.9161, -122.3111],
+  "albany": [37.8869, -122.2978],
+  "benicia": [38.0494, -122.1586],
+  "fairfield": [38.2494, -122.0400],
+  "vacaville": [38.3566, -121.9877],
+  "napa": [38.2975, -122.2869],
+  "petaluma": [38.2324, -122.6367],
+  "santa rosa": [38.4404, -122.7141],
+  "stockton": [37.9577, -121.2908],
+  "sacramento": [38.5816, -121.4944],
+  "campbell": [37.2872, -121.9500],
+  "cupertino": [37.3230, -122.0322],
+  "los gatos": [37.2358, -121.9624],
+  "saratoga": [37.2639, -122.0230],
+  "gilroy": [37.0058, -121.5683],
+  "morgan hill": [37.1305, -121.6544],
+};
+
+const BAY_AREA_CENTER: [number, number] = [37.7749, -122.2194];
+
+function getCityCoords(city: string): [number, number] | null {
+  if (!city) return null;
+  const key = city.toLowerCase().trim();
+  return BAY_AREA_COORDS[key] || null;
+}
+
+function offsetCoords(coords: [number, number], index: number, total: number): [number, number] {
+  if (total <= 1) return coords;
+  const angle = (2 * Math.PI * index) / total;
+  const radius = 0.005 + (total > 6 ? 0.003 : 0);
+  return [
+    coords[0] + radius * Math.cos(angle),
+    coords[1] + radius * Math.sin(angle),
+  ];
+}
 
 interface DirectoryMember {
   id: string;
@@ -31,6 +142,7 @@ export default function Directory() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const { data: members, isLoading } = useQuery<DirectoryMember[]>({
     queryKey: ["/api/portal/directory"],
@@ -89,6 +201,28 @@ export default function Directory() {
               <SelectItem value="government">Government</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex rounded-lg border overflow-hidden">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setViewMode("list")}
+              data-testid="button-list-view"
+            >
+              <List className="h-4 w-4 mr-1" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === "map" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setViewMode("map")}
+              data-testid="button-map-view"
+            >
+              <MapIcon className="h-4 w-4 mr-1" />
+              Map
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -108,6 +242,13 @@ export default function Directory() {
               </p>
             </CardContent>
           </Card>
+        ) : viewMode === "map" ? (
+          <>
+            <p className="text-sm text-muted-foreground mb-4" data-testid="text-directory-count">
+              {filtered.length} member{filtered.length !== 1 ? "s" : ""} found
+            </p>
+            <DirectoryMap members={filtered} setLocation={setLocation} />
+          </>
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-4" data-testid="text-directory-count">
@@ -144,6 +285,117 @@ export default function Directory() {
         )}
       </div>
     </PortalLayout>
+  );
+}
+
+function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; setLocation: (path: string) => void }) {
+  const cityGroups: Record<string, DirectoryMember[]> = {};
+  members.forEach((m) => {
+    const key = (m.city || "").toLowerCase().trim();
+    if (key) {
+      if (!cityGroups[key]) cityGroups[key] = [];
+      cityGroups[key].push(m);
+    }
+  });
+
+  const mappableMembers: { member: DirectoryMember; position: [number, number] }[] = [];
+  const unmappable: DirectoryMember[] = [];
+
+  Object.entries(cityGroups).forEach(([cityKey, group]) => {
+    const coords = getCityCoords(cityKey);
+    if (coords) {
+      group.forEach((member, idx) => {
+        mappableMembers.push({
+          member,
+          position: offsetCoords(coords, idx, group.length),
+        });
+      });
+    } else {
+      unmappable.push(...group);
+    }
+  });
+
+  members.forEach((m) => {
+    const key = (m.city || "").toLowerCase().trim();
+    if (!key) unmappable.push(m);
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card className="overflow-hidden" data-testid="map-directory">
+        <div style={{ height: "500px" }}>
+          <MapContainer
+            center={BAY_AREA_CENTER}
+            zoom={10}
+            style={{ height: "100%", width: "100%" }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {mappableMembers.map(({ member, position }) => (
+              <Marker
+                key={member.id}
+                position={position}
+                icon={member.membershipCategory === "large" ? corporateMarkerIcon : standardMarkerIcon}
+              >
+                <Popup>
+                  <div className="min-w-[200px]" data-testid={`popup-member-${member.id}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {member.profileImageUrl ? (
+                        <img src={member.profileImageUrl} alt={member.companyName} className="w-8 h-8 rounded-full object-cover border" />
+                      ) : (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${member.membershipCategory === "large" ? "bg-[#E5A830]/10 text-[#E5A830]" : "bg-muted text-muted-foreground"}`}>
+                          {member.companyName.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-sm leading-tight">{member.companyName}</p>
+                        <p className="text-xs text-muted-foreground">{member.contactName}</p>
+                      </div>
+                    </div>
+                    {member.membershipCategory === "large" && (
+                      <span className="inline-block text-xs bg-[#E5A830] text-white rounded px-1.5 py-0.5 mb-1">Corporate Partner</span>
+                    )}
+                    {member.isBoardMember && (
+                      <span className="inline-block text-xs bg-amber-500 text-white rounded px-1.5 py-0.5 mb-1 ml-1">Board</span>
+                    )}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <MapPin className="h-3 w-3" />{member.city}, {member.state}
+                    </p>
+                    {member.primaryServices && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{member.primaryServices}</p>
+                    )}
+                    <button
+                      className="text-xs text-primary hover:underline font-medium"
+                      onClick={() => setLocation(`/portal/directory/${member.id}`)}
+                      data-testid={`link-view-profile-${member.id}`}
+                    >
+                      View Profile →
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      </Card>
+
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-[#3b82f6]" />
+          <span>Members</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-[#E5A830]" />
+          <span>Corporate Partners</span>
+        </div>
+        {unmappable.length > 0 && (
+          <span className="ml-auto">{unmappable.length} member{unmappable.length !== 1 ? "s" : ""} could not be mapped</span>
+        )}
+      </div>
+    </div>
   );
 }
 
