@@ -272,13 +272,13 @@ export default function CalendarPage() {
 
         <Card className="mb-8" data-testid="card-calendar-grid">
           <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
-            <Button size="icon" variant="ghost" onClick={goToPrevMonth} data-testid="button-prev-month">
+            <Button size="icon" variant="ghost" className="min-h-[44px] min-w-[44px]" onClick={goToPrevMonth} data-testid="button-prev-month">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <CardTitle data-testid="text-current-month">
+            <CardTitle className="text-base sm:text-lg" data-testid="text-current-month">
               {MONTH_NAMES[currentMonth]} {currentYear}
             </CardTitle>
-            <Button size="icon" variant="ghost" onClick={goToNextMonth} data-testid="button-next-month">
+            <Button size="icon" variant="ghost" className="min-h-[44px] min-w-[44px]" onClick={goToNextMonth} data-testid="button-next-month">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </CardHeader>
@@ -287,7 +287,7 @@ export default function CalendarPage() {
               {DAY_HEADERS.map((day) => (
                 <div
                   key={day}
-                  className="text-center text-xs font-medium text-muted-foreground py-2"
+                  className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-2"
                 >
                   {day}
                 </div>

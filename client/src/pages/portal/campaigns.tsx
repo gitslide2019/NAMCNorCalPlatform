@@ -264,7 +264,7 @@ export default function Campaigns() {
                   <Input placeholder="Campaign title" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} data-testid="input-campaign-title" />
                   <Textarea placeholder="Description" value={formData.description} onChange={e => setFormData(f => ({ ...f, description: e.target.value }))} data-testid="input-campaign-description" />
                   <Input type="number" placeholder="Goal amount ($)" value={formData.goalAmount} onChange={e => setFormData(f => ({ ...f, goalAmount: e.target.value }))} data-testid="input-campaign-goal" />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-sm text-muted-foreground">Start Date</label>
                       <Input type="date" value={formData.startDate} onChange={e => setFormData(f => ({ ...f, startDate: e.target.value }))} data-testid="input-campaign-start" />

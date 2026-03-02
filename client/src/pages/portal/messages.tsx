@@ -188,19 +188,18 @@ export default function Messages() {
                   placeholder="Write your message..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  rows={6}
+                  rows={4}
                   data-testid="textarea-content"
                 />
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleSend}
-                    disabled={sendMutation.isPending}
-                    data-testid="button-send"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    {sendMutation.isPending ? "Sending..." : "Send"}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleSend}
+                  disabled={sendMutation.isPending}
+                  className="w-full sm:w-auto"
+                  data-testid="button-send"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {sendMutation.isPending ? "Sending..." : "Send"}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

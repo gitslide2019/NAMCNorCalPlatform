@@ -31,7 +31,7 @@ const storeFeatures = [
 export default function Store() {
   return (
     <PortalLayout>
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="p-6 sm:p-8 lg:p-10 max-w-5xl mx-auto space-y-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] p-8 sm:p-12 text-white">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#E5A830]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#E5A830]/5 rounded-full translate-y-1/2 -translate-x-1/2" />

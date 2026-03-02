@@ -19,7 +19,8 @@ export function HeroSection() {
           <div className="flex-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900/20 border border-neutral-900/30 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-neutral-900 mb-6">
               <Award className="h-4 w-4 shrink-0" />
-              <span>Est. 1969 - The Oldest Minority Construction Trade Association</span>
+              <span className="hidden sm:inline">Est. 1969 - The Oldest Minority Construction Trade Association</span>
+              <span className="sm:hidden">Est. 1969 - Oldest Minority Contractor Assoc.</span>
             </div>
             
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-neutral-900" data-testid="text-hero-title">

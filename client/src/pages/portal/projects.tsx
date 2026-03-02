@@ -131,7 +131,7 @@ function ProjectMapView({
   );
 
   return (
-    <div className="rounded-lg overflow-hidden border" style={{ height: "500px" }} data-testid="map-container">
+    <div className="rounded-lg overflow-hidden border h-[350px] sm:h-[500px]" data-testid="map-container">
       <MapContainer
         center={[37.8, -122.25]}
         zoom={10}

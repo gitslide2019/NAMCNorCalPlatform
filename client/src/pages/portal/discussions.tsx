@@ -233,6 +233,7 @@ export default function Discussions() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={openEditTopicDialog}
                           data-testid="button-edit-topic"
                         >
@@ -243,6 +244,7 @@ export default function Discussions() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={() => deleteTopicMutation.mutate()}
                           disabled={deleteTopicMutation.isPending}
                           data-testid="button-delete-topic"
@@ -294,6 +296,7 @@ export default function Discussions() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="min-h-[44px] min-w-[44px]"
                             onClick={() => deleteReplyMutation.mutate(reply.id)}
                             disabled={deleteReplyMutation.isPending}
                             data-testid={`button-delete-reply-${reply.id}`}
@@ -324,6 +327,7 @@ export default function Discussions() {
                   <Button
                     onClick={() => replyMutation.mutate()}
                     disabled={!replyContent.trim() || replyMutation.isPending}
+                    className="w-full sm:w-auto"
                     data-testid="button-post-reply"
                   >
                     <Send className="h-4 w-4 mr-2" />
@@ -456,7 +460,7 @@ export default function Discussions() {
         <div className="flex items-center gap-2 mb-6 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]" data-testid="select-category-filter">
+            <SelectTrigger className="w-[160px] sm:w-[180px]" data-testid="select-category-filter">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
             <SelectContent>
@@ -511,20 +515,20 @@ export default function Discussions() {
                           {topic.title}
                         </h3>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <Badge className={categoryColor(topic.category)} data-testid={`badge-category-${topic.id}`}>
                           {topic.category}
                         </Badge>
-                        <span className="text-sm text-muted-foreground" data-testid={`text-author-${topic.id}`}>
+                        <span className="text-xs sm:text-sm text-muted-foreground" data-testid={`text-author-${topic.id}`}>
                           {getUsername(topic.authorId)}
                         </span>
-                        <span className="text-sm text-muted-foreground">·</span>
-                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <span className="text-xs sm:text-sm text-muted-foreground">·</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                           <MessageSquare className="h-3 w-3" />
                           <span data-testid={`text-reply-count-${topic.id}`}>{topic.replyCount}</span>
                         </span>
-                        <span className="text-sm text-muted-foreground">·</span>
-                        <span className="text-sm text-muted-foreground flex items-center gap-1" data-testid={`text-date-${topic.id}`}>
+                        <span className="text-xs sm:text-sm text-muted-foreground">·</span>
+                        <span className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1" data-testid={`text-date-${topic.id}`}>
                           <Clock className="h-3 w-3" />
                           {new Date(topic.createdAt).toLocaleDateString()}
                         </span>
