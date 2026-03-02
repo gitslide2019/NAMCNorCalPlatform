@@ -230,6 +230,7 @@ export const tools = pgTable("tools", {
   status: text("status").notNull().default("available"),
   condition: text("condition").notNull().default("good"),
   location: text("location"),
+  lendingTerms: text("lending_terms"),
   imageData: text("image_data"),
   imageType: text("image_type"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -244,6 +245,30 @@ export const insertToolSchema = createInsertSchema(tools).omit({
 export type InsertTool = z.infer<typeof insertToolSchema>;
 export type Tool = typeof tools.$inferSelect;
 
+export const toolBorrowRequests = pgTable("tool_borrow_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  toolId: varchar("tool_id").notNull(),
+  requesterId: varchar("requester_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  message: text("message"),
+  ownerResponse: text("owner_response"),
+  requestedStartDate: timestamp("requested_start_date"),
+  requestedReturnDate: timestamp("requested_return_date"),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertToolBorrowRequestSchema = createInsertSchema(toolBorrowRequests).omit({
+  id: true,
+  status: true,
+  ownerResponse: true,
+  respondedAt: true,
+  createdAt: true,
+});
+
+export type InsertToolBorrowRequest = z.infer<typeof insertToolBorrowRequestSchema>;
+export type ToolBorrowRequest = typeof toolBorrowRequests.$inferSelect;
+
 export const toolLoans = pgTable("tool_loans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   toolId: varchar("tool_id").notNull(),
@@ -254,6 +279,8 @@ export const toolLoans = pgTable("tool_loans", {
   notes: text("notes"),
   returnNotes: text("return_notes"),
   status: text("status").notNull().default("active"),
+  requestId: varchar("request_id"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

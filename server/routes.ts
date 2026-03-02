@@ -756,7 +756,7 @@ export async function registerRoutes(
         res.status(403).json({ message: "Not authorized to edit this tool" });
         return;
       }
-      const allowedFields = ["name", "description", "category", "status", "condition", "location", "imageData", "imageType"];
+      const allowedFields = ["name", "description", "category", "status", "condition", "location", "lendingTerms", "imageData", "imageType"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -923,6 +923,236 @@ export async function registerRoutes(
       res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch shared equipment" });
+    }
+  });
+
+  app.post("/api/portal/tools/:id/request", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const tool = await storage.getTool(req.params.id);
+      if (!tool) {
+        res.status(404).json({ message: "Tool not found" });
+        return;
+      }
+      if (tool.ownerId === user.id) {
+        res.status(400).json({ message: "You cannot request your own equipment" });
+        return;
+      }
+      const { message, requestedStartDate, requestedReturnDate } = req.body;
+      if (!requestedReturnDate) {
+        res.status(400).json({ message: "Requested return date is required" });
+        return;
+      }
+      const returnDate = new Date(requestedReturnDate);
+      if (isNaN(returnDate.getTime()) || returnDate <= new Date()) {
+        res.status(400).json({ message: "Return date must be a valid future date" });
+        return;
+      }
+      const startDate = requestedStartDate ? new Date(requestedStartDate) : null;
+      if (startDate && isNaN(startDate.getTime())) {
+        res.status(400).json({ message: "Invalid start date" });
+        return;
+      }
+      const request = await storage.createBorrowRequest({
+        toolId: req.params.id,
+        requesterId: user.id,
+        message: message || null,
+        requestedStartDate: startDate,
+        requestedReturnDate: returnDate,
+      });
+      try {
+        await storage.createNotification({
+          userId: tool.ownerId,
+          type: "tool",
+          title: "New Borrow Request",
+          message: `${user.username} wants to borrow your "${tool.name}".`,
+          link: "/portal/tools",
+        });
+      } catch {}
+      res.status(201).json(request);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit borrow request" });
+    }
+  });
+
+  app.get("/api/portal/tools/requests/incoming", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const requests = await storage.getBorrowRequestsForOwner(user.id);
+      const allUsers = await storage.getAllUsers();
+      const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+      const enriched = await Promise.all(requests.map(async (r) => {
+        const tool = await storage.getTool(r.toolId);
+        return {
+          ...r,
+          requesterUsername: userMap.get(r.requesterId) || "Unknown",
+          toolName: tool?.name || "Unknown Tool",
+          toolId: r.toolId,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch incoming requests" });
+    }
+  });
+
+  app.get("/api/portal/tools/requests/outgoing", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const requests = await storage.getBorrowRequestsForUser(user.id);
+      const enriched = await Promise.all(requests.map(async (r) => {
+        const tool = await storage.getTool(r.toolId);
+        return {
+          ...r,
+          toolName: tool?.name || "Unknown Tool",
+          toolLendingTerms: tool?.lendingTerms || null,
+          toolOwnerId: tool?.ownerId || null,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch outgoing requests" });
+    }
+  });
+
+  app.post("/api/portal/tools/requests/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const request = await storage.getBorrowRequest(req.params.id);
+      if (!request) {
+        res.status(404).json({ message: "Request not found" });
+        return;
+      }
+      const tool = await storage.getTool(request.toolId);
+      if (!tool || tool.ownerId !== user.id) {
+        res.status(403).json({ message: "Not authorized to approve this request" });
+        return;
+      }
+      if (request.status !== "pending") {
+        res.status(400).json({ message: "Request is no longer pending" });
+        return;
+      }
+      const { ownerResponse } = req.body || {};
+      const updated = await storage.updateBorrowRequestStatus(req.params.id, "approved", ownerResponse || undefined);
+      try {
+        await storage.createNotification({
+          userId: request.requesterId,
+          type: "tool",
+          title: "Borrow Request Approved",
+          message: `Your request to borrow "${tool.name}" has been approved!${tool.lendingTerms ? " Please review and accept the lending terms to complete." : " You can now pick up the equipment."}`,
+          link: "/portal/tools",
+        });
+      } catch {}
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve request" });
+    }
+  });
+
+  app.post("/api/portal/tools/requests/:id/deny", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const request = await storage.getBorrowRequest(req.params.id);
+      if (!request) {
+        res.status(404).json({ message: "Request not found" });
+        return;
+      }
+      const tool = await storage.getTool(request.toolId);
+      if (!tool || tool.ownerId !== user.id) {
+        res.status(403).json({ message: "Not authorized to deny this request" });
+        return;
+      }
+      if (request.status !== "pending") {
+        res.status(400).json({ message: "Request is no longer pending" });
+        return;
+      }
+      const { ownerResponse } = req.body || {};
+      const updated = await storage.updateBorrowRequestStatus(req.params.id, "denied", ownerResponse || undefined);
+      try {
+        await storage.createNotification({
+          userId: request.requesterId,
+          type: "tool",
+          title: "Borrow Request Denied",
+          message: `Your request to borrow "${tool.name}" was not approved.${ownerResponse ? ` Reason: ${ownerResponse}` : ""}`,
+          link: "/portal/tools",
+        });
+      } catch {}
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to deny request" });
+    }
+  });
+
+  app.post("/api/portal/tools/requests/:id/cancel", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const request = await storage.getBorrowRequest(req.params.id);
+      if (!request) {
+        res.status(404).json({ message: "Request not found" });
+        return;
+      }
+      if (request.requesterId !== user.id) {
+        res.status(403).json({ message: "Not authorized to cancel this request" });
+        return;
+      }
+      if (request.status !== "pending") {
+        res.status(400).json({ message: "Can only cancel pending requests" });
+        return;
+      }
+      const updated = await storage.updateBorrowRequestStatus(req.params.id, "cancelled");
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to cancel request" });
+    }
+  });
+
+  app.post("/api/portal/tools/requests/:id/accept-terms", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const request = await storage.getBorrowRequest(req.params.id);
+      if (!request) {
+        res.status(404).json({ message: "Request not found" });
+        return;
+      }
+      if (request.requesterId !== user.id) {
+        res.status(403).json({ message: "Not authorized" });
+        return;
+      }
+      if (request.status !== "approved") {
+        res.status(400).json({ message: "Request must be approved before accepting terms" });
+        return;
+      }
+      const tool = await storage.getTool(request.toolId);
+      if (!tool) {
+        res.status(404).json({ message: "Tool not found" });
+        return;
+      }
+      if (tool.status === "borrowed") {
+        res.status(400).json({ message: "Equipment is currently borrowed by someone else" });
+        return;
+      }
+      await storage.updateToolStatus(request.toolId, "borrowed");
+      const loan = await storage.createToolLoan({
+        toolId: request.toolId,
+        borrowerId: user.id,
+        expectedReturnDate: request.requestedReturnDate,
+        notes: request.message || null,
+        requestId: request.id,
+        termsAcceptedAt: new Date(),
+      });
+      await storage.updateBorrowRequestStatus(request.id, "completed");
+      try {
+        await storage.createNotification({
+          userId: tool.ownerId,
+          type: "tool",
+          title: "Equipment Loan Started",
+          message: `${user.username} accepted terms and borrowed your "${tool.name}". Expected return: ${request.requestedReturnDate ? new Date(request.requestedReturnDate).toLocaleDateString() : "TBD"}.`,
+          link: "/portal/tools",
+        });
+      } catch {}
+      res.status(201).json(loan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to accept terms" });
     }
   });
 

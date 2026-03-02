@@ -534,6 +534,29 @@ export async function ensureTables() {
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    await db.execute(sql`
+      ALTER TABLE tools ADD COLUMN IF NOT EXISTS lending_terms text
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tool_borrow_requests (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        tool_id varchar NOT NULL,
+        requester_id varchar NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        message text,
+        owner_response text,
+        requested_start_date timestamp,
+        requested_return_date timestamp,
+        responded_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      ALTER TABLE tool_loans ADD COLUMN IF NOT EXISTS request_id varchar
+    `);
+    await db.execute(sql`
+      ALTER TABLE tool_loans ADD COLUMN IF NOT EXISTS terms_accepted_at timestamp
+    `);
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);

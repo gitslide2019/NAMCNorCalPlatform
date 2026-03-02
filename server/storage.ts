@@ -68,8 +68,11 @@ import {
   type InsertMemberProject,
   type MemberDocument,
   type InsertMemberDocument,
+  type ToolBorrowRequest,
+  type InsertToolBorrowRequest,
   memberProjects,
   memberDocuments,
+  toolBorrowRequests,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike } from "drizzle-orm";
@@ -142,6 +145,13 @@ export interface IStorage {
   getMyLoans(userId: string): Promise<ToolLoan[]>;
   getActiveLoanForTool(toolId: string): Promise<ToolLoan | undefined>;
   getActiveLoansForTool(toolId: string): Promise<ToolLoan[]>;
+
+  createBorrowRequest(data: InsertToolBorrowRequest): Promise<ToolBorrowRequest>;
+  getBorrowRequest(id: string): Promise<ToolBorrowRequest | undefined>;
+  getBorrowRequestsForTool(toolId: string): Promise<ToolBorrowRequest[]>;
+  getBorrowRequestsForOwner(ownerId: string): Promise<ToolBorrowRequest[]>;
+  getBorrowRequestsForUser(userId: string): Promise<ToolBorrowRequest[]>;
+  updateBorrowRequestStatus(id: string, status: string, ownerResponse?: string): Promise<ToolBorrowRequest | undefined>;
 
   getCourses(): Promise<Course[]>;
   getCourse(id: string): Promise<Course | undefined>;
@@ -490,6 +500,39 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveLoansForTool(toolId: string): Promise<ToolLoan[]> {
     return await db.select().from(toolLoans).where(and(eq(toolLoans.toolId, toolId), eq(toolLoans.status, "active")));
+  }
+
+  async createBorrowRequest(data: InsertToolBorrowRequest): Promise<ToolBorrowRequest> {
+    const [req] = await db.insert(toolBorrowRequests).values(data).returning();
+    return req;
+  }
+
+  async getBorrowRequest(id: string): Promise<ToolBorrowRequest | undefined> {
+    const [req] = await db.select().from(toolBorrowRequests).where(eq(toolBorrowRequests.id, id));
+    return req;
+  }
+
+  async getBorrowRequestsForTool(toolId: string): Promise<ToolBorrowRequest[]> {
+    return await db.select().from(toolBorrowRequests).where(eq(toolBorrowRequests.toolId, toolId)).orderBy(desc(toolBorrowRequests.createdAt));
+  }
+
+  async getBorrowRequestsForOwner(ownerId: string): Promise<ToolBorrowRequest[]> {
+    const ownerTools = await db.select().from(tools).where(eq(tools.ownerId, ownerId));
+    const toolIds = ownerTools.map(t => t.id);
+    if (toolIds.length === 0) return [];
+    const allRequests = await db.select().from(toolBorrowRequests).orderBy(desc(toolBorrowRequests.createdAt));
+    return allRequests.filter(r => toolIds.includes(r.toolId));
+  }
+
+  async getBorrowRequestsForUser(userId: string): Promise<ToolBorrowRequest[]> {
+    return await db.select().from(toolBorrowRequests).where(eq(toolBorrowRequests.requesterId, userId)).orderBy(desc(toolBorrowRequests.createdAt));
+  }
+
+  async updateBorrowRequestStatus(id: string, status: string, ownerResponse?: string): Promise<ToolBorrowRequest | undefined> {
+    const updateData: any = { status, respondedAt: new Date() };
+    if (ownerResponse !== undefined) updateData.ownerResponse = ownerResponse;
+    const [req] = await db.update(toolBorrowRequests).set(updateData).where(eq(toolBorrowRequests.id, id)).returning();
+    return req;
   }
 
   async getCourses(): Promise<Course[]> {
