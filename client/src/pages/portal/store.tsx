@@ -2,10 +2,14 @@ import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ShoppingBag, Package, Tag, Truck, Star } from "lucide-react";
-import storeTshirt from "@assets/generated_images/store_tshirt.png";
-import storeHardhat from "@assets/generated_images/store_hardhat.png";
-import storeTotebag from "@assets/generated_images/store_totebag.png";
-import storeMug from "@assets/generated_images/store_mug.png";
+import productPolo from "@assets/Screenshot_2026-03-02_at_7.41.46_PM_1772509575428.png";
+import productBackpackGold from "@assets/Screenshot_2026-03-02_at_7.41.41_PM_1772509575428.png";
+import productDuffel from "@assets/Screenshot_2026-03-02_at_7.41.22_PM_1772509575429.png";
+import productHoodie from "@assets/Screenshot_2026-03-02_at_7.41.13_PM_1772509575429.png";
+import productBackpack from "@assets/Screenshot_2026-03-02_at_7.40.56_PM_1772509575430.png";
+import productMug from "@assets/Screenshot_2026-03-02_at_7.46.36_PM_1772509627017.png";
+import productClogs from "@assets/Screenshot_2026-03-02_at_7.46.32_PM_1772509627018.png";
+import productTumbler from "@assets/Screenshot_2026-03-02_at_7.46.23_PM_1772509627019.png";
 
 const STORE_URL = "https://w0kiic-5a.myshopify.com/";
 
@@ -34,28 +38,52 @@ const storeFeatures = [
 
 const storeProducts = [
   {
-    image: storeTshirt,
-    title: "NAMC NorCal T-Shirt",
-    price: "$35.00",
-    description: "Official branded apparel",
+    image: productPolo,
+    title: "NAMC Polo Shirt",
+    price: "$38.00",
+    description: "Classic white polo with logo",
   },
   {
-    image: storeHardhat,
-    title: "Safety Hard Hat",
+    image: productHoodie,
+    title: "NAMC Hoodie",
+    price: "$55.00",
+    description: "Premium pullover hoodie",
+  },
+  {
+    image: productBackpack,
+    title: "NAMC Backpack",
+    price: "$48.00",
+    description: "Gold branded backpack",
+  },
+  {
+    image: productBackpackGold,
+    title: "Flap Backpack",
+    price: "$52.00",
+    description: "Gold & black rucksack",
+  },
+  {
+    image: productDuffel,
+    title: "Duffel Bag",
     price: "$45.00",
-    description: "NAMC branded safety gear",
+    description: "Gold gym & travel bag",
   },
   {
-    image: storeTotebag,
-    title: "Canvas Tote Bag",
+    image: productMug,
+    title: "Coffee Mug",
+    price: "$18.00",
+    description: "Ceramic mug with logo",
+  },
+  {
+    image: productTumbler,
+    title: "Travel Tumbler",
     price: "$28.00",
-    description: "Premium carry bag",
+    description: "Insulated straw tumbler",
   },
   {
-    image: storeMug,
-    title: "Travel Mug",
-    price: "$22.00",
-    description: "Insulated tumbler",
+    image: productClogs,
+    title: "NAMC Clogs",
+    price: "$35.00",
+    description: "Comfort clogs with logo",
   },
 ];
 
@@ -91,7 +119,7 @@ export default function Store() {
 
         <div>
           <h2 className="text-xl font-semibold mb-4" data-testid="text-featured-products">Featured Products</h2>
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {storeProducts.map((product) => (
               <a
                 key={product.title}
@@ -102,11 +130,11 @@ export default function Store() {
                 data-testid={`link-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <Card className="h-full hover-elevate">
-                  <div className="aspect-square overflow-hidden rounded-t-lg bg-muted">
+                  <div className="aspect-square overflow-hidden rounded-t-lg bg-white">
                     <img
                       src={product.image}
                       alt={product.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain p-2"
                       data-testid={`img-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
                     />
                   </div>
