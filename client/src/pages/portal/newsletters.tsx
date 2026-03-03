@@ -29,9 +29,28 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2 } from "lucide-react";
+import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2, BookOpen, Mail } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { Newsletter } from "@shared/schema";
+import newsletterBanner from "@assets/generated_images/newsletter_banner.png";
+
+const ACCENT_BG_COLORS = [
+  "bg-[#E5A830]/10",
+  "bg-blue-500/10",
+  "bg-green-500/10",
+  "bg-purple-500/10",
+  "bg-rose-500/10",
+  "bg-cyan-500/10",
+];
+
+const ACCENT_ICON_COLORS = [
+  "text-[#E5A830]",
+  "text-blue-500",
+  "text-green-500",
+  "text-purple-500",
+  "text-rose-500",
+  "text-cyan-500",
+];
 
 export default function Newsletters() {
   const { user } = useAuth();
@@ -263,60 +282,72 @@ export default function Newsletters() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-newsletters-heading">
-              Newsletters
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Stay up to date with NAMC NorCal news and updates.
-            </p>
+
+        <div className="relative overflow-hidden rounded-xl mb-8" data-testid="banner-newsletters">
+          <img
+            src={newsletterBanner}
+            alt="Newsletters"
+            className="w-full h-32 sm:h-44 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+          <div className="absolute inset-0 flex items-center p-6 sm:p-8">
+            <div className="text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-newsletters-heading">
+                <Newspaper className="h-7 w-7" />
+                Newsletters
+              </h1>
+              <p className="text-white/80 mt-1 text-sm sm:text-base max-w-md">
+                Stay up to date with NAMC NorCal news and updates.
+              </p>
+            </div>
           </div>
           {user?.isAdmin && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-newsletter">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Newsletter
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Newsletter</DialogTitle>
-                </DialogHeader>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    createMutation.mutate({ title, content });
-                  }}
-                  className="space-y-4"
-                >
-                  <Input
-                    placeholder="Newsletter title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    data-testid="input-newsletter-title"
-                  />
-                  <Textarea
-                    placeholder="Newsletter content..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className="min-h-[200px]"
-                    required
-                    data-testid="input-newsletter-content"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    className="w-full"
-                    data-testid="button-submit-newsletter"
-                  >
-                    {createMutation.isPending ? "Publishing..." : "Publish Newsletter"}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-white/90 text-black hover:bg-white" data-testid="button-create-newsletter">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Newsletter</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      createMutation.mutate({ title, content });
+                    }}
+                    className="space-y-4"
+                  >
+                    <Input
+                      placeholder="Newsletter title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                      data-testid="input-newsletter-title"
+                    />
+                    <Textarea
+                      placeholder="Newsletter content..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="min-h-[200px]"
+                      required
+                      data-testid="input-newsletter-content"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-newsletter"
+                    >
+                      {createMutation.isPending ? "Publishing..." : "Publish Newsletter"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           )}
         </div>
 
@@ -334,30 +365,35 @@ export default function Newsletters() {
           </div>
         ) : newsletters && newsletters.length > 0 ? (
           <div className="space-y-4">
-            {newsletters.map((newsletter) => (
+            {newsletters.map((newsletter, idx) => (
               <Card
                 key={newsletter.id}
                 className="cursor-pointer hover-elevate"
                 onClick={() => setSelectedNewsletterId(newsletter.id)}
                 data-testid={`card-newsletter-${newsletter.id}`}
               >
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <CardTitle className="text-lg" data-testid={`text-newsletter-title-${newsletter.id}`}>
-                      {newsletter.title}
-                    </CardTitle>
-                    <Badge variant="secondary" className="no-default-active-elevate">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {formatDate(newsletter.publishedAt)}
-                    </Badge>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-lg shrink-0 ${ACCENT_BG_COLORS[idx % ACCENT_BG_COLORS.length]}`}>
+                      <BookOpen className={`h-6 w-6 ${ACCENT_ICON_COLORS[idx % ACCENT_ICON_COLORS.length]}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <h3 className="font-semibold text-base sm:text-lg" data-testid={`text-newsletter-title-${newsletter.id}`}>
+                          {newsletter.title}
+                        </h3>
+                        <Badge variant="secondary" className="no-default-active-elevate shrink-0">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(newsletter.publishedAt)}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2" data-testid={`text-newsletter-preview-${newsletter.id}`}>
+                        {newsletter.content.length > 200
+                          ? newsletter.content.substring(0, 200) + "..."
+                          : newsletter.content}
+                      </p>
+                    </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground" data-testid={`text-newsletter-preview-${newsletter.id}`}>
-                    {newsletter.content.length > 200
-                      ? newsletter.content.substring(0, 200) + "..."
-                      : newsletter.content}
-                  </p>
                 </CardContent>
               </Card>
             ))}
@@ -365,9 +401,13 @@ export default function Newsletters() {
         ) : (
           <Card data-testid="card-empty-newsletters">
             <CardContent className="p-8 text-center">
-              <Newspaper className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <div className="flex justify-center mb-4">
+                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
+                  <Mail className="h-10 w-10 text-muted-foreground" />
+                </div>
+              </div>
               <h3 className="text-lg font-semibold mb-2">No newsletters published yet</h3>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground max-w-sm mx-auto">
                 Check back later for news and updates from NAMC NorCal.
               </p>
             </CardContent>

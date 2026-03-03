@@ -24,9 +24,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2, Users } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
+import discussionBanner from "@assets/generated_images/discussion_banner.png";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
 type TopicWithReplies = DiscussionTopic & { replies: DiscussionReply[] };
@@ -397,64 +398,76 @@ export default function Discussions() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-discussions-title">
-              Discussion Board
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Connect and share ideas with fellow NAMC members.
-            </p>
-          </div>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-new-topic">
-                <Plus className="h-4 w-4 mr-2" />
-                New Topic
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Topic</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <Input
-                  placeholder="Topic title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  data-testid="input-topic-title"
-                />
-                <Select value={newCategory} onValueChange={setNewCategory}>
-                  <SelectTrigger data-testid="select-topic-category">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat} data-testid={`select-item-${cat}`}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Textarea
-                  placeholder="What would you like to discuss?"
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  rows={5}
-                  data-testid="input-topic-content"
-                />
-                <Button
-                  onClick={() => createTopicMutation.mutate()}
-                  disabled={!newTitle.trim() || !newContent.trim() || createTopicMutation.isPending}
-                  className="w-full"
-                  data-testid="button-submit-topic"
-                >
-                  {createTopicMutation.isPending ? "Creating..." : "Create Topic"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="relative overflow-hidden rounded-xl mb-6" data-testid="banner-discussions">
+          <img
+            src={discussionBanner}
+            alt="Discussion Board"
+            className="w-full h-32 sm:h-44 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+          <div className="absolute inset-0 flex items-center justify-between p-6 sm:p-8">
+            <div className="text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-discussions-title">
+                <MessageSquare className="h-7 w-7" />
+                Discussion Board
+              </h1>
+              <p className="text-white/80 mt-1 text-sm sm:text-base max-w-md">
+                Connect and share ideas with fellow NAMC members.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-white/90 text-black hover:bg-white" data-testid="button-new-topic">
+                    <Plus className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">New Topic</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Topic</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-2">
+                    <Input
+                      placeholder="Topic title"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      data-testid="input-topic-title"
+                    />
+                    <Select value={newCategory} onValueChange={setNewCategory}>
+                      <SelectTrigger data-testid="select-topic-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat} data-testid={`select-item-${cat}`}>
+                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      placeholder="What would you like to discuss?"
+                      value={newContent}
+                      onChange={(e) => setNewContent(e.target.value)}
+                      rows={5}
+                      data-testid="input-topic-content"
+                    />
+                    <Button
+                      onClick={() => createTopicMutation.mutate()}
+                      disabled={!newTitle.trim() || !newContent.trim() || createTopicMutation.isPending}
+                      className="w-full"
+                      data-testid="button-submit-topic"
+                    >
+                      {createTopicMutation.isPending ? "Creating..." : "Create Topic"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">

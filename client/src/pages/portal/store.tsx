@@ -2,6 +2,10 @@ import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ShoppingBag, Package, Tag, Truck, Star } from "lucide-react";
+import storeTshirt from "@assets/generated_images/store_tshirt.png";
+import storeHardhat from "@assets/generated_images/store_hardhat.png";
+import storeTotebag from "@assets/generated_images/store_totebag.png";
+import storeMug from "@assets/generated_images/store_mug.png";
 
 const STORE_URL = "https://w0kiic-5a.myshopify.com/";
 
@@ -28,6 +32,33 @@ const storeFeatures = [
   },
 ];
 
+const storeProducts = [
+  {
+    image: storeTshirt,
+    title: "NAMC NorCal T-Shirt",
+    price: "$35.00",
+    description: "Official branded apparel",
+  },
+  {
+    image: storeHardhat,
+    title: "Safety Hard Hat",
+    price: "$45.00",
+    description: "NAMC branded safety gear",
+  },
+  {
+    image: storeTotebag,
+    title: "Canvas Tote Bag",
+    price: "$28.00",
+    description: "Premium carry bag",
+  },
+  {
+    image: storeMug,
+    title: "Travel Mug",
+    price: "$22.00",
+    description: "Insulated tumbler",
+  },
+];
+
 export default function Store() {
   return (
     <PortalLayout>
@@ -50,7 +81,7 @@ export default function Store() {
               our store has everything you need to show your commitment to the minority contractor community.
             </p>
             <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store">
-              <Button size="lg" className="bg-[#E5A830] text-black hover:bg-[#d49a28] font-semibold">
+              <Button size="lg" className="bg-[#E5A830] text-black font-semibold">
                 <ExternalLink className="h-5 w-5 mr-2" />
                 Visit the Store
               </Button>
@@ -58,9 +89,41 @@ export default function Store() {
           </div>
         </div>
 
+        <div>
+          <h2 className="text-xl font-semibold mb-4" data-testid="text-featured-products">Featured Products</h2>
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            {storeProducts.map((product) => (
+              <a
+                key={product.title}
+                href={STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group"
+                data-testid={`link-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <Card className="h-full hover-elevate">
+                  <div className="aspect-square overflow-hidden rounded-t-lg bg-muted">
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                      data-testid={`img-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    />
+                  </div>
+                  <CardContent className="p-3 sm:p-4">
+                    <h3 className="font-semibold text-sm sm:text-base truncate" data-testid={`text-product-title-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.title}</h3>
+                    <p className="text-xs text-muted-foreground" data-testid={`text-product-desc-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.description}</p>
+                    <p className="text-sm font-bold text-[#E5A830] mt-1" data-testid={`text-product-price-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.price}</p>
+                  </CardContent>
+                </Card>
+              </a>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {storeFeatures.map((feature) => (
-            <Card key={feature.title} className="hover:shadow-md transition-shadow">
+            <Card key={feature.title} className="hover-elevate">
               <CardContent className="p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E5A830]/10 mb-3">
                   <feature.icon className="h-5 w-5 text-[#E5A830]" />
@@ -85,7 +148,7 @@ export default function Store() {
               </p>
             </div>
             <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store-bottom">
-              <Button variant="outline" className="border-[#E5A830] text-[#E5A830] hover:bg-[#E5A830]/10 whitespace-nowrap">
+              <Button variant="outline" className="border-[#E5A830] text-[#E5A830] whitespace-nowrap">
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 Shop Now
               </Button>
