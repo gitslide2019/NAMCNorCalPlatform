@@ -10,6 +10,7 @@ import productBackpack from "@assets/Screenshot_2026-03-02_at_7.40.56_PM_1772509
 import productMug from "@assets/Screenshot_2026-03-02_at_7.46.36_PM_1772509627017.png";
 import productClogs from "@assets/Screenshot_2026-03-02_at_7.46.32_PM_1772509627018.png";
 import productTumbler from "@assets/Screenshot_2026-03-02_at_7.46.23_PM_1772509627019.png";
+import storeBanner from "@assets/Screenshot_2026-03-02_at_8.17.04_PM_1772511432870.png";
 
 const STORE_URL = "https://w0kiic-5a.myshopify.com/";
 
@@ -91,29 +92,35 @@ export default function Store() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-5xl mx-auto space-y-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] p-8 sm:p-12 text-white">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#E5A830]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#E5A830]/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E5A830]">
-                <ShoppingBag className="h-6 w-6 text-black" />
+        <div className="relative overflow-hidden rounded-2xl" data-testid="banner-store">
+          <img
+            src={storeBanner}
+            alt="NAMC NorCal Store"
+            className="w-full h-48 sm:h-64 lg:h-72 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
+          <div className="absolute inset-0 flex items-center p-6 sm:p-10">
+            <div className="text-white max-w-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-[#E5A830]">
+                  <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-3xl font-bold" data-testid="text-store-title">NAMC NorCal Store</h1>
+                  <p className="text-white/60 text-xs sm:text-sm">Official merchandise and member gear</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-store-title">NAMC NorCal Store</h1>
-                <p className="text-white/60 text-sm">Official merchandise and member gear</p>
-              </div>
+              <p className="text-white/80 mb-5 text-xs sm:text-sm leading-relaxed hidden sm:block">
+                Rep your chapter with official NAMC NorCal merchandise. From branded apparel to professional gear,
+                show your commitment to the minority contractor community.
+              </p>
+              <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store">
+                <Button size="lg" className="bg-[#E5A830] text-black font-semibold">
+                  <ExternalLink className="h-5 w-5 mr-2" />
+                  Visit the Store
+                </Button>
+              </a>
             </div>
-            <p className="text-white/80 max-w-2xl mb-6 text-sm sm:text-base leading-relaxed">
-              Rep your chapter with official NAMC NorCal merchandise. From branded apparel to professional gear,
-              our store has everything you need to show your commitment to the minority contractor community.
-            </p>
-            <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store">
-              <Button size="lg" className="bg-[#E5A830] text-black font-semibold">
-                <ExternalLink className="h-5 w-5 mr-2" />
-                Visit the Store
-              </Button>
-            </a>
           </div>
         </div>
 
