@@ -27,47 +27,50 @@ export async function ensureAdminUser() {
     ];
 
     for (const admin of adminAccounts) {
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(admin.password, salt, 64)) as Buffer;
+      const hashedPassword = buf.toString("hex") + "." + salt;
+
       const [existing] = await db.select().from(users).where(eq(users.username, admin.username));
-      if (!existing) {
-        const salt = randomBytes(16).toString("hex");
-        const buf = (await scryptAsync(admin.password, salt, 64)) as Buffer;
-        const hashedPassword = buf.toString("hex") + "." + salt;
-
-        let memberAppId: string | undefined;
-        if (admin.username === "shannon.hickman") {
-          const [app] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
-          if (!app) {
-            await db.insert(membershipApplications).values({
-              contactName: "Shannon Hickman",
-              companyName: "NAMC NorCal",
-              email: "info@namcnorcal.org",
-              phone: "5108308294",
-              address: "977 66th Ave",
-              city: "Oakland",
-              state: "CA",
-              zipCode: "94621",
-              businessType: "Other",
-              yearsInBusiness: "20+",
-              membershipType: "corporate_partner",
-              status: "approved",
-            } as any);
-            const [newApp] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
-            memberAppId = newApp?.id;
-          } else {
-            memberAppId = app.id;
-          }
-        }
-
-        await db.insert(users).values({
-          username: admin.username,
-          password: hashedPassword,
-          isAdmin: true,
-          memberApplicationId: memberAppId,
-        });
-        console.log(`Created admin user: ${admin.username}`);
-      } else {
-        console.log(`${admin.username} user already exists`);
+      if (existing) {
+        await db.update(users).set({ password: hashedPassword, isAdmin: true }).where(eq(users.id, existing.id));
+        console.log(`Updated password for admin: ${admin.username}`);
+        continue;
       }
+
+      let memberAppId: string | undefined;
+      if (admin.username === "shannon.hickman") {
+        const [app] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
+        if (!app) {
+          await db.insert(membershipApplications).values({
+            contactName: "Shannon Hickman",
+            companyName: "NAMC NorCal",
+            email: "info@namcnorcal.org",
+            phone: "5108308294",
+            address: "977 66th Ave",
+            city: "Oakland",
+            state: "CA",
+            zipCode: "94621",
+            businessType: "Other",
+            yearsInBusiness: "20+",
+            membershipType: "corporate_partner",
+            membershipCategory: "general_contractor",
+            status: "approved",
+          } as any);
+          const [newApp] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
+          memberAppId = newApp?.id;
+        } else {
+          memberAppId = app.id;
+        }
+      }
+
+      await db.insert(users).values({
+        username: admin.username,
+        password: hashedPassword,
+        isAdmin: true,
+        memberApplicationId: memberAppId,
+      });
+      console.log(`Created admin user: ${admin.username}`);
     }
   } catch (error) {
     console.error("Error ensuring admin user:", error);
