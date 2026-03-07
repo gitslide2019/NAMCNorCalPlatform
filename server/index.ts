@@ -11,19 +11,26 @@ declare module "http" {
   }
 }
 
-const isChildProcess = !!process.send;
-
 let appReady = false;
 const app = express();
 
-const httpServer = createServer((req, res) => {
+const earlyServer = (globalThis as any).__earlyServer;
+
+const httpServer = earlyServer || createServer();
+
+function requestHandler(req: any, res: any) {
   if (!appReady) {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("OK");
     return;
   }
   app(req, res);
-});
+}
+
+if (earlyServer) {
+  httpServer.removeAllListeners("request");
+}
+httpServer.on("request", requestHandler);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -37,17 +44,20 @@ export function log(message: string, source = "express") {
 }
 
 const port = parseInt(process.env.PORT || "5000", 10);
-const listenPort = isChildProcess ? 5001 : port;
 
-httpServer.listen(
-  {
-    port: listenPort,
-    host: "0.0.0.0",
-  },
-  () => {
-    log(`serving on port ${listenPort}`);
-  },
-);
+if (!earlyServer) {
+  httpServer.listen(
+    {
+      port,
+      host: "0.0.0.0",
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
+} else {
+  log(`serving on port ${port} (early server)`);
+}
 
 (async () => {
   await ensureTables();
@@ -95,10 +105,6 @@ httpServer.listen(
     next();
   });
 
-  await ensureAdminUser();
-  await seedMembers();
-  await seedMemberAccounts();
-  await seedSampleContent();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -124,7 +130,9 @@ httpServer.listen(
   appReady = true;
   log("Application fully initialized and ready");
 
-  if (isChildProcess && process.send) {
-    process.send({ type: "ready", port: listenPort });
-  }
+  await ensureAdminUser();
+  await seedMembers();
+  await seedMemberAccounts();
+  await seedSampleContent();
+  log("Background seeding complete");
 })();

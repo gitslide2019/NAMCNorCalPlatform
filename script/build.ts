@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, writeFile } from "fs/promises";
+import { rm, readFile } from "fs/promises";
 
 const allowlist = [
   "@google/generative-ai",
@@ -30,6 +30,19 @@ const allowlist = [
   "zod-validation-error",
 ];
 
+const earlyBanner = `
+var __earlyHttp = require("http");
+var __earlyPort = parseInt(process.env.PORT || "5000", 10);
+var __earlyServer = __earlyHttp.createServer(function(req, res) {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("OK");
+});
+__earlyServer.listen(__earlyPort, "0.0.0.0", function() {
+  console.log("Port " + __earlyPort + " open (early server)");
+});
+globalThis.__earlyServer = __earlyServer;
+`.trim();
+
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
@@ -55,66 +68,11 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
+    banner: {
+      js: earlyBanner,
+    },
     logLevel: "info",
   });
-
-  console.log("writing start.cjs proxy...");
-  const startScript = `"use strict";
-var http = require("http");
-var fork = require("child_process").fork;
-var path = require("path");
-
-var port = parseInt(process.env.PORT || "5000", 10);
-var childReady = false;
-var childPort = 5001;
-
-var server = http.createServer(function(req, res) {
-  if (!childReady) {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("OK");
-    return;
-  }
-  var opts = {
-    hostname: "127.0.0.1",
-    port: childPort,
-    path: req.url,
-    method: req.method,
-    headers: req.headers
-  };
-  var proxy = http.request(opts, function(proxyRes) {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
-    proxyRes.pipe(res, { end: true });
-  });
-  proxy.on("error", function() {
-    if (!res.headersSent) {
-      res.writeHead(502);
-      res.end("Bad Gateway");
-    }
-  });
-  req.pipe(proxy, { end: true });
-});
-
-server.listen(port, "0.0.0.0", function() {
-  console.log("Proxy server ready on port " + port);
-  var child = fork(path.join(__dirname, "index.cjs"), [], {
-    env: Object.assign({}, process.env, { PORT: String(port) }),
-    stdio: ["inherit", "inherit", "inherit", "ipc"]
-  });
-  child.on("message", function(msg) {
-    if (msg && msg.type === "ready") {
-      childPort = msg.port || 5001;
-      childReady = true;
-      console.log("Main app ready on port " + childPort + ", proxying traffic");
-    }
-  });
-  child.on("exit", function(code) {
-    console.error("Child process exited with code " + code);
-    process.exit(code || 1);
-  });
-});
-`;
-  await writeFile("dist/start.cjs", startScript);
-  console.log("wrote dist/start.cjs");
 }
 
 buildAll().catch((err) => {
