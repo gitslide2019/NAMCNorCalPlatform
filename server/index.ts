@@ -11,6 +11,8 @@ declare module "http" {
   }
 }
 
+const isChildProcess = !!process.send;
+
 let appReady = false;
 const app = express();
 
@@ -34,14 +36,17 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-const port = parseInt(process.env.PORT || "5000", 10);
+const defaultPort = isChildProcess ? 5001 : 5000;
+const port = parseInt(process.env.PORT || String(defaultPort), 10);
+const listenPort = isChildProcess ? 5001 : port;
+
 httpServer.listen(
   {
-    port,
+    port: listenPort,
     host: "0.0.0.0",
   },
   () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${listenPort}`);
   },
 );
 
@@ -119,4 +124,8 @@ httpServer.listen(
 
   appReady = true;
   log("Application fully initialized and ready");
+
+  if (isChildProcess && process.send) {
+    process.send({ type: "ready", port: listenPort });
+  }
 })();
