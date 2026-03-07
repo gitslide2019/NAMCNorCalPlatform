@@ -14,6 +14,16 @@ declare module "http" {
   }
 }
 
+let appReady = false;
+
+app.get("/api/health", (_req, res) => {
+  if (appReady) {
+    res.status(200).json({ status: "ok" });
+  } else {
+    res.status(200).json({ status: "starting" });
+  }
+});
+
 app.use(
   express.json({
     limit: "10mb",
@@ -65,6 +75,18 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  httpServer.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
+
   await ensureTables();
   await ensureAdminUser();
   await seedMembers();
@@ -85,9 +107,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -95,19 +114,6 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  appReady = true;
+  log("Application fully initialized and ready");
 })();
