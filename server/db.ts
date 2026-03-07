@@ -45,6 +45,7 @@ export async function ensureAdminUser() {
           await db.insert(membershipApplications).values({
             contactName: "Shannon Hickman",
             companyName: "NAMC NorCal",
+            title: "Executive Director",
             email: "info@namcnorcal.org",
             phone: "5108308294",
             address: "977 66th Ave",
@@ -56,6 +57,7 @@ export async function ensureAdminUser() {
             membershipType: "corporate_partner",
             membershipCategory: "general_contractor",
             status: "approved",
+            acceptedTerms: true,
           } as any);
           const [newApp] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
           memberAppId = newApp?.id;
