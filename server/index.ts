@@ -12,29 +12,7 @@ declare module "http" {
 }
 
 declare global {
-  var __httpServer: import("http").Server | undefined;
-  var __expressApp: any;
-}
-
-const app = express();
-
-const httpServer = global.__httpServer || createServer();
-
-if (!global.__httpServer) {
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.on("request", (req, res) => {
-    if (!global.__expressApp) {
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end("OK");
-      return;
-    }
-    global.__expressApp(req, res);
-  });
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
-  });
-} else {
-  log("Using preloaded HTTP server");
+  var __bootWorker: import("worker_threads").Worker | undefined;
 }
 
 export function log(message: string, source = "express") {
@@ -46,6 +24,43 @@ export function log(message: string, source = "express") {
   });
 
   console.log(`${formattedTime} [${source}] ${message}`);
+}
+
+const app = express();
+const port = parseInt(process.env.PORT || "5000", 10);
+
+let appReady = false;
+const httpServer = createServer((req, res) => {
+  if (!appReady) {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("OK");
+    return;
+  }
+  app(req, res);
+});
+
+function takeoverFromWorker(): Promise<void> {
+  return new Promise((resolve) => {
+    const worker = global.__bootWorker;
+    if (!worker) {
+      httpServer.listen(port, "0.0.0.0", () => {
+        log(`serving on port ${port}`);
+        resolve();
+      });
+      return;
+    }
+
+    log("Taking over from boot worker...");
+    worker.on("message", (msg: string) => {
+      if (msg === "closed") {
+        httpServer.listen(port, "0.0.0.0", () => {
+          log(`serving on port ${port} (took over from worker)`);
+          resolve();
+        });
+      }
+    });
+    worker.postMessage("shutdown");
+  });
 }
 
 (async () => {
@@ -116,7 +131,8 @@ export function log(message: string, source = "express") {
     await setupVite(httpServer, app);
   }
 
-  global.__expressApp = app;
+  appReady = true;
+  await takeoverFromWorker();
   log("Application fully initialized and ready");
 
   await ensureAdminUser();
