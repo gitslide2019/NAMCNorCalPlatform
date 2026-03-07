@@ -58,13 +58,14 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("writing preload.cjs (worker thread health server)...");
-  const preloadScript = `"use strict";
-var workerThreads = require("worker_threads");
-if (workerThreads.isMainThread) {
-  var w = new workerThreads.Worker(__filename);
+  console.log("writing start.cjs (worker thread boot)...");
+  const startScript = `"use strict";
+var wt = require("worker_threads");
+if (wt.isMainThread) {
+  var w = new wt.Worker(__filename);
   w.unref();
   globalThis.__healthWorker = w;
+  require("./index.cjs");
 } else {
   var http = require("http");
   var port = parseInt(process.env.PORT || "5000", 10);
@@ -75,7 +76,7 @@ if (workerThreads.isMainThread) {
   server.listen(port, "0.0.0.0", function() {
     console.log("Health worker ready on port " + port);
   });
-  workerThreads.parentPort.on("message", function(msg) {
+  wt.parentPort.on("message", function(msg) {
     if (msg === "stop") {
       server.close(function() {
         console.log("Health worker stopped");
@@ -85,8 +86,8 @@ if (workerThreads.isMainThread) {
   });
 }
 `;
-  await writeFile("dist/preload.cjs", preloadScript);
-  console.log("wrote dist/preload.cjs");
+  await writeFile("dist/start.cjs", startScript);
+  console.log("wrote dist/start.cjs");
 }
 
 buildAll().catch((err) => {

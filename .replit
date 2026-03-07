@@ -34,7 +34,7 @@ PORT = "5000"
 
 [deployment]
 deploymentTarget = "vm"
-run = ["node", "--require", "./dist/preload.cjs", "dist/index.cjs"]
+run = ["node", "dist/start.cjs"]
 build = ["npm", "run", "build"]
 
 [workflows]
