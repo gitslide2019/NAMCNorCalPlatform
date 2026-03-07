@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, writeFile } from "fs/promises";
 
 const allowlist = [
   "@google/generative-ai",
@@ -30,19 +30,6 @@ const allowlist = [
   "zod-validation-error",
 ];
 
-const earlyBanner = `
-var __earlyHttp = require("http");
-var __earlyPort = parseInt(process.env.PORT || "5000", 10);
-var __earlyServer = __earlyHttp.createServer(function(req, res) {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("OK");
-});
-__earlyServer.listen(__earlyPort, "0.0.0.0", function() {
-  console.log("Port " + __earlyPort + " open (early server)");
-});
-globalThis.__earlyServer = __earlyServer;
-`.trim();
-
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
@@ -68,11 +55,38 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
-    banner: {
-      js: earlyBanner,
-    },
     logLevel: "info",
   });
+
+  console.log("writing preload.cjs (worker thread health server)...");
+  const preloadScript = `"use strict";
+var workerThreads = require("worker_threads");
+if (workerThreads.isMainThread) {
+  var w = new workerThreads.Worker(__filename);
+  w.unref();
+  globalThis.__healthWorker = w;
+} else {
+  var http = require("http");
+  var port = parseInt(process.env.PORT || "5000", 10);
+  var server = http.createServer(function(req, res) {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("OK");
+  });
+  server.listen(port, "0.0.0.0", function() {
+    console.log("Health worker ready on port " + port);
+  });
+  workerThreads.parentPort.on("message", function(msg) {
+    if (msg === "stop") {
+      server.close(function() {
+        console.log("Health worker stopped");
+        process.exit(0);
+      });
+    }
+  });
+}
+`;
+  await writeFile("dist/preload.cjs", preloadScript);
+  console.log("wrote dist/preload.cjs");
 }
 
 buildAll().catch((err) => {

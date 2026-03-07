@@ -17,12 +17,24 @@ externalPort = 3001
 localPort = 5002
 externalPort = 3000
 
+[[ports]]
+localPort = 5003
+externalPort = 4200
+
+[[ports]]
+localPort = 5098
+externalPort = 3003
+
+[[ports]]
+localPort = 5099
+externalPort = 3002
+
 [env]
 PORT = "5000"
 
 [deployment]
 deploymentTarget = "vm"
-run = ["node", "dist/index.cjs"]
+run = ["node", "--require", "./dist/preload.cjs", "dist/index.cjs"]
 build = ["npm", "run", "build"]
 
 [workflows]

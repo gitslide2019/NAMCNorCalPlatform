@@ -14,23 +14,14 @@ declare module "http" {
 let appReady = false;
 const app = express();
 
-const earlyServer = (globalThis as any).__earlyServer;
-
-const httpServer = earlyServer || createServer();
-
-function requestHandler(req: any, res: any) {
+const httpServer = createServer((req, res) => {
   if (!appReady) {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("OK");
     return;
   }
   app(req, res);
-}
-
-if (earlyServer) {
-  httpServer.removeAllListeners("request");
-}
-httpServer.on("request", requestHandler);
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -45,18 +36,20 @@ export function log(message: string, source = "express") {
 
 const port = parseInt(process.env.PORT || "5000", 10);
 
-if (!earlyServer) {
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-    },
-    () => {
+function startListening() {
+  const worker = (globalThis as any).__healthWorker;
+  if (worker) {
+    worker.postMessage("stop");
+    worker.on("exit", () => {
+      httpServer.listen({ port, host: "0.0.0.0" }, () => {
+        log(`serving on port ${port} (took over from health worker)`);
+      });
+    });
+  } else {
+    httpServer.listen({ port, host: "0.0.0.0" }, () => {
       log(`serving on port ${port}`);
-    },
-  );
-} else {
-  log(`serving on port ${port} (early server)`);
+    });
+  }
 }
 
 (async () => {
@@ -128,6 +121,7 @@ if (!earlyServer) {
   }
 
   appReady = true;
+  startListening();
   log("Application fully initialized and ready");
 
   await ensureAdminUser();
