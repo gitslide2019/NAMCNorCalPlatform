@@ -21,19 +21,53 @@ const scryptAsync = promisify(scrypt);
 
 export async function ensureAdminUser() {
   try {
-    const [existing] = await db.select().from(users).where(eq(users.username, "testadmin"));
-    if (!existing) {
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync("test1234", salt, 64)) as Buffer;
-      const hashedPassword = buf.toString("hex") + "." + salt;
-      await db.insert(users).values({
-        username: "testadmin",
-        password: hashedPassword,
-        isAdmin: true,
-      });
-      console.log("Created testadmin user");
-    } else {
-      console.log("testadmin user already exists");
+    const adminAccounts = [
+      { username: "testadmin", password: "test1234" },
+      { username: "shannon.hickman", password: "5108308294" },
+    ];
+
+    for (const admin of adminAccounts) {
+      const [existing] = await db.select().from(users).where(eq(users.username, admin.username));
+      if (!existing) {
+        const salt = randomBytes(16).toString("hex");
+        const buf = (await scryptAsync(admin.password, salt, 64)) as Buffer;
+        const hashedPassword = buf.toString("hex") + "." + salt;
+
+        let memberAppId: string | undefined;
+        if (admin.username === "shannon.hickman") {
+          const [app] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
+          if (!app) {
+            await db.insert(membershipApplications).values({
+              contactName: "Shannon Hickman",
+              companyName: "NAMC NorCal",
+              email: "info@namcnorcal.org",
+              phone: "5108308294",
+              address: "977 66th Ave",
+              city: "Oakland",
+              state: "CA",
+              zipCode: "94621",
+              businessType: "Other",
+              yearsInBusiness: "20+",
+              membershipType: "corporate_partner",
+              status: "approved",
+            } as any);
+            const [newApp] = await db.select().from(membershipApplications).where(eq(membershipApplications.companyName, "NAMC NorCal"));
+            memberAppId = newApp?.id;
+          } else {
+            memberAppId = app.id;
+          }
+        }
+
+        await db.insert(users).values({
+          username: admin.username,
+          password: hashedPassword,
+          isAdmin: true,
+          memberApplicationId: memberAppId,
+        });
+        console.log(`Created admin user: ${admin.username}`);
+      } else {
+        console.log(`${admin.username} user already exists`);
+      }
     }
   } catch (error) {
     console.error("Error ensuring admin user:", error);
@@ -64,6 +98,7 @@ export async function seedMemberAccounts() {
   try {
     console.log("Checking member user accounts...");
     const memberAccounts = [
+      { username: "shannon.hickman", companyName: "NAMC NorCal", isBoardMember: false, isAdmin: true, password: "5108308294" },
       { username: "james.jackson", companyName: "Digital Disclosure AV", isBoardMember: false },
       { username: "tana.harris", companyName: "Harris Hoisting", isBoardMember: false },
       { username: "bruce.giron", companyName: "Giron Construction", isBoardMember: false },
@@ -79,9 +114,16 @@ export async function seedMemberAccounts() {
     for (const account of memberAccounts) {
       const [existing] = await db.select().from(users).where(eq(users.username, account.username));
       if (existing) {
+        let updates: any = {};
         if (account.isBoardMember && !existing.isBoardMember) {
-          await db.update(users).set({ isBoardMember: true }).where(eq(users.id, existing.id));
-          console.log(`Updated ${account.username} as board member`);
+          updates.isBoardMember = true;
+        }
+        if ((account as any).isAdmin && !existing.isAdmin) {
+          updates.isAdmin = true;
+        }
+        if (Object.keys(updates).length > 0) {
+          await db.update(users).set(updates).where(eq(users.id, existing.id));
+          console.log(`Updated ${account.username}: ${JSON.stringify(updates)}`);
         }
         continue;
       }
@@ -99,7 +141,7 @@ export async function seedMemberAccounts() {
       await db.insert(users).values({
         username: account.username,
         password: hashedPassword,
-        isAdmin: false,
+        isAdmin: (account as any).isAdmin || false,
         isBoardMember: account.isBoardMember,
         memberApplicationId: app.id,
       });
