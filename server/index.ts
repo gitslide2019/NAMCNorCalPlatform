@@ -11,17 +11,31 @@ declare module "http" {
   }
 }
 
-let appReady = false;
+declare global {
+  var __httpServer: import("http").Server | undefined;
+  var __expressApp: any;
+}
+
 const app = express();
 
-const httpServer = createServer((req, res) => {
-  if (!appReady) {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("OK");
-    return;
-  }
-  app(req, res);
-});
+const httpServer = global.__httpServer || createServer();
+
+if (!global.__httpServer) {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  httpServer.on("request", (req, res) => {
+    if (!global.__expressApp) {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("OK");
+      return;
+    }
+    global.__expressApp(req, res);
+  });
+  httpServer.listen(port, "0.0.0.0", () => {
+    log(`serving on port ${port}`);
+  });
+} else {
+  log("Using preloaded HTTP server");
+}
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -33,13 +47,6 @@ export function log(message: string, source = "express") {
 
   console.log(`${formattedTime} [${source}] ${message}`);
 }
-
-const childPort = process.env.CHILD_PORT;
-const port = parseInt(childPort || process.env.PORT || "5000", 10);
-
-httpServer.listen({ port, host: "0.0.0.0" }, () => {
-  log(`serving on port ${port}`);
-});
 
 (async () => {
   await ensureTables();
@@ -109,22 +116,8 @@ httpServer.listen({ port, host: "0.0.0.0" }, () => {
     await setupVite(httpServer, app);
   }
 
-  appReady = true;
+  global.__expressApp = app;
   log("Application fully initialized and ready");
-
-  if (process.send) {
-    process.send({ type: "ready", port });
-  }
-
-  const pipeFd = process.env.BOOT_PIPE_FD;
-  if (pipeFd) {
-    const fs = await import("fs");
-    try {
-      fs.writeSync(parseInt(pipeFd, 10), String(port));
-      fs.closeSync(parseInt(pipeFd, 10));
-    } catch (e) {
-    }
-  }
 
   await ensureAdminUser();
   await seedMembers();
