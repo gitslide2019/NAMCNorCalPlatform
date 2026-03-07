@@ -16,12 +16,16 @@ declare module "http" {
 
 let appReady = false;
 
-app.get("/api/health", (_req, res) => {
-  if (appReady) {
-    res.status(200).json({ status: "ok" });
-  } else {
-    res.status(200).json({ status: "starting" });
+app.use((req, res, next) => {
+  if (!appReady && !req.path.startsWith("/api/")) {
+    res.status(200).send("Starting...");
+    return;
   }
+  next();
+});
+
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: appReady ? "ok" : "starting" });
 });
 
 app.use(
