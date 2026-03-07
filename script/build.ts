@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, copyFile } from "fs/promises";
 
 const allowlist = [
   "@google/generative-ai",
@@ -57,6 +57,10 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  console.log("copying boot proxy...");
+  await copyFile("server/start.cjs", "dist/start.cjs");
+  console.log("copied dist/start.cjs");
 }
 
 buildAll().catch((err) => {

@@ -34,7 +34,8 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-const port = parseInt(process.env.PORT || "5000", 10);
+const childPort = process.env.CHILD_PORT;
+const port = parseInt(childPort || process.env.PORT || "5000", 10);
 
 httpServer.listen({ port, host: "0.0.0.0" }, () => {
   log(`serving on port ${port}`);
@@ -110,6 +111,10 @@ httpServer.listen({ port, host: "0.0.0.0" }, () => {
 
   appReady = true;
   log("Application fully initialized and ready");
+
+  if (process.send) {
+    process.send({ type: "ready", port });
+  }
 
   await ensureAdminUser();
   await seedMembers();
