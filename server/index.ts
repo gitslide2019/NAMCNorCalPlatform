@@ -116,6 +116,16 @@ httpServer.listen({ port, host: "0.0.0.0" }, () => {
     process.send({ type: "ready", port });
   }
 
+  const pipeFd = process.env.BOOT_PIPE_FD;
+  if (pipeFd) {
+    const fs = await import("fs");
+    try {
+      fs.writeSync(parseInt(pipeFd, 10), String(port));
+      fs.closeSync(parseInt(pipeFd, 10));
+    } catch (e) {
+    }
+  }
+
   await ensureAdminUser();
   await seedMembers();
   await seedMemberAccounts();

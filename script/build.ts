@@ -58,9 +58,11 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("copying boot proxy...");
-  await copyFile("server/start.cjs", "dist/start.cjs");
-  console.log("copied dist/start.cjs");
+  console.log("copying boot proxy binary...");
+  await copyFile("server/boot", "dist/boot");
+  const { chmod } = await import("fs/promises");
+  await chmod("dist/boot", 0o755);
+  console.log("copied dist/boot (pre-compiled)");
 }
 
 buildAll().catch((err) => {
