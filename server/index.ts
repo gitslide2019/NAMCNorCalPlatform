@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { ensureTables, ensureAdminUser, seedMembers, seedMemberAccounts, seedSampleContent } from "./db";
+import * as fs from "fs";
 
 declare module "http" {
   interface IncomingMessage {
@@ -34,23 +35,23 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-const port = parseInt(process.env.PORT || "5000", 10);
+const bootPipeFd = process.env.BOOT_PIPE_FD;
+const childPort = process.env.CHILD_PORT ? parseInt(process.env.CHILD_PORT, 10) : null;
+const port = childPort || parseInt(process.env.PORT || "5000", 10);
 
-function startListening() {
-  const worker = (globalThis as any).__healthWorker;
-  if (worker) {
-    worker.postMessage("stop");
-    worker.on("exit", () => {
-      httpServer.listen({ port, host: "0.0.0.0" }, () => {
-        log(`serving on port ${port} (took over from health worker)`);
-      });
-    });
-  } else {
-    httpServer.listen({ port, host: "0.0.0.0" }, () => {
-      log(`serving on port ${port}`);
-    });
+httpServer.listen({ port, host: "0.0.0.0" }, () => {
+  log(`serving on port ${port}`);
+
+  if (bootPipeFd) {
+    try {
+      fs.writeSync(parseInt(bootPipeFd, 10), String(port));
+      fs.closeSync(parseInt(bootPipeFd, 10));
+      log(`signaled boot proxy: ready on port ${port}`);
+    } catch (e) {
+      // pipe might not exist in dev mode
+    }
   }
-}
+});
 
 (async () => {
   await ensureTables();
@@ -121,7 +122,6 @@ function startListening() {
   }
 
   appReady = true;
-  startListening();
   log("Application fully initialized and ready");
 
   await ensureAdminUser();

@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, writeFile } from "fs/promises";
+import { rm, readFile } from "fs/promises";
+import { execSync } from "child_process";
 
 const allowlist = [
   "@google/generative-ai",
@@ -58,36 +59,12 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("writing start.cjs (worker thread boot)...");
-  const startScript = `"use strict";
-var wt = require("worker_threads");
-if (wt.isMainThread) {
-  var w = new wt.Worker(__filename);
-  w.unref();
-  globalThis.__healthWorker = w;
-  require("./index.cjs");
-} else {
-  var http = require("http");
-  var port = parseInt(process.env.PORT || "5000", 10);
-  var server = http.createServer(function(req, res) {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("OK");
-  });
-  server.listen(port, "0.0.0.0", function() {
-    console.log("Health worker ready on port " + port);
-  });
-  wt.parentPort.on("message", function(msg) {
-    if (msg === "stop") {
-      server.close(function() {
-        console.log("Health worker stopped");
-        process.exit(0);
-      });
-    }
-  });
-}
-`;
-  await writeFile("dist/start.cjs", startScript);
-  console.log("wrote dist/start.cjs");
+  console.log("compiling boot proxy (C binary)...");
+  execSync(
+    "gcc -O2 -o dist/boot server/boot.c",
+    { stdio: "inherit" }
+  );
+  console.log("compiled dist/boot");
 }
 
 buildAll().catch((err) => {
