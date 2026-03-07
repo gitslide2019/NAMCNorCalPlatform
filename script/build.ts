@@ -1,7 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
-import { execSync } from "child_process";
 
 const allowlist = [
   "@google/generative-ai",
@@ -58,13 +57,6 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
-
-  console.log("compiling boot proxy (C binary)...");
-  execSync(
-    "gcc -O2 -o dist/boot server/boot.c",
-    { stdio: "inherit" }
-  );
-  console.log("compiled dist/boot");
 }
 
 buildAll().catch((err) => {

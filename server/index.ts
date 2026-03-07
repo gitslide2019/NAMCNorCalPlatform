@@ -4,7 +4,6 @@ import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { ensureTables, ensureAdminUser, seedMembers, seedMemberAccounts, seedSampleContent } from "./db";
-import * as fs from "fs";
 
 declare module "http" {
   interface IncomingMessage {
@@ -35,22 +34,10 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-const bootPipeFd = process.env.BOOT_PIPE_FD;
-const childPort = process.env.CHILD_PORT ? parseInt(process.env.CHILD_PORT, 10) : null;
-const port = childPort || parseInt(process.env.PORT || "5000", 10);
+const port = parseInt(process.env.PORT || "5000", 10);
 
 httpServer.listen({ port, host: "0.0.0.0" }, () => {
   log(`serving on port ${port}`);
-
-  if (bootPipeFd) {
-    try {
-      fs.writeSync(parseInt(bootPipeFd, 10), String(port));
-      fs.closeSync(parseInt(bootPipeFd, 10));
-      log(`signaled boot proxy: ready on port ${port}`);
-    } catch (e) {
-      // pipe might not exist in dev mode
-    }
-  }
 });
 
 (async () => {
