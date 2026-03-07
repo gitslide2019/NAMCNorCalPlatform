@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, writeFile } from "fs/promises";
+import { rm, readFile } from "fs/promises";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -60,20 +60,6 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  const startScript = `const http = require("http");
-const port = parseInt(process.env.PORT || "5000", 10);
-const placeholder = http.createServer((req, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("OK");
-});
-placeholder.listen({ port, host: "0.0.0.0" }, () => {
-  console.log("Health check server ready on port " + port);
-  globalThis.__BOOTSTRAP_SERVER = placeholder;
-  require("./index.cjs");
-});
-`;
-  await writeFile("dist/start.cjs", startScript);
-  console.log("wrote dist/start.cjs");
 }
 
 buildAll().catch((err) => {

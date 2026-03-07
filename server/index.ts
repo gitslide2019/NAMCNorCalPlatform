@@ -34,24 +34,16 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-function startListening() {
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
-}
-
-if (!(globalThis as any).__BOOTSTRAP_SERVER) {
-  startListening();
-} else {
-  log("Waiting for bootstrap handoff...");
-}
+const port = parseInt(process.env.PORT || "5000", 10);
+httpServer.listen(
+  {
+    port,
+    host: "0.0.0.0",
+  },
+  () => {
+    log(`serving on port ${port}`);
+  },
+);
 
 (async () => {
   await ensureTables();
@@ -123,14 +115,6 @@ if (!(globalThis as any).__BOOTSTRAP_SERVER) {
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
-  }
-
-  if ((globalThis as any).__BOOTSTRAP_SERVER) {
-    const bootstrapServer = (globalThis as any).__BOOTSTRAP_SERVER;
-    bootstrapServer.close(() => {
-      log("Bootstrap server closed");
-      startListening();
-    });
   }
 
   appReady = true;
