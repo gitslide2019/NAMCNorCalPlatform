@@ -6,7 +6,7 @@ import { sendSms } from "./twilio";
 import { z, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
-import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail, sendGeneralMemberEmail } from "./email";
+import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail, sendGeneralMemberEmailBatch } from "./email";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -1705,17 +1705,9 @@ export async function registerRoutes(
         res.status(400).json({ message: "Subject and message are required" });
         return;
       }
-      const users = await storage.getAllUsers();
-      const memberEmails = users
-        .filter((u: any) => u.email && !u.isAdmin)
-        .map((u: any) => u.email as string);
-      let sent = 0;
-      let failed = 0;
-      for (const email of memberEmails) {
-        const result = await sendGeneralMemberEmail(email, subject, message);
-        if (result.success) sent++;
-        else { failed++; console.error(`Failed to email ${email}:`, result.error); }
-      }
+      const apps = await storage.getApprovedMembershipApplications();
+      const memberEmails = apps.map(a => a.email).filter(Boolean) as string[];
+      const { sent, failed } = await sendGeneralMemberEmailBatch(memberEmails, subject, message);
       res.json({ message: `Email sent to ${sent} member(s)${failed > 0 ? `, ${failed} failed` : ""}`, sent, failed });
     } catch (error) {
       console.error("Error sending member emails:", error);
