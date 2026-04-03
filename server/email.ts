@@ -18,10 +18,10 @@ const LOGO_DATA_URI = getLogoDataUri();
 
 function emailHeader() {
   const imgTag = LOGO_DATA_URI
-    ? `<img src="${LOGO_DATA_URI}" alt="NAMC NorCal" style="height: 64px; max-width: 240px; display: block; margin: 0 auto;" />`
+    ? `<img src="${LOGO_DATA_URI}" alt="NAMC NorCal" width="160" style="width: 160px; height: auto; display: block; margin: 0 auto;" />`
     : `<span style="color: #E5A830; font-size: 22px; font-weight: 700; letter-spacing: 1px;">NAMC NorCal</span>`;
   return `
-    <div style="background-color: #ffffff; padding: 28px 24px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 3px solid #E5A830;">
+    <div style="background-color: #ffffff; padding: 24px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 3px solid #E5A830;">
       ${imgTag}
     </div>
   `;

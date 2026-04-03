@@ -44,12 +44,27 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
+  console.log("building start proxy (dist/index.cjs)...");
+  await esbuild({
+    entryPoints: ["server/start.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/index.cjs",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    external: ["child_process", "http", "net", "path"],
+    logLevel: "info",
+  });
+
+  console.log("building server (dist/index-server.cjs)...");
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
     bundle: true,
     format: "cjs",
-    outfile: "dist/index.cjs",
+    outfile: "dist/index-server.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
