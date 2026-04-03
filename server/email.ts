@@ -255,6 +255,40 @@ export async function sendLoginInviteEmail(
   return data;
 }
 
+export async function sendGeneralMemberEmail(
+  toEmail: string,
+  subject: string,
+  messageBody: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const { error } = await client.emails.send({
+      from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
+      to: [toEmail],
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #1a1a1a; margin: 0;">NAMC NorCal</h1>
+            <p style="color: #666; margin: 4px 0 0;">National Association of Minority Contractors</p>
+          </div>
+          <div style="background: #f9f9f9; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+            <div style="white-space: pre-wrap; color: #1a1a1a; line-height: 1.6;">${messageBody.replace(/\n/g, "<br/>")}</div>
+          </div>
+          <div style="text-align: center; color: #999; font-size: 12px;">
+            <p>NAMC NorCal &middot; 977 66th Ave, Oakland, CA 94621</p>
+            <p>You received this because you are an approved NAMC NorCal member.</p>
+          </div>
+        </div>
+      `,
+    });
+    if (error) return { success: false, error: error.message || "Send failed" };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to send email" };
+  }
+}
+
 export async function sendInvitationEmail(
   toEmail: string,
   subject: string,

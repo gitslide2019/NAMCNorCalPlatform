@@ -152,7 +152,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
-          <TabsList className={`grid w-full max-w-lg ${user?.isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full max-w-2xl ${user?.isAdmin ? "grid-cols-4" : "grid-cols-1"}`}>
             {user?.isAdmin && (
               <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
                 <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
@@ -161,6 +161,11 @@ export default function Admin() {
             <TabsTrigger value="finance" className="text-xs sm:text-sm" data-testid="tab-finance">
               <DollarSign className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Finance</span>
             </TabsTrigger>
+            {user?.isAdmin && (
+              <TabsTrigger value="email" className="text-xs sm:text-sm" data-testid="tab-email-members">
+                <Mail className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Email Members</span>
+              </TabsTrigger>
+            )}
             {user?.isAdmin && (
               <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
                 <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS Invites</span>
@@ -316,6 +321,12 @@ export default function Admin() {
           </TabsContent>
 
           {user?.isAdmin && (
+            <TabsContent value="email">
+              <EmailMembers />
+            </TabsContent>
+          )}
+
+          {user?.isAdmin && (
             <TabsContent value="sms">
               <SmsInvitations />
             </TabsContent>
@@ -323,6 +334,117 @@ export default function Admin() {
         </Tabs>
       </div>
     </PortalLayout>
+  );
+}
+
+function EmailMembers() {
+  const { toast } = useToast();
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+
+  const sendMutation = useMutation({
+    mutationFn: async (data: { subject: string; message: string }) => {
+      const res = await apiRequest("POST", "/api/portal/admin/send-member-email", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Emails sent!", description: data.message });
+      setSubject("");
+      setMessage("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send emails", description: error.message, variant: "destructive" });
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!subject.trim() || !message.trim()) return;
+    sendMutation.mutate({ subject: subject.trim(), message: message.trim() });
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-[#E5A830]" />
+            Compose Email to All Members
+          </CardTitle>
+          <CardDescription>
+            Write a message and send it to every member in the portal. Use this for meeting reminders, announcements, and important updates.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="email-subject">
+                Subject
+              </label>
+              <Input
+                id="email-subject"
+                placeholder="e.g. NAMC NorCal Monthly Meeting – April 15"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                required
+                data-testid="input-email-subject"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="email-message">
+                Message
+              </label>
+              <Textarea
+                id="email-message"
+                placeholder="Write your message here..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-[220px]"
+                required
+                data-testid="input-email-message"
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="submit"
+                disabled={sendMutation.isPending || !subject.trim() || !message.trim()}
+                className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                data-testid="button-send-member-email"
+              >
+                {sendMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send to All Members
+                  </>
+                )}
+              </Button>
+              {sendMutation.isSuccess && (
+                <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1" data-testid="text-email-success">
+                  <CheckCircle className="h-4 w-4" /> Sent successfully
+                </span>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+        <CardContent className="p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800 dark:text-amber-300 space-y-1">
+              <p className="font-medium">About member email delivery</p>
+              <p>Emails are sent to all users with active member accounts in the portal. Delivery depends on each member having a verified email address on file.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

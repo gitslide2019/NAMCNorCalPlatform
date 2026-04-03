@@ -6,7 +6,7 @@ import { sendSms } from "./twilio";
 import { z, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
-import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail } from "./email";
+import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail, sendGeneralMemberEmail } from "./email";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -1694,6 +1694,32 @@ export async function registerRoutes(
       res.json({ message: `Digest sent to ${sent} member(s)` });
     } catch (error) {
       res.status(500).json({ message: "Failed to send digest" });
+    }
+  });
+
+  // === SEND GENERAL MEMBER EMAIL ===
+  app.post("/api/portal/admin/send-member-email", requireAdmin, async (req, res) => {
+    try {
+      const { subject, message } = req.body;
+      if (!subject || !message) {
+        res.status(400).json({ message: "Subject and message are required" });
+        return;
+      }
+      const users = await storage.getAllUsers();
+      const memberEmails = users
+        .filter((u: any) => u.email && !u.isAdmin)
+        .map((u: any) => u.email as string);
+      let sent = 0;
+      let failed = 0;
+      for (const email of memberEmails) {
+        const result = await sendGeneralMemberEmail(email, subject, message);
+        if (result.success) sent++;
+        else { failed++; console.error(`Failed to email ${email}:`, result.error); }
+      }
+      res.json({ message: `Email sent to ${sent} member(s)${failed > 0 ? `, ${failed} failed` : ""}`, sent, failed });
+    } catch (error) {
+      console.error("Error sending member emails:", error);
+      res.status(500).json({ message: "Failed to send emails" });
     }
   });
 
