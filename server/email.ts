@@ -1,12 +1,28 @@
 import { Resend } from "resend";
+import * as fs from "fs";
+import * as path from "path";
 
-const LOGO_URL = "https://namc-norcal-member-portal.replit.app/namc-logo.jpg";
 const ADDRESS = "NAMC NorCal &middot; 977 66th Ave, Oakland, CA 94621";
 
+function getLogoDataUri(): string {
+  try {
+    const logoPath = path.join(process.cwd(), "client", "public", "namc-logo.png");
+    const data = fs.readFileSync(logoPath);
+    return `data:image/png;base64,${data.toString("base64")}`;
+  } catch {
+    return "";
+  }
+}
+
+const LOGO_DATA_URI = getLogoDataUri();
+
 function emailHeader() {
+  const imgTag = LOGO_DATA_URI
+    ? `<img src="${LOGO_DATA_URI}" alt="NAMC NorCal" style="height: 64px; max-width: 240px; display: block; margin: 0 auto;" />`
+    : `<span style="color: #E5A830; font-size: 22px; font-weight: 700; letter-spacing: 1px;">NAMC NorCal</span>`;
   return `
-    <div style="background-color: #000; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-      <img src="${LOGO_URL}" alt="NAMC NorCal" style="height: 60px; max-width: 220px; object-fit: contain;" />
+    <div style="background-color: #000000; padding: 28px 24px; text-align: center; border-radius: 8px 8px 0 0;">
+      ${imgTag}
     </div>
   `;
 }
