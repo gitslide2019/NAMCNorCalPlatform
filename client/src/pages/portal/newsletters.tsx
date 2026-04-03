@@ -120,6 +120,19 @@ export default function Newsletters() {
     },
   });
 
+  const sendEmailMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/portal/newsletters/${id}/send-email`);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Emails sent!", description: data.message });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send emails", description: error.message, variant: "destructive" });
+    },
+  });
+
   function openEditDialog(newsletter: Newsletter) {
     setEditTitle(newsletter.title);
     setEditContent(newsletter.content);
@@ -173,7 +186,39 @@ export default function Newsletters() {
                       </div>
                     </div>
                     {user?.isAdmin && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                              disabled={sendEmailMutation.isPending}
+                              data-testid="button-send-newsletter-email"
+                            >
+                              <Mail className="h-4 w-4 mr-2" />
+                              {sendEmailMutation.isPending ? "Sending..." : "Send to All Members"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Send Newsletter to All Members</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will email this newsletter to all approved members. Are you sure you want to proceed?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel data-testid="button-cancel-send-email">Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => sendEmailMutation.mutate(selectedNewsletter.id)}
+                                data-testid="button-confirm-send-email"
+                                className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                              >
+                                Send Emails
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                         <Button
                           variant="outline"
                           size="icon"
