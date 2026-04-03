@@ -85,9 +85,12 @@ async function getCredentials() {
 
 async function getUncachableResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
+  const formattedFrom = fromEmail
+    ? `NAMC NorCal <${fromEmail}>`
+    : "NAMC NorCal <noreply@resend.dev>";
   return {
     client: new Resend(apiKey),
-    fromEmail,
+    fromEmail: formattedFrom,
   };
 }
 
@@ -266,7 +269,7 @@ export async function sendGeneralMemberEmailBatch(
   messageBody: string
 ): Promise<{ sent: number; failed: number }> {
   const { client, fromEmail } = await getUncachableResendClient();
-  const from = fromEmail || "NAMC NorCal <noreply@resend.dev>";
+  const from = fromEmail;
 
   const body = `
     <div style="color: #1a1a1a; line-height: 1.8; white-space: pre-wrap;">${messageBody.replace(/\n/g, "<br/>")}</div>
