@@ -278,18 +278,29 @@ export async function sendGeneralMemberEmailBatch(
     </div>
   `;
 
-  const results = await Promise.all(
-    emails.map(async (toEmail) => {
-      try {
-        const { error } = await client.emails.send({ from, to: [toEmail], subject, html });
-        if (error) { console.error(`Failed to send to ${toEmail}:`, error.message); return false; }
-        return true;
-      } catch (err: any) {
-        console.error(`Error sending to ${toEmail}:`, err.message);
-        return false;
-      }
-    })
-  );
+  const results: boolean[] = [];
+  const BATCH_SIZE = 4;
+  const DELAY_MS = 1100;
+
+  for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+    const batch = emails.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (toEmail) => {
+        try {
+          const { error } = await client.emails.send({ from, to: [toEmail], subject, html });
+          if (error) { console.error(`Failed to send to ${toEmail}:`, error.message); return false; }
+          return true;
+        } catch (err: any) {
+          console.error(`Error sending to ${toEmail}:`, err.message);
+          return false;
+        }
+      })
+    );
+    results.push(...batchResults);
+    if (i + BATCH_SIZE < emails.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+    }
+  }
 
   const sent = results.filter(Boolean).length;
   return { sent, failed: results.length - sent };
