@@ -3,22 +3,23 @@ import * as fs from "fs";
 import * as path from "path";
 
 const ADDRESS = "NAMC NorCal &middot; 977 66th Ave, Oakland, CA 94621";
+const LOGO_CID = "namc-logo";
 
-function getLogoDataUri(): string {
+function getLogoAttachment(): { content: string; filename: string; content_type: string; content_id: string } | null {
   try {
     const logoPath = path.join(process.cwd(), "client", "public", "namc-logo.png");
-    const data = fs.readFileSync(logoPath);
-    return `data:image/png;base64,${data.toString("base64")}`;
+    const content = fs.readFileSync(logoPath).toString("base64");
+    return { content, filename: "namc-logo.png", content_type: "image/png", content_id: LOGO_CID };
   } catch {
-    return "";
+    return null;
   }
 }
 
-const LOGO_DATA_URI = getLogoDataUri();
+const LOGO_ATTACHMENT = getLogoAttachment();
 
 function emailHeader() {
-  const imgTag = LOGO_DATA_URI
-    ? `<img src="${LOGO_DATA_URI}" alt="NAMC NorCal" width="160" style="width: 160px; height: auto; display: block; margin: 0 auto;" />`
+  const imgTag = LOGO_ATTACHMENT
+    ? `<img src="cid:${LOGO_CID}" alt="NAMC NorCal" width="160" style="width: 160px; height: auto; display: block; margin: 0 auto;" />`
     : `<span style="color: #E5A830; font-size: 22px; font-weight: 700; letter-spacing: 1px;">NAMC NorCal</span>`;
   return `
     <div style="background-color: #ffffff; padding: 24px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 3px solid #E5A830;">
@@ -46,6 +47,10 @@ function emailWrapper(body: string, footerExtra = "") {
       ${emailFooter(footerExtra)}
     </div>
   `;
+}
+
+function logoAttachments() {
+  return LOGO_ATTACHMENT ? [LOGO_ATTACHMENT] : [];
 }
 
 let connectionSettings: any;
@@ -133,6 +138,7 @@ export async function sendPasswordResetEmail(
     to: [toEmail],
     subject: "Reset Your NAMC NorCal Password",
     html: emailWrapper(body),
+    attachments: logoAttachments(),
   });
 
   if (error) {
@@ -161,6 +167,7 @@ export async function sendNewsletterEmail(
     to: [toEmail],
     subject: `NAMC NorCal Newsletter: ${title}`,
     html: emailWrapper(body, "You received this as an approved NAMC NorCal member."),
+    attachments: logoAttachments(),
   });
 
   if (error) {
@@ -205,6 +212,7 @@ export async function sendDigestEmail(
     to: [toEmail],
     subject: "NAMC NorCal Weekly Digest",
     html: emailWrapper(body, "You received this as an approved NAMC NorCal member."),
+    attachments: logoAttachments(),
   });
 
   if (error) {
@@ -253,6 +261,7 @@ export async function sendLoginInviteEmail(
     to: [toEmail],
     subject: "Your NAMC NorCal Member Portal Account is Ready",
     html: emailWrapper(body),
+    attachments: logoAttachments(),
   });
 
   if (error) {
@@ -266,13 +275,15 @@ export async function sendLoginInviteEmail(
 export async function sendGeneralMemberEmailBatch(
   emails: string[],
   subject: string,
-  messageBody: string
+  messageBody: string,
+  callToActionHtml = ""
 ): Promise<{ sent: number; failed: number }> {
   const { client, fromEmail } = await getUncachableResendClient();
   const from = fromEmail;
 
   const body = `
-    <div style="color: #1a1a1a; line-height: 1.8; white-space: pre-wrap;">${messageBody.replace(/\n/g, "<br/>")}</div>
+    <div style="color: #1a1a1a; line-height: 1.8;">${messageBody.replace(/\n/g, "<br/>")}</div>
+    ${callToActionHtml}
   `;
   const html = emailWrapper(body, "You received this because you are an approved NAMC NorCal member.");
 
@@ -285,7 +296,13 @@ export async function sendGeneralMemberEmailBatch(
     const batchResults = await Promise.all(
       batch.map(async (toEmail) => {
         try {
-          const { error } = await client.emails.send({ from, to: [toEmail], subject, html });
+          const { error } = await client.emails.send({
+            from,
+            to: [toEmail],
+            subject,
+            html,
+            attachments: logoAttachments(),
+          });
           if (error) { console.error(`Failed to send to ${toEmail}:`, error.message); return false; }
           return true;
         } catch (err: any) {
@@ -317,6 +334,7 @@ export async function sendInvitationEmail(
       to: [toEmail],
       subject,
       html: emailWrapper(htmlBody),
+      attachments: logoAttachments(),
     });
 
     if (error) {
