@@ -1702,15 +1702,20 @@ export async function registerRoutes(
   // === SEND GENERAL MEMBER EMAIL ===
   app.post("/api/portal/admin/send-member-email", requireAdmin, async (req, res) => {
     try {
-      const { subject, message } = req.body;
+      const { subject, message, callToActionHtml, recipientEmails } = req.body;
       if (!subject || !message) {
         res.status(400).json({ message: "Subject and message are required" });
         return;
       }
-      const apps = await storage.getApprovedMembershipApplications();
-      const memberEmails = apps.map(a => a.email).filter(Boolean) as string[];
-      const { sent, failed } = await sendGeneralMemberEmailBatch(memberEmails, subject, message);
-      res.json({ message: `Email sent to ${sent} member(s)${failed > 0 ? `, ${failed} failed` : ""}`, sent, failed });
+      let emailList: string[];
+      if (Array.isArray(recipientEmails) && recipientEmails.length > 0) {
+        emailList = recipientEmails.filter(Boolean) as string[];
+      } else {
+        const apps = await storage.getApprovedMembershipApplications();
+        emailList = apps.map(a => a.email).filter(Boolean) as string[];
+      }
+      const { sent, failed } = await sendGeneralMemberEmailBatch(emailList, subject, message, callToActionHtml || "");
+      res.json({ message: `Email sent to ${sent} recipient(s)${failed > 0 ? `, ${failed} failed` : ""}`, sent, failed });
     } catch (error) {
       console.error("Error sending member emails:", error);
       res.status(500).json({ message: "Failed to send emails" });
