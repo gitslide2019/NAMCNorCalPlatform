@@ -127,6 +127,7 @@ export async function registerRoutes(
         website: app.website,
         primaryServices: app.primaryServices,
         certifications: app.certifications,
+        bio: app.bio,
         membershipCategory: app.membershipCategory,
         isBoardMember: app.isBoardMember,
         profileImageUrl: app.profileImageUrl,
@@ -172,6 +173,7 @@ export async function registerRoutes(
         website: application.website,
         primaryServices: application.primaryServices,
         certifications: application.certifications,
+        bio: application.bio,
         membershipCategory: application.membershipCategory,
         isBoardMember: application.isBoardMember,
         userId: linkedUserId,
@@ -210,7 +212,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "No linked application found" });
         return;
       }
-      const allowedFields = ["companyName", "title", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl"];
+      const allowedFields = ["companyName", "title", "bio", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {

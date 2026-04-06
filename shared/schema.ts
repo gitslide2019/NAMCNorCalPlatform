@@ -34,6 +34,7 @@ export const membershipApplications = pgTable("membership_applications", {
   primaryServices: text("primary_services"),
   certifications: text("certifications"),
   howDidYouHear: text("how_did_you_hear"),
+  bio: text("bio"),
   acceptedTerms: boolean("accepted_terms").notNull().default(false),
   isBoardMember: boolean("is_board_member").notNull().default(false),
   profileImageUrl: text("profile_image_url"),

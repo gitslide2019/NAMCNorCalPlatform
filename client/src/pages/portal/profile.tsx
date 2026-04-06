@@ -692,6 +692,7 @@ function CompanyRoleForm({
     defaultValues: {
       companyName: application.companyName,
       title: application.title,
+      bio: application.bio || "",
     },
   });
 
@@ -729,6 +730,21 @@ function CompanyRoleForm({
                 </FormItem>
               )} />
             </div>
+            <FormField control={form.control} name="bio" render={({ field }) => (
+              <FormItem>
+                <FormLabel>About / Bio</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Tell other NAMC members about yourself, your background, and what makes your company unique..."
+                    rows={4}
+                    {...field}
+                    data-testid="input-profile-bio"
+                  />
+                </FormControl>
+                <FormDescription>A short bio displayed on your member directory profile</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={isPending} data-testid="button-save-company-role">
                 {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}

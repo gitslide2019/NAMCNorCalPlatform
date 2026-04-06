@@ -61,6 +61,7 @@ interface MemberDetail {
   website: string | null;
   primaryServices: string | null;
   certifications: string | null;
+  bio: string | null;
   membershipCategory: string;
   isBoardMember: boolean;
   userId: string | null;
@@ -179,6 +180,9 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
               <p className="text-muted-foreground" data-testid="text-corporate-contact">
                 {member.contactName} — {member.title}
               </p>
+              {member.bio && (
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed" data-testid="text-member-bio">{member.bio}</p>
+              )}
             </div>
             <div className="flex-shrink-0">
               {member.userId && (
@@ -394,6 +398,9 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
                 <p className="text-muted-foreground mt-1" data-testid="text-member-contact">
                   {member.contactName} — {member.title}
                 </p>
+                {member.bio && (
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed" data-testid="text-member-bio">{member.bio}</p>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">

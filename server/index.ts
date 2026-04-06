@@ -104,7 +104,7 @@ const httpServer = createServer(app);
   log("Application fully initialized and ready");
 
   if (process.send) {
-    process.send("ready");
+    try { process.send("ready"); } catch (_) {}
   }
 
   await ensureAdminUser();

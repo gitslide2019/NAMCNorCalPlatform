@@ -133,6 +133,7 @@ interface DirectoryMember {
   website: string | null;
   primaryServices: string | null;
   certifications: string | null;
+  bio: string | null;
   membershipCategory: string;
   isBoardMember: boolean;
   profileImageUrl: string | null;
@@ -443,6 +444,9 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
           </div>
         </div>
 
+        {member.bio && (
+          <p className="text-sm text-muted-foreground mb-2 italic" data-testid={`text-member-bio-${member.id}`}>{member.bio}</p>
+        )}
         {member.primaryServices && (
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{member.primaryServices}</p>
         )}
