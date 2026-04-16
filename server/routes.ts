@@ -136,6 +136,7 @@ export async function registerRoutes(
         tagline: app.tagline,
         specialties: app.specialties,
         linkedinUrl: app.linkedinUrl,
+        socialUrl: app.socialUrl,
         partnerOpportunities: app.partnerOpportunities,
       }));
       res.json(directory);
@@ -195,6 +196,7 @@ export async function registerRoutes(
         servicesDescription: application.servicesDescription,
         specialties: application.specialties,
         linkedinUrl: application.linkedinUrl,
+        socialUrl: application.socialUrl,
         facebookUrl: application.facebookUrl,
         instagramUrl: application.instagramUrl,
         yelpUrl: application.yelpUrl,
@@ -230,7 +232,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "No linked application found" });
         return;
       }
-      const allowedFields = ["companyName", "title", "bio", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl", "tagline", "servicesDescription", "specialties", "linkedinUrl", "facebookUrl", "instagramUrl", "yelpUrl", "partnerOpportunities"];
+      const allowedFields = ["companyName", "title", "bio", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl", "tagline", "servicesDescription", "specialties", "linkedinUrl", "socialUrl", "facebookUrl", "instagramUrl", "yelpUrl", "partnerOpportunities"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {

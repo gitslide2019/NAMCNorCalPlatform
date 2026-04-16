@@ -17,45 +17,65 @@ import {
   Save, Loader2, Building2, Mail, Wrench, ArrowLeft, Pencil, AlertTriangle,
   CheckCircle2, User, Globe, Phone, MapPin, Camera, Upload, FileText, Trash2,
   Download, Plus, FolderOpen, Briefcase, Image, Linkedin, Instagram, Facebook,
-  Star, Handshake, Eye, X, Award, Users, DollarSign, Calendar, ExternalLink
+  Handshake, Eye, X, Award, Crown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
-import type { MembershipApplication, MemberDocument, MemberProject } from "@shared/schema";
+import type { MembershipApplication, MemberProject, MemberDocument } from "@shared/schema";
 
-const PROFILE_FIELDS = [
-  { key: "profileImageUrl", label: "Profile Photo", section: "photo" },
-  { key: "companyName", label: "Company Name", section: "identity" },
-  { key: "tagline", label: "Tagline / Headline", section: "identity" },
-  { key: "bio", label: "About / Bio", section: "identity" },
-  { key: "title", label: "Job Title", section: "identity" },
-  { key: "primaryServices", label: "License Types", section: "business" },
-  { key: "servicesDescription", label: "Services Description", section: "business" },
-  { key: "certifications", label: "Certifications", section: "business" },
-  { key: "specialties", label: "Specialties", section: "business" },
-  { key: "yearEstablished", label: "Year Established", section: "business" },
-  { key: "numberOfEmployees", label: "Employee Count", section: "business" },
-  { key: "partnerOpportunities", label: "Partnership Opportunities", section: "partners" },
-  { key: "linkedinUrl", label: "LinkedIn", section: "social" },
-  { key: "website", label: "Website", section: "social" },
-  { key: "contactName", label: "Contact Name", section: "contact" },
-  { key: "email", label: "Email", section: "contact" },
-  { key: "phone", label: "Phone", section: "contact" },
-  { key: "address", label: "Address", section: "contact" },
-  { key: "city", label: "City", section: "contact" },
+/* ─────────────────────────────────────────────
+   Profile completeness config
+   Each field maps to a section ID so the banner
+   can scroll directly to the right edit card.
+───────────────────────────────────────────── */
+interface ProfileField {
+  key: keyof MembershipApplication;
+  label: string;
+  sectionId: string;
+  inputId: string;
+}
+
+const PROFILE_FIELDS: ProfileField[] = [
+  { key: "profileImageUrl",      label: "Profile Photo",             sectionId: "section-photo",    inputId: "button-upload-photo" },
+  { key: "companyName",          label: "Company Name",              sectionId: "section-identity",  inputId: "input-profile-company" },
+  { key: "tagline",              label: "Tagline / Headline",        sectionId: "section-identity",  inputId: "input-profile-tagline" },
+  { key: "bio",                  label: "About / Bio",               sectionId: "section-identity",  inputId: "input-profile-bio" },
+  { key: "title",                label: "Job Title",                 sectionId: "section-identity",  inputId: "input-profile-title" },
+  { key: "primaryServices",      label: "License Types",             sectionId: "section-business",  inputId: "input-profile-services" },
+  { key: "servicesDescription",  label: "Services Description",      sectionId: "section-business",  inputId: "input-profile-services-desc" },
+  { key: "certifications",       label: "Certifications",            sectionId: "section-business",  inputId: "input-profile-certifications" },
+  { key: "specialties",          label: "Specialties",               sectionId: "section-business",  inputId: "input-profile-specialties" },
+  { key: "yearEstablished",      label: "Year Established",          sectionId: "section-business",  inputId: "input-profile-year" },
+  { key: "numberOfEmployees",    label: "Employee Count",            sectionId: "section-business",  inputId: "input-profile-employees" },
+  { key: "partnerOpportunities", label: "Partnership Opportunities", sectionId: "section-partners",  inputId: "input-partner-opportunities" },
+  { key: "linkedinUrl",          label: "LinkedIn",                  sectionId: "section-social",    inputId: "input-profile-linkedin" },
+  { key: "socialUrl",            label: "Social Profile URL",        sectionId: "section-social",    inputId: "input-profile-social-url" },
+  { key: "website",              label: "Website",                   sectionId: "section-social",    inputId: "input-profile-website" },
+  { key: "contactName",          label: "Contact Name",              sectionId: "section-contact",   inputId: "input-profile-name" },
+  { key: "email",                label: "Email",                     sectionId: "section-contact",   inputId: "input-profile-email" },
+  { key: "phone",                label: "Phone",                     sectionId: "section-contact",   inputId: "input-profile-phone" },
+  { key: "address",              label: "Address",                   sectionId: "section-contact",   inputId: "input-profile-address" },
 ];
 
-function getProfileCompleteness(app: MembershipApplication & Record<string, any>) {
-  const filled = PROFILE_FIELDS.filter(f => {
+function getProfileCompleteness(app: MembershipApplication) {
+  const missing = PROFILE_FIELDS.filter((f) => {
     const val = app[f.key];
-    return val && val.toString().trim() !== "";
+    return !val || String(val).trim() === "";
   });
-  const missing = PROFILE_FIELDS.filter(f => {
-    const val = app[f.key];
-    return !val || val.toString().trim() === "";
-  });
-  const percentage = Math.round((filled.length / PROFILE_FIELDS.length) * 100);
-  return { total: PROFILE_FIELDS.length, filled: filled.length, missing, percentage };
+  const filled = PROFILE_FIELDS.length - missing.length;
+  const percentage = Math.round((filled / PROFILE_FIELDS.length) * 100);
+  return { total: PROFILE_FIELDS.length, filled, missing, percentage };
+}
+
+function scrollToSection(sectionId: string, inputId: string) {
+  const section = document.getElementById(sectionId);
+  if (section) {
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-testid="${inputId}"]`);
+      if (el) el.focus();
+    }, 400);
+  }
 }
 
 function formatFileSize(bytes: number | null | undefined): string {
@@ -65,24 +85,13 @@ function formatFileSize(bytes: number | null | undefined): string {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function SocialLink({ url, label, icon: Icon, prefix = "" }: { url?: string | null; label: string; icon: any; prefix?: string }) {
-  if (!url) return null;
-  const href = url.startsWith("http") ? url : `${prefix}${url}`;
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-1.5 text-sm text-primary hover:underline"
-      data-testid={`link-social-${label.toLowerCase()}`}>
-      <Icon className="h-4 w-4" />{label}
-    </a>
-  );
-}
-
-function ProfilePreviewDialog({ application }: { application: MembershipApplication & Record<string, any> }) {
+/* ─────────────────────────────────────────────
+   Preview dialog — reuses exact MemberCard markup
+───────────────────────────────────────────── */
+function ProfilePreviewDialog({ application }: { application: MembershipApplication }) {
+  const isCorporate = application.membershipCategory === "large";
   const certList = application.certifications
-    ? application.certifications.split(",").map((c: string) => c.trim()).filter(Boolean)
-    : [];
-  const specialtyList = application.specialties
-    ? application.specialties.split(",").map((s: string) => s.trim()).filter(Boolean)
+    ? application.certifications.split(",").map((c) => c.trim()).filter(Boolean)
     : [];
 
   return (
@@ -92,98 +101,89 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
           <Eye className="h-4 w-4 mr-2" />Preview My Profile
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>How Other Members See You</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div className="flex items-start gap-4">
+        {/* Exact MemberCard layout — no hover-elevate since it's not a clickable nav */}
+        <div className={`rounded-lg border p-6 ${isCorporate ? "border-l-4 border-l-[#E5A830]" : ""}`} data-testid="preview-card">
+          <div className="flex items-start gap-3 mb-3">
             {application.profileImageUrl ? (
-              <img src={application.profileImageUrl} alt={application.companyName}
-                className="w-20 h-20 rounded-full object-cover border-2 border-muted flex-shrink-0" />
+              <img
+                src={application.profileImageUrl}
+                alt={application.companyName}
+                className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-[#E5A830]" : "border-muted"}`}
+                data-testid="preview-img"
+              />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-2xl font-bold text-muted-foreground">
-                {application.companyName?.charAt(0) || "?"}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-[#E5A830]/10 text-[#E5A830] border border-[#E5A830]/30" : "bg-muted text-muted-foreground"}`}>
+                {application.companyName.charAt(0)}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold">{application.companyName}</h2>
+              <h3 className="font-semibold text-lg leading-tight">{application.companyName}</h3>
               {application.tagline && (
-                <p className="text-sm text-[#E5A830] font-medium mt-0.5" data-testid="preview-tagline">{application.tagline}</p>
+                <p className="text-xs text-[#E5A830] font-medium" data-testid="preview-tagline">{application.tagline}</p>
               )}
-              <p className="text-sm text-muted-foreground">{application.contactName} — {application.title}</p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <Badge variant="secondary" className="capitalize">{application.membershipCategory} Member</Badge>
-                {application.isBoardMember && <Badge className="bg-amber-500 text-white">Board Member</Badge>}
-                {application.membershipTier && <Badge variant="outline">{application.membershipTier}</Badge>}
-              </div>
+              <p className="text-sm text-muted-foreground">{application.contactName} - {application.title}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
+              {isCorporate && (
+                <Badge className="text-xs bg-[#E5A830] hover:bg-[#d4982a] text-white">
+                  <Crown className="h-3 w-3 mr-1" />Corporate Partner
+                </Badge>
+              )}
+              {application.isBoardMember && (
+                <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white">Board Member</Badge>
+              )}
+              {!isCorporate && (
+                <Badge variant="secondary" className="text-xs">
+                  {application.membershipTier || application.membershipCategory}
+                </Badge>
+              )}
             </div>
           </div>
 
           {application.bio && (
-            <p className="text-sm text-muted-foreground leading-relaxed border-t pt-3" data-testid="preview-bio">{application.bio}</p>
+            <p className="text-sm text-muted-foreground mb-2 italic" data-testid="preview-bio">{application.bio}</p>
+          )}
+          {application.primaryServices && (
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{application.primaryServices}</p>
           )}
 
-          {application.servicesDescription && (
-            <div className="border-t pt-3">
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Services</p>
-              <p className="text-sm" data-testid="preview-services-desc">{application.servicesDescription}</p>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span>{application.city}{application.county ? `, ${application.county} County` : application.state ? `, ${application.state}` : ""}</span>
             </div>
-          )}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              <span>{application.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{application.email}</span>
+            </div>
+            {application.website && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{application.website}</span>
+              </div>
+            )}
+          </div>
 
-          {(certList.length > 0 || specialtyList.length > 0) && (
-            <div className="border-t pt-3 space-y-2">
-              {certList.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Certifications & Licenses</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {certList.map((c: string, i: number) => (
-                      <Badge key={i} variant="outline" className="text-xs">{c}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {specialtyList.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Specialties</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {specialtyList.map((s: string, i: number) => (
-                      <Badge key={i} className="bg-[#E5A830]/10 text-[#E5A830] border-[#E5A830]/30 text-xs">{s}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {certList.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t" data-testid="preview-certs">
+              {certList.map((cert, i) => (
+                <Badge key={i} variant="outline" className="text-xs">{cert}</Badge>
+              ))}
             </div>
           )}
 
           {application.partnerOpportunities && (
-            <div className="border-t pt-3">
+            <div className="mt-3 pt-3 border-t">
               <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Partnership Opportunities</p>
-              <p className="text-sm" data-testid="preview-partner-opp">{application.partnerOpportunities}</p>
-            </div>
-          )}
-
-          <div className="border-t pt-3 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5" />{application.city}, {application.state}</div>
-            <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" />{application.phone}</div>
-            <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" />{application.email}</div>
-            {application.website && (
-              <div className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" />{application.website}</div>
-            )}
-          </div>
-
-          {(application.linkedinUrl || application.facebookUrl || application.instagramUrl || application.yelpUrl) && (
-            <div className="border-t pt-3 flex flex-wrap gap-3">
-              <SocialLink url={application.linkedinUrl} label="LinkedIn" icon={Linkedin} prefix="https://" />
-              <SocialLink url={application.facebookUrl} label="Facebook" icon={Facebook} prefix="https://" />
-              <SocialLink url={application.instagramUrl} label="Instagram" icon={Instagram} prefix="https://" />
-              {application.yelpUrl && (
-                <a href={application.yelpUrl.startsWith("http") ? application.yelpUrl : `https://${application.yelpUrl}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-primary hover:underline">
-                  <Star className="h-4 w-4" />Yelp
-                </a>
-              )}
+              <p className="text-xs text-muted-foreground" data-testid="preview-partner-opp">{application.partnerOpportunities}</p>
             </div>
           )}
         </div>
@@ -192,8 +192,11 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
   );
 }
 
+/* ─────────────────────────────────────────────
+   Main Profile Page
+───────────────────────────────────────────── */
 export default function Profile() {
-  const { user } = useAuth();
+  useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -203,7 +206,7 @@ export default function Profile() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Record<string, string>) => {
+    mutationFn: async (data: Partial<Record<keyof MembershipApplication, string>>) => {
       const res = await apiRequest("PATCH", "/api/portal/profile", data);
       return await res.json();
     },
@@ -220,9 +223,6 @@ export default function Profile() {
     return (
       <PortalLayout>
         <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
-          <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
-            <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
-          </Button>
           <Skeleton className="h-8 w-48 mb-8" />
           <Skeleton className="h-96 w-full" />
         </div>
@@ -248,12 +248,12 @@ export default function Profile() {
     );
   }
 
-  const app = application as MembershipApplication & Record<string, any>;
-  const completeness = getProfileCompleteness(app);
+  const completeness = getProfileCompleteness(application);
   const showBanner = completeness.percentage < 60 && !bannerDismissed;
   const topMissing = completeness.missing.slice(0, 3);
 
-  const onSubmit = (data: Record<string, string>) => updateMutation.mutate(data);
+  const onSubmit = (data: Partial<Record<keyof MembershipApplication, string>>) =>
+    updateMutation.mutate(data);
 
   return (
     <PortalLayout>
@@ -262,7 +262,7 @@ export default function Profile() {
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
 
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-profile-title">My Company Profile</h1>
             <p className="text-muted-foreground mt-1 text-sm">
@@ -270,7 +270,7 @@ export default function Profile() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <ProfilePreviewDialog application={app} />
+            <ProfilePreviewDialog application={application} />
           </div>
         </div>
 
@@ -284,21 +284,41 @@ export default function Profile() {
           )}
         </div>
 
+        {/* Completeness Banner — top 3 missing fields are clickable scroll links */}
         {showBanner && (
           <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 flex items-start gap-3" data-testid="banner-completeness">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">Your profile is {completeness.percentage}% complete</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                Add {topMissing.map(f => f.label).join(", ")} to attract more opportunities and connections.
+              <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">
+                Your profile is {completeness.percentage}% complete
               </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Complete your profile to attract more opportunities. Add:
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {topMissing.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => scrollToSection(f.sectionId, f.inputId)}
+                    className="text-xs underline text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 font-medium"
+                    data-testid={`banner-link-${String(f.key)}`}
+                  >
+                    + {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button onClick={() => setBannerDismissed(true)} className="text-amber-600 hover:text-amber-800 dark:text-amber-400" data-testid="button-dismiss-banner">
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-amber-600 hover:text-amber-800 dark:text-amber-400"
+              data-testid="button-dismiss-banner"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
+        {/* Completeness meter */}
         <Card className="mb-6" data-testid="card-profile-completeness">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -323,12 +343,12 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {(application.membershipTier || (app as any).county || application.dateJoined || application.renewalDate) && (
+        {/* Membership info banner */}
+        {(application.membershipTier || application.county || application.dateJoined || application.renewalDate) && (
           <Card className="mb-6" data-testid="card-membership-info">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-[#E5A830]" />
-                Membership Information
+                <Briefcase className="h-4 w-4 text-[#E5A830]" />Membership Information
               </CardTitle>
               <CardDescription>Your membership details on file with NAMC NorCal</CardDescription>
             </CardHeader>
@@ -340,10 +360,10 @@ export default function Profile() {
                     <Badge variant="secondary" data-testid="text-profile-tier">{application.membershipTier}</Badge>
                   </div>
                 )}
-                {(app as any).county && (
+                {application.county && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">County</p>
-                    <p className="text-sm font-medium" data-testid="text-profile-county">{(app as any).county}</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-county">{application.county}</p>
                   </div>
                 )}
                 {application.dateJoined && (
@@ -365,11 +385,11 @@ export default function Profile() {
 
         <div className="space-y-6">
           <ProfilePhotoSection application={application} />
-          <CompanyIdentityForm application={app} onSubmit={onSubmit} isPending={updateMutation.isPending} />
-          <BusinessDetailsForm application={app} onSubmit={onSubmit} isPending={updateMutation.isPending} />
-          <PartnerOpportunitiesForm application={app} onSubmit={onSubmit} isPending={updateMutation.isPending} />
-          <SocialPresenceForm application={app} onSubmit={onSubmit} isPending={updateMutation.isPending} />
-          <ContactInfoForm application={app} onSubmit={onSubmit} isPending={updateMutation.isPending} />
+          <CompanyIdentityForm application={application} onSubmit={onSubmit} isPending={updateMutation.isPending} />
+          <BusinessDetailsForm application={application} onSubmit={onSubmit} isPending={updateMutation.isPending} />
+          <PartnerOpportunitiesForm application={application} onSubmit={onSubmit} isPending={updateMutation.isPending} />
+          <SocialPresenceForm application={application} onSubmit={onSubmit} isPending={updateMutation.isPending} />
+          <ContactInfoForm application={application} onSubmit={onSubmit} isPending={updateMutation.isPending} />
           <MyDocumentsSection />
           <MyProjectsSection />
         </div>
@@ -378,6 +398,9 @@ export default function Profile() {
   );
 }
 
+/* ─────────────────────────────────────────────
+   Profile Photo
+───────────────────────────────────────────── */
 function ProfilePhotoSection({ application }: { application: MembershipApplication }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -389,7 +412,7 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/my-application"] });
-      toast({ title: "Photo updated", description: "Your profile photo has been saved." });
+      toast({ title: "Photo updated" });
     },
     onError: (error: Error) => {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
@@ -400,11 +423,11 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please select an image file (JPG, PNG, etc.)", variant: "destructive" });
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please select an image under 5MB.", variant: "destructive" });
+      toast({ title: "File too large", description: "Max 5 MB.", variant: "destructive" });
       return;
     }
     const reader = new FileReader();
@@ -413,10 +436,10 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
   };
 
   return (
-    <Card data-testid="card-profile-photo">
+    <Card id="section-photo" data-testid="card-profile-photo">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5" />Profile Photo</CardTitle>
-        <CardDescription>Upload a professional photo or company logo. This appears on your member directory listing.</CardDescription>
+        <CardDescription>Upload a professional photo or company logo. Shown in the member directory.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-4 sm:gap-6">
@@ -431,7 +454,7 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
             )}
             <button onClick={() => fileInputRef.current?.click()}
               className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-              data-testid="button-change-photo">
+              aria-label="Change photo">
               <Camera className="h-6 w-6 text-white" />
             </button>
           </div>
@@ -441,7 +464,7 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
               {photoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
               {application.profileImageUrl ? "Change Photo" : "Upload Photo"}
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">JPG, PNG, or GIF. Max 5MB.</p>
+            <p className="text-xs text-muted-foreground mt-2">JPG, PNG, or GIF. Max 5 MB.</p>
           </div>
         </div>
       </CardContent>
@@ -449,20 +472,25 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
   );
 }
 
-function CompanyIdentityForm({ application, onSubmit, isPending }: { application: Record<string, any>; onSubmit: (d: Record<string, string>) => void; isPending: boolean }) {
+/* ─────────────────────────────────────────────
+   Company & Identity
+───────────────────────────────────────────── */
+function CompanyIdentityForm({
+  application, onSubmit, isPending,
+}: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
   const form = useForm({
     defaultValues: {
       companyName: application.companyName || "",
-      title: application.title || "",
-      tagline: application.tagline || "",
-      bio: application.bio || "",
+      title:       application.title       || "",
+      tagline:     application.tagline     || "",
+      bio:         application.bio         || "",
     },
   });
 
   return (
     <Card id="section-identity" data-testid="card-company-identity">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" />Company & Identity<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
+        <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" />Company &amp; Identity<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
         <CardDescription>Your company name, headline, and story — the first thing other members see.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -487,8 +515,8 @@ function CompanyIdentityForm({ application, onSubmit, isPending }: { application
             <FormField control={form.control} name="tagline" render={({ field }) => (
               <FormItem>
                 <FormLabel>Tagline / Headline</FormLabel>
-                <FormControl><Input placeholder="e.g. Bay Area's Premier Minority-Owned General Contractor" {...field} data-testid="input-profile-tagline" /></FormControl>
-                <FormDescription>A one-line headline shown under your company name in the directory</FormDescription>
+                <FormControl><Input placeholder="Bay Area's Premier Minority-Owned General Contractor" {...field} data-testid="input-profile-tagline" /></FormControl>
+                <FormDescription>One-line headline shown under your company name in the directory</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
@@ -496,9 +524,9 @@ function CompanyIdentityForm({ application, onSubmit, isPending }: { application
               <FormItem>
                 <FormLabel>About Your Company</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="Tell other NAMC members about your company, your history, your mission, and what makes you unique. Share your story — clients, notable projects, community involvement..." rows={5} {...field} data-testid="input-profile-bio" />
+                  <Textarea placeholder="Tell other NAMC members about your company — your history, mission, notable projects, community involvement..." rows={5} {...field} data-testid="input-profile-bio" />
                 </FormControl>
-                <FormDescription>Your company's story — shown on your full member profile. Be detailed and compelling.</FormDescription>
+                <FormDescription>Your company story — shown on your full member profile page</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
@@ -514,16 +542,21 @@ function CompanyIdentityForm({ application, onSubmit, isPending }: { application
   );
 }
 
-function BusinessDetailsForm({ application, onSubmit, isPending }: { application: Record<string, any>; onSubmit: (d: Record<string, string>) => void; isPending: boolean }) {
+/* ─────────────────────────────────────────────
+   Business Details
+───────────────────────────────────────────── */
+function BusinessDetailsForm({
+  application, onSubmit, isPending,
+}: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
   const form = useForm({
     defaultValues: {
       servicesDescription: application.servicesDescription || "",
-      primaryServices: application.primaryServices || "",
-      certifications: application.certifications || "",
-      specialties: application.specialties || "",
-      yearEstablished: application.yearEstablished || "",
-      numberOfEmployees: application.numberOfEmployees || "",
-      annualRevenue: application.annualRevenue || "",
+      primaryServices:     application.primaryServices     || "",
+      certifications:      application.certifications      || "",
+      specialties:         application.specialties         || "",
+      yearEstablished:     application.yearEstablished     || "",
+      numberOfEmployees:   application.numberOfEmployees   || "",
+      annualRevenue:       application.annualRevenue       || "",
     },
   });
 
@@ -531,7 +564,7 @@ function BusinessDetailsForm({ application, onSubmit, isPending }: { application
     <Card id="section-business" data-testid="card-business-details">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" />Business Details<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
-        <CardDescription>Your services, credentials, and business stats — what you do and how big you are.</CardDescription>
+        <CardDescription>Your services, credentials, and business stats.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -540,9 +573,9 @@ function BusinessDetailsForm({ application, onSubmit, isPending }: { application
               <FormItem>
                 <FormLabel>Services Description</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="Describe what your company does in plain language — the types of projects, sectors, and work you specialize in. This is what other members and agencies read to decide if you're the right fit." rows={4} {...field} data-testid="input-profile-services-desc" />
+                  <Textarea placeholder="Describe what your company does — types of projects, sectors, and work you specialize in." rows={4} {...field} data-testid="input-profile-services-desc" />
                 </FormControl>
-                <FormDescription>Write this in plain English for clients and partners to read</FormDescription>
+                <FormDescription>Plain-language description for clients and partners to read</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
@@ -550,25 +583,25 @@ function BusinessDetailsForm({ application, onSubmit, isPending }: { application
               <FormItem>
                 <FormLabel>License Types / Trade Codes</FormLabel>
                 <FormControl><Input placeholder="e.g. B-GC, C-10, C-39, A-GE" {...field} data-testid="input-profile-services" /></FormControl>
-                <FormDescription>Your California contractor license class codes (e.g. B for General Building, C-10 for Electrical)</FormDescription>
+                <FormDescription>California contractor license class codes</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="certifications" render={({ field }) => (
               <FormItem>
-                <FormLabel>Certifications & Licenses</FormLabel>
+                <FormLabel>Certifications &amp; Licenses</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="e.g. MBE, DBE, SBE, DVBE, WBE, LBE, SLBE, SDVOSB, SB-PW&#10;CA Contractor License #123456 (Class B-GC)&#10;OSHA 30-Hour Certified" rows={3} {...field} data-testid="input-profile-certifications" />
+                  <Textarea placeholder="e.g. MBE, DBE, SBE, DVBE, WBE&#10;CA Contractor License #123456 (Class B-GC)&#10;OSHA 30-Hour Certified" rows={3} {...field} data-testid="input-profile-certifications" />
                 </FormControl>
-                <FormDescription>List each certification, license number, and bonding on a new line or separated by commas — these display as individual badges on your profile</FormDescription>
+                <FormDescription>One per line or comma-separated — display as individual badges on your profile</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="specialties" render={({ field }) => (
               <FormItem>
                 <FormLabel>Specialties / Keywords</FormLabel>
-                <FormControl><Input placeholder="e.g. Seismic Retrofit, ADA Compliance, LEED Green Building, Solar, Affordable Housing" {...field} data-testid="input-profile-specialties" /></FormControl>
-                <FormDescription>Comma-separated specialties — shown as highlighted tags on your profile and helps members find you</FormDescription>
+                <FormControl><Input placeholder="e.g. Seismic Retrofit, ADA Compliance, LEED, Solar, Affordable Housing" {...field} data-testid="input-profile-specialties" /></FormControl>
+                <FormDescription>Comma-separated — shown as highlighted tags, helps members find you</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
@@ -576,21 +609,21 @@ function BusinessDetailsForm({ application, onSubmit, isPending }: { application
               <FormField control={form.control} name="yearEstablished" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Year Established</FormLabel>
-                  <FormControl><Input placeholder="e.g. 2005" {...field} data-testid="input-profile-year" /></FormControl>
+                  <FormControl><Input placeholder="2005" {...field} data-testid="input-profile-year" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="numberOfEmployees" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Employees</FormLabel>
-                  <FormControl><Input placeholder="e.g. 25" {...field} data-testid="input-profile-employees" /></FormControl>
+                  <FormControl><Input placeholder="25" {...field} data-testid="input-profile-employees" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="annualRevenue" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Annual Revenue</FormLabel>
-                  <FormControl><Input placeholder="e.g. $2,000,000" {...field} data-testid="input-profile-revenue" /></FormControl>
+                  <FormControl><Input placeholder="$2,000,000" {...field} data-testid="input-profile-revenue" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -607,7 +640,12 @@ function BusinessDetailsForm({ application, onSubmit, isPending }: { application
   );
 }
 
-function PartnerOpportunitiesForm({ application, onSubmit, isPending }: { application: Record<string, any>; onSubmit: (d: Record<string, string>) => void; isPending: boolean }) {
+/* ─────────────────────────────────────────────
+   Partnership Opportunities
+───────────────────────────────────────────── */
+function PartnerOpportunitiesForm({
+  application, onSubmit, isPending,
+}: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
   const form = useForm({
     defaultValues: { partnerOpportunities: application.partnerOpportunities || "" },
   });
@@ -616,7 +654,7 @@ function PartnerOpportunitiesForm({ application, onSubmit, isPending }: { applic
     <Card id="section-partners" data-testid="card-partner-opportunities">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Handshake className="h-5 w-5" />Partnership Opportunities<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
-        <CardDescription>Tell other NAMC members what kinds of partnerships, subcontracting, teaming, or joint ventures you're open to.</CardDescription>
+        <CardDescription>Tell other NAMC members what partnerships, subcontracting, teaming, or joint ventures you're open to.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -625,11 +663,9 @@ function PartnerOpportunitiesForm({ application, onSubmit, isPending }: { applic
               <FormItem>
                 <FormLabel>What Are You Looking For?</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="e.g. Seeking subcontracting opportunities with general contractors on public works projects over $500K. Open to teaming on Caltrans, BART, and SFPUC bids. Looking for certified DBE prime contractors for upcoming SFUSD work." rows={5} {...field} data-testid="input-partner-opportunities" />
+                  <Textarea placeholder="e.g. Seeking subcontracting opportunities with general contractors on public works over $500K. Open to teaming on Caltrans, BART, and SFPUC bids. Looking for certified DBE prime contractors for upcoming SFUSD work." rows={5} {...field} data-testid="input-partner-opportunities" />
                 </FormControl>
-                <FormDescription>
-                  Be specific: mention project types, dollar amounts, agencies, and what role you want (prime, sub, joint venture partner, etc.)
-                </FormDescription>
+                <FormDescription>Be specific: project types, dollar amounts, agencies, and your preferred role (prime, sub, joint venture, etc.)</FormDescription>
                 <FormMessage />
               </FormItem>
             )} />
@@ -645,22 +681,28 @@ function PartnerOpportunitiesForm({ application, onSubmit, isPending }: { applic
   );
 }
 
-function SocialPresenceForm({ application, onSubmit, isPending }: { application: Record<string, any>; onSubmit: (d: Record<string, string>) => void; isPending: boolean }) {
+/* ─────────────────────────────────────────────
+   Online Presence & Social Media
+───────────────────────────────────────────── */
+function SocialPresenceForm({
+  application, onSubmit, isPending,
+}: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
   const form = useForm({
     defaultValues: {
-      website: application.website || "",
-      linkedinUrl: application.linkedinUrl || "",
-      facebookUrl: application.facebookUrl || "",
+      website:      application.website      || "",
+      linkedinUrl:  application.linkedinUrl  || "",
+      socialUrl:    application.socialUrl    || "",
+      facebookUrl:  application.facebookUrl  || "",
       instagramUrl: application.instagramUrl || "",
-      yelpUrl: application.yelpUrl || "",
+      yelpUrl:      application.yelpUrl      || "",
     },
   });
 
   return (
     <Card id="section-social" data-testid="card-social-presence">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />Online Presence & Social Media<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
-        <CardDescription>Add links so other members can learn more about your company and connect with you online.</CardDescription>
+        <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />Online Presence &amp; Social Media<Pencil className="h-4 w-4 text-muted-foreground" /></CardTitle>
+        <CardDescription>Add links so other members can connect with you online.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -680,6 +722,14 @@ function SocialPresenceForm({ application, onSubmit, isPending }: { application:
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="socialUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />Additional Social Profile</FormLabel>
+                  <FormControl><Input placeholder="twitter.com/yourhandle or any other social URL" {...field} data-testid="input-profile-social-url" /></FormControl>
+                  <FormDescription>Twitter/X, Houzz, Angi, or any other platform</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <FormField control={form.control} name="facebookUrl" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-1.5"><Facebook className="h-3.5 w-3.5 text-[#1877F2]" />Facebook</FormLabel>
@@ -695,8 +745,8 @@ function SocialPresenceForm({ application, onSubmit, isPending }: { application:
                 </FormItem>
               )} />
               <FormField control={form.control} name="yelpUrl" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-[#D32323]" />Yelp Business Listing</FormLabel>
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1.5"><Award className="h-3.5 w-3.5 text-[#D32323]" />Yelp Business Listing</FormLabel>
                   <FormControl><Input placeholder="yelp.com/biz/your-company" {...field} data-testid="input-profile-yelp" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -714,16 +764,21 @@ function SocialPresenceForm({ application, onSubmit, isPending }: { application:
   );
 }
 
-function ContactInfoForm({ application, onSubmit, isPending }: { application: Record<string, any>; onSubmit: (d: Record<string, string>) => void; isPending: boolean }) {
+/* ─────────────────────────────────────────────
+   Contact Information
+───────────────────────────────────────────── */
+function ContactInfoForm({
+  application, onSubmit, isPending,
+}: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
   const form = useForm({
     defaultValues: {
       contactName: application.contactName || "",
-      email: application.email || "",
-      phone: application.phone || "",
-      address: application.address || "",
-      city: application.city || "",
-      state: application.state || "",
-      zipCode: application.zipCode || "",
+      email:       application.email       || "",
+      phone:       application.phone       || "",
+      address:     application.address     || "",
+      city:        application.city        || "",
+      state:       application.state       || "",
+      zipCode:     application.zipCode     || "",
     },
   });
 
@@ -801,6 +856,9 @@ function ContactInfoForm({ application, onSubmit, isPending }: { application: Re
   );
 }
 
+/* ─────────────────────────────────────────────
+   My Documents
+───────────────────────────────────────────── */
 function MyDocumentsSection() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -809,7 +867,9 @@ function MyDocumentsSection() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const { data: documents = [], isLoading } = useQuery<Omit<MemberDocument, "fileData">[]>({
+  type DocShape = Omit<MemberDocument, "fileData">;
+
+  const { data: documents = [], isLoading } = useQuery<DocShape[]>({
     queryKey: ["/api/portal/my-documents"],
   });
 
@@ -833,19 +893,13 @@ function MyDocumentsSection() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/portal/my-documents/${id}`); },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-documents"] });
-      toast({ title: "Document deleted" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/portal/my-documents"] }); toast({ title: "Document deleted" }); },
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please select a file under 8MB.", variant: "destructive" });
-      return;
-    }
+    if (file.size > 8 * 1024 * 1024) { toast({ title: "File too large", description: "Max 8 MB.", variant: "destructive" }); return; }
     setPendingFile(file);
     setUploadTitle(file.name.replace(/\.[^.]+$/, ""));
     setDialogOpen(true);
@@ -862,13 +916,13 @@ function MyDocumentsSection() {
   };
 
   const categories = [
-    { value: "general", label: "General" },
-    { value: "license", label: "Licenses & Certifications" },
-    { value: "insurance", label: "Insurance & Bonding" },
-    { value: "capability", label: "Capability Statement" },
+    { value: "general",       label: "General" },
+    { value: "license",       label: "Licenses & Certifications" },
+    { value: "insurance",     label: "Insurance & Bonding" },
+    { value: "capability",    label: "Capability Statement" },
     { value: "project-photo", label: "Project Photos" },
     { value: "company-photo", label: "Company Photos" },
-    { value: "proposal", label: "Proposals & Bids" },
+    { value: "proposal",      label: "Proposals & Bids" },
   ];
 
   return (
@@ -877,7 +931,7 @@ function MyDocumentsSection() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5" />My Documents</CardTitle>
-            <CardDescription>Upload capability statements, certifications, insurance docs, project photos, and more. Other members can view these on your profile.</CardDescription>
+            <CardDescription>Upload capability statements, certifications, insurance docs, project photos, and more.</CardDescription>
           </div>
           <div>
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} data-testid="input-document-file" />
@@ -894,11 +948,11 @@ function MyDocumentsSection() {
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
             <p className="text-sm">No documents uploaded yet.</p>
-            <p className="text-xs mt-1">Upload capability statements, certifications, project photos, and more.</p>
+            <p className="text-xs mt-1">Upload capability statements, certifications, and project photos.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {documents.map(doc => (
+            {documents.map((doc) => (
               <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors" data-testid={`doc-item-${doc.id}`}>
                 <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -927,11 +981,11 @@ function MyDocumentsSection() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Title</label>
-                <Input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Document title" data-testid="input-doc-title" />
+                <Input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Document title" className="mt-1" data-testid="input-doc-title" />
               </div>
               <div>
                 <label className="text-sm font-medium">Category</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} data-testid="select-doc-category">
+                <select className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={uploadCategory} onChange={e => setUploadCategory(e.target.value)} data-testid="select-doc-category">
                   {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
@@ -950,6 +1004,9 @@ function MyDocumentsSection() {
   );
 }
 
+/* ─────────────────────────────────────────────
+   My Projects / Portfolio
+───────────────────────────────────────────── */
 function MyProjectsSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -965,7 +1022,7 @@ function MyProjectsSection() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, string | null>) => {
       const res = await apiRequest("POST", "/api/portal/my-projects", data);
       return await res.json();
     },
@@ -983,23 +1040,14 @@ function MyProjectsSection() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/portal/my-projects/${id}`); },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/my-projects"] });
-      toast({ title: "Project removed" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/portal/my-projects"] }); toast({ title: "Project removed" }); },
   });
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please select an image under 5MB.", variant: "destructive" });
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" }); return; }
+    if (file.size > 5 * 1024 * 1024) { toast({ title: "File too large", description: "Max 5 MB.", variant: "destructive" }); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
@@ -1008,8 +1056,8 @@ function MyProjectsSection() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (values: any) => {
-    createMutation.mutate({ ...values, imageData: projectImage?.data || null, imageType: projectImage?.type || null });
+  const handleSubmit = (values: { title: string; description: string; location: string; projectValue: string; completionDate: string; clientName: string; role: string }) => {
+    createMutation.mutate({ ...values, imageData: projectImage?.data ?? null, imageType: projectImage?.type ?? null });
   };
 
   return (
@@ -1018,7 +1066,7 @@ function MyProjectsSection() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2"><Briefcase className="h-5 w-5" />Project Portfolio</CardTitle>
-            <CardDescription>Showcase completed projects with photos and details. A strong portfolio helps you win bids and build your reputation with other members and agencies.</CardDescription>
+            <CardDescription>Showcase completed projects with photos. A strong portfolio helps you win bids and build your reputation.</CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -1031,8 +1079,7 @@ function MyProjectsSection() {
                   <FormField control={form.control} name="title" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Project Title *</FormLabel>
-                      <FormControl><Input placeholder="e.g. Oakland Community Center Renovation" {...field} data-testid="input-project-title" /></FormControl>
-                      <FormMessage />
+                      <FormControl><Input placeholder="Oakland Community Center Renovation" {...field} data-testid="input-project-title" /></FormControl>
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="description" render={({ field }) => (
@@ -1056,25 +1103,23 @@ function MyProjectsSection() {
                     )} />
                   </div>
                   <FormField control={form.control} name="role" render={({ field }) => (
-                    <FormItem><FormLabel>Your Role</FormLabel><FormControl><Input placeholder="e.g. General Contractor, Electrical Sub, Prime" {...field} data-testid="input-project-role" /></FormControl></FormItem>
+                    <FormItem><FormLabel>Your Role</FormLabel><FormControl><Input placeholder="General Contractor, Electrical Sub, Prime" {...field} data-testid="input-project-role" /></FormControl></FormItem>
                   )} />
                   <div>
-                    <label className="text-sm font-medium">Project Photo</label>
-                    <div className="mt-1">
-                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-project-image" />
-                      {projectImage ? (
-                        <div className="relative rounded-lg overflow-hidden border">
-                          <img src={`data:${projectImage.type};base64,${projectImage.data}`} alt="Preview" className="w-full h-40 object-cover" />
-                          <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => setProjectImage(null)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button type="button" variant="outline" className="w-full h-20" onClick={() => fileInputRef.current?.click()} data-testid="button-select-project-image">
-                          <Image className="h-5 w-5 mr-2" />Add Photo
+                    <p className="text-sm font-medium mb-1">Project Photo</p>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-project-image" />
+                    {projectImage ? (
+                      <div className="relative rounded-lg overflow-hidden border">
+                        <img src={`data:${projectImage.type};base64,${projectImage.data}`} alt="Preview" className="w-full h-40 object-cover" />
+                        <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => setProjectImage(null)}>
+                          <Trash2 className="h-3 w-3" />
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <Button type="button" variant="outline" className="w-full h-20" onClick={() => fileInputRef.current?.click()} data-testid="button-select-project-image">
+                        <Image className="h-5 w-5 mr-2" />Add Photo
+                      </Button>
+                    )}
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
@@ -1099,7 +1144,7 @@ function MyProjectsSection() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {projects.map(project => (
+            {projects.map((project) => (
               <div key={project.id} className="rounded-lg border overflow-hidden bg-card" data-testid={`project-card-${project.id}`}>
                 {project.imageData && project.imageType && (
                   <img src={`data:${project.imageType};base64,${project.imageData}`} alt={project.title} className="w-full h-36 object-cover" />

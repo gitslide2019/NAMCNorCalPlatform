@@ -48,6 +48,7 @@ export const membershipApplications = pgTable("membership_applications", {
   servicesDescription: text("services_description"),
   specialties: text("specialties"),
   linkedinUrl: text("linkedin_url"),
+  socialUrl: text("social_url"),
   facebookUrl: text("facebook_url"),
   instagramUrl: text("instagram_url"),
   yelpUrl: text("yelp_url"),
