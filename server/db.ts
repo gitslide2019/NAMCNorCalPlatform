@@ -271,10 +271,16 @@ export async function seedSampleContent() {
       { title: "C2496256 FIN — MB CVRB Cold Room Remediation", description: "General Building (B) license required. Bidding documents available on 2025-09-30.", location: "UCSF, San Francisco, CA", contactEmail: "Darrick.Lo@ucsf.edu; Karen.Wong@ucsf.edu; BuildingConnected link in email", postedById: adminId, status: "unknown", latitude: "37.7631", longitude: "-122.4584", category: "Bid opportunity", organization: "UCSF Real Estate", gmailLink: "https://mail.google.com/mail/#all/199a18c1a71e81ce", emailSentDate: "2025-10-01", notes: "Bidding documents available: 2025-09-30; no bid due date stated." },
       { title: "City of Oakland MPSLB Program — On-Call General Construction Services RFQ", description: "Open to SLBEs and VSLBEs only. List used for construction work valued at $250,000 or less. Pool of pre-qualified contractors for task-order work.", location: "Oakland, CA", deadline: "2025-10-16", contactEmail: "capitalcontracts@oaklandca.gov; certification@oaklandca.gov", postedById: adminId, status: "closed", latitude: "37.8047", longitude: "-122.2720", category: "RFQ", organization: "City of Oakland", gmailLink: "https://mail.google.com/mail/#all/19954747670f6118", emailSentDate: "2025-09-16", notes: "Past due as of 2026-04-15. Applications open 2025-09-16 to 2025-10-16." },
       { title: "SFO T3W Outreach Event", description: "Outreach event related to SFO Terminal 3 West project. See email for attached invitation with full details.", location: "San Francisco International Airport", contactEmail: "See invitation attachment", postedById: adminId, status: "unknown", latitude: "37.6213", longitude: "-122.3790", category: "Outreach", organization: "SFO / T3W Project Team", gmailLink: "https://mail.google.com/mail/#all/19953a0cc4557ce4", emailSentDate: "2025-09-16", notes: "Details not stated in the email body; invitation was an attachment." },
+      { title: "SFPUC 18th Annual Contractors Breakfast 2026 — Save the Date", description: "Save-the-date notice for contractors breakfast about upcoming SFPUC projects. Registration opening soon.", location: "The War Memorial, Green Room, San Francisco, CA", deadline: "2026-05-15", contactEmail: "Registration coming soon (see later email)", postedById: adminId, status: "closed", latitude: "37.7782", longitude: "-122.4197", category: "Networking", organization: "San Francisco Public Utilities Commission (SFPUC)", gmailLink: "https://mail.google.com/mail/#all/19cde6d0ccf3b75b", emailSentDate: "2026-03-11", notes: "Superseded: A later registration-open email (April 15) replaced this save-the-date. Event date: 2026-05-15; Time: 7:30-10:00 AM." },
     ];
 
     await db.execute(sql`
-      DELETE FROM project_opportunities WHERE gmail_link IS NULL AND organization IS NULL
+      DELETE FROM project_opportunities WHERE title IN (
+        'Oakland Unified School District — Roosevelt Middle School Renovation',
+        'City of Berkeley — Streetscape Improvement Project',
+        'BART — Platform Safety Improvements (Multiple Stations)',
+        'Affordable Housing Development — East 14th Street'
+      )
     `);
     await db.execute(sql`
       UPDATE project_opportunities SET status = 'unknown'
@@ -286,10 +292,12 @@ export async function seedSampleContent() {
         'https://mail.google.com/mail/#all/19953a0cc4557ce4'
       )
     `);
-    const freshCount = await db.select({ count: sql<number>`count(*)` }).from(projectOpportunities);
-    if (Number(freshCount[0]?.count || 0) === 0) {
-      await db.insert(projectOpportunities).values(REAL_PROJECTS);
-      console.log(`Seeded ${REAL_PROJECTS.length} real project opportunities from NAMC email feed`);
+    const existingGmailLinks = await db.execute(sql`SELECT gmail_link FROM project_opportunities WHERE gmail_link IS NOT NULL`);
+    const existingLinks = new Set((existingGmailLinks.rows as { gmail_link: string }[]).map(r => r.gmail_link));
+    const missingProjects = REAL_PROJECTS.filter(p => p.gmailLink && !existingLinks.has(p.gmailLink));
+    if (missingProjects.length > 0) {
+      await db.insert(projectOpportunities).values(missingProjects);
+      console.log(`Inserted ${missingProjects.length} missing real project opportunities`);
     }
 
     const campaignCount = await db.select({ count: sql<number>`count(*)` }).from(campaigns);

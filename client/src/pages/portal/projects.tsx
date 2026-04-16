@@ -80,6 +80,19 @@ function getCategoryColor(category: string | null | undefined): string {
   return CATEGORY_COLORS[category] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
 
+function extractContactLink(contactEmail: string | null | undefined): { href: string; label: string } | null {
+  if (!contactEmail) return null;
+  const trimmed = contactEmail.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return { href: trimmed, label: "Learn More / Register" };
+  }
+  const emailMatch = trimmed.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  if (emailMatch) {
+    return { href: `mailto:${emailMatch[0]}`, label: emailMatch[0] };
+  }
+  return null;
+}
+
 function formatDate(date: string | null | undefined): string {
   if (!date) return "";
   const d = new Date(date);
@@ -504,7 +517,24 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 pt-1">
+                        {(() => {
+                          const contact = extractContactLink(project.contactEmail);
+                          return contact ? (
+                            <a
+                              href={contact.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline truncate max-w-full"
+                              data-testid={`link-apply-${project.id}`}
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                              {contact.label}
+                            </a>
+                          ) : null;
+                        })()}
+
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
                           <div className="flex items-center gap-2">
                             {urgency && (
                               <Badge className={`${urgencyClasses} text-xs`} data-testid={`badge-urgency-${project.id}`}>
