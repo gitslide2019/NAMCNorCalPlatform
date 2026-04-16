@@ -177,10 +177,28 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
                 <Badge className="bg-[#E5A830] hover:bg-[#d4982a] text-white" data-testid="badge-corporate-partner">
                   <Crown className="h-3 w-3 mr-1" />Corporate Partner
                 </Badge>
+                {member.membershipTier && (
+                  <Badge variant="secondary" data-testid="text-member-tier">{member.membershipTier}</Badge>
+                )}
                 {member.isBoardMember && (
                   <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
                 )}
+                {member.county && (
+                  <Badge variant="outline" className="text-xs" data-testid="text-member-county">
+                    <MapPin className="h-3 w-3 mr-1" />{member.county} County
+                  </Badge>
+                )}
               </div>
+              {(member.dateJoined || member.renewalDate) && (
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  {member.dateJoined && (
+                    <span data-testid="text-member-joined">Member since {member.dateJoined}</span>
+                  )}
+                  {member.renewalDate && (
+                    <span data-testid="text-member-renewal">Renews {member.renewalDate}</span>
+                  )}
+                </div>
+              )}
               <p className="text-muted-foreground" data-testid="text-corporate-contact">
                 {member.contactName} — {member.title}
               </p>

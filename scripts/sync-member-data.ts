@@ -101,36 +101,32 @@ async function syncMembers() {
       continue;
     }
 
-    const updateData: Record<string, any> = {
+    type MemberUpdate = typeof membershipApplications.$inferInsert;
+    const updateData: Partial<MemberUpdate> = {
       companyName: record.companyName,
       county: record.county || null,
       membershipTier: record.membershipTier || null,
       dateJoined: record.dateJoined || null,
       renewalDate: record.renewalDate || null,
+      primaryServices: record.primaryServices || null,
+      certifications: record.certifications || null,
     };
 
-    // Only update phone if CSV has a real value
+    // Only update contact/address fields when the CSV has real values
     if (record.phone && record.phone.trim()) {
       updateData.phone = record.phone;
     }
-
-    // Only update address fields if CSV has real values
     if (record.address && record.address.trim()) {
       updateData.address = record.address;
     }
     if (record.city && record.city.trim()) {
       updateData.city = record.city;
     }
+    if (record.state && record.state.trim()) {
+      updateData.state = record.state;
+    }
     if (record.zipCode && record.zipCode.trim()) {
       updateData.zipCode = record.zipCode;
-    }
-
-    // Always update primaryServices and certifications from CSV
-    if (record.primaryServices !== undefined) {
-      updateData.primaryServices = record.primaryServices || null;
-    }
-    if (record.certifications !== undefined) {
-      updateData.certifications = record.certifications || null;
     }
 
     await db

@@ -439,8 +439,8 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
               <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board Member</Badge>
             )}
             {!isCorporate && (
-              <Badge variant="secondary" className="text-xs capitalize">
-                {member.membershipCategory}
+              <Badge variant="secondary" className="text-xs" data-testid={`badge-tier-${member.id}`}>
+                {member.membershipTier || member.membershipCategory}
               </Badge>
             )}
           </div>

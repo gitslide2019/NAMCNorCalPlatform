@@ -158,7 +158,7 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {((application as any).membershipTier || (application as any).county || (application as any).dateJoined || (application as any).renewalDate) && (
+        {(application.membershipTier || application.county || application.dateJoined || application.renewalDate) && (
           <Card className="mb-6" data-testid="card-membership-info">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -169,28 +169,28 @@ export default function Profile() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {(application as any).membershipTier && (
+                {application.membershipTier && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Tier</p>
-                    <Badge variant="secondary" data-testid="text-profile-tier">{(application as any).membershipTier}</Badge>
+                    <Badge variant="secondary" data-testid="text-profile-tier">{application.membershipTier}</Badge>
                   </div>
                 )}
-                {(application as any).county && (
+                {application.county && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">County</p>
-                    <p className="text-sm font-medium" data-testid="text-profile-county">{(application as any).county}</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-county">{application.county}</p>
                   </div>
                 )}
-                {(application as any).dateJoined && (
+                {application.dateJoined && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Member Since</p>
-                    <p className="text-sm font-medium" data-testid="text-profile-joined">{(application as any).dateJoined}</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-joined">{application.dateJoined}</p>
                   </div>
                 )}
-                {(application as any).renewalDate && (
+                {application.renewalDate && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Renewal Date</p>
-                    <p className="text-sm font-medium" data-testid="text-profile-renewal">{(application as any).renewalDate}</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-renewal">{application.renewalDate}</p>
                   </div>
                 )}
               </div>
