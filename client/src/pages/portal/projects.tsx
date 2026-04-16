@@ -13,13 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -41,6 +34,7 @@ import {
   Clock,
   BarChart3,
   Mail,
+  HelpCircle,
 } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -49,7 +43,7 @@ import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import type { ProjectOpportunity } from "@shared/schema";
+import type { ProjectOpportunity, ProjectBid } from "@shared/schema";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -161,7 +155,6 @@ function ProjectMapView({ projects, onSelectProject }: {
 
 function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[] }) {
   const [expanded, setExpanded] = useState(false);
-  const [showAll, setShowAll] = useState(false);
 
   const byCategory = projects.reduce<Record<string, number>>((acc, p) => {
     const cat = p.category || "Other";
@@ -170,7 +163,17 @@ function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[]
   }, {});
 
   const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
-  const displayList = showAll ? projects : projects.slice(0, 8);
+
+  const dates = projects
+    .map(p => p.emailSentDate)
+    .filter(Boolean)
+    .map(d => new Date(d!))
+    .filter(d => !isNaN(d.getTime()));
+  const earliest = dates.length ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+  const latest = dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
+
+  const unknownCount = projects.filter(p => p.status === "unknown").length;
+  const closedCount = projects.filter(p => p.status === "closed").length;
 
   return (
     <div className="mt-10 border-t pt-8">
@@ -181,77 +184,59 @@ function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[]
       >
         <BarChart3 className="h-5 w-5 text-muted-foreground" />
         <h2 className="text-lg font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
-          Past Opportunities ({projects.length})
+          Past & Unconfirmed Opportunities ({projects.length})
         </h2>
         {expanded ? <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" /> : <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />}
       </button>
-      <p className="text-sm text-muted-foreground mt-1 mb-4">
-        Opportunities from the NAMC email feed that have closed or passed.
+      <p className="text-sm text-muted-foreground mt-1 mb-2">
+        Opportunities from the NAMC email feed that have closed, passed, or could not be confirmed as still open.
       </p>
+      {earliest && latest && (
+        <p className="text-xs text-muted-foreground mb-4">
+          Email feed range: {formatDate(earliest.toISOString().split("T")[0])} – {formatDate(latest.toISOString().split("T")[0])}
+        </p>
+      )}
 
       {expanded && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {sorted.map(([cat, count]) => (
-              <div key={cat} className="bg-muted/40 rounded-lg p-3 text-center" data-testid={`metric-category-${cat.replace(/\s+/g, "-").toLowerCase()}`}>
-                <div className="text-2xl font-bold">{count}</div>
-                <div className="text-xs text-muted-foreground mt-1 leading-tight">{cat}</div>
+        <div className="space-y-5">
+          <div className="flex flex-wrap gap-3">
+            <div className="bg-muted/40 rounded-lg px-4 py-3 text-center min-w-[80px]" data-testid="metric-total">
+              <div className="text-2xl font-bold">{projects.length}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Total</div>
+            </div>
+            <div className="bg-muted/40 rounded-lg px-4 py-3 text-center min-w-[80px]">
+              <div className="text-2xl font-bold">{closedCount}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Closed</div>
+            </div>
+            {unknownCount > 0 && (
+              <div className="bg-muted/40 rounded-lg px-4 py-3 text-center min-w-[80px]">
+                <div className="text-2xl font-bold flex items-center justify-center gap-1">
+                  {unknownCount}
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">Status Unknown</div>
               </div>
-            ))}
+            )}
           </div>
 
-          <div className="space-y-2">
-            {displayList.map((p) => (
-              <div key={p.id} className="flex items-start gap-3 py-2 border-b border-muted/50 last:border-0" data-testid={`row-past-project-${p.id}`}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.title}</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    {p.organization && (
-                      <span className="text-xs text-muted-foreground truncate">{p.organization}</span>
-                    )}
-                    {p.emailSentDate && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(p.emailSentDate)}
-                      </span>
-                    )}
-                  </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">By Category</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {sorted.map(([cat, count]) => (
+                <div key={cat} className="bg-muted/30 rounded-lg p-3" data-testid={`metric-category-${cat.replace(/[\s/]+/g, "-").toLowerCase()}`}>
+                  <div className="text-xl font-bold">{count}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{cat}</div>
                 </div>
-                {p.category && (
-                  <Badge className={`${getCategoryColor(p.category)} text-xs shrink-0`}>
-                    {p.category}
-                  </Badge>
-                )}
-                {p.gmailLink && (
-                  <a
-                    href={p.gmailLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground shrink-0"
-                    data-testid={`link-gmail-past-${p.id}`}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
-            ))}
-            {projects.length > 8 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAll(!showAll)}
-                className="w-full mt-2"
-                data-testid="button-toggle-show-all-past"
-              >
-                {showAll ? "Show Less" : `Show All ${projects.length} Past Opportunities`}
-              </Button>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+type ProjectWithBids = ProjectOpportunity & { bids: ProjectBid[] };
 
 function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) => void }) {
   const { user } = useAuth();
@@ -427,7 +412,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-[300px] w-full rounded-lg" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}><CardContent className="p-5"><Skeleton className="h-28 w-full" /></CardContent></Card>
             ))}
@@ -527,7 +512,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                               </Badge>
                             )}
                           </div>
-                          {project.gmailLink && (
+                          {user?.isAdmin && project.gmailLink && (
                             <a
                               href={project.gmailLink}
                               target="_blank"
@@ -537,7 +522,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                               data-testid={`link-gmail-${project.id}`}
                             >
                               <Mail className="h-3.5 w-3.5" />
-                              View Email
+                              Source Email
                             </a>
                           )}
                         </div>
@@ -576,7 +561,7 @@ function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: (
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: project, isLoading } = useQuery<ProjectOpportunity & { bids: any[] }>({
+  const { data: project, isLoading } = useQuery<ProjectWithBids>({
     queryKey: ["/api/portal/projects", projectId],
   });
 
@@ -644,12 +629,16 @@ function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: (
                 </Badge>
               )}
               <Badge
-                className={project.status === "open"
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}
+                className={
+                  project.status === "open"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : project.status === "unknown"
+                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                }
                 data-testid="badge-detail-status"
               >
-                {project.status === "open" ? "Open" : "Closed"}
+                {project.status === "open" ? "Open" : project.status === "unknown" ? "Status Unknown" : "Closed"}
               </Badge>
             </div>
           </div>
@@ -660,7 +649,7 @@ function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: (
           </p>
 
           {project.notes && (
-            <div className="bg-muted/40 rounded-lg p-4 text-sm space-y-1" data-testid="text-detail-notes">
+            <div className="bg-muted/40 rounded-lg p-4 text-sm" data-testid="text-detail-notes">
               <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">Key Dates & Notes</p>
               <p className="leading-relaxed">{project.notes}</p>
             </div>
@@ -705,7 +694,7 @@ function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: (
           </div>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            {project.gmailLink && (
+            {user?.isAdmin && project.gmailLink && (
               <a
                 href={project.gmailLink}
                 target="_blank"
@@ -714,7 +703,7 @@ function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: (
               >
                 <Button variant="outline" size="sm">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  View Original Email
+                  View Source Email
                 </Button>
               </a>
             )}
