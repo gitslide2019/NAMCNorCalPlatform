@@ -6,7 +6,7 @@ import { sendSms } from "./twilio";
 import { z, ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { requireAuth, requireAdmin, requireAdminOrBoard } from "./auth";
-import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail, sendGeneralMemberEmailBatch } from "./email";
+import { sendNewsletterEmail, sendDigestEmail, sendInvitationEmail, sendGeneralMemberEmailBatch, sendRenewalReminderEmail } from "./email";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -1725,6 +1725,101 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error sending member emails:", error);
       res.status(500).json({ message: "Failed to send emails" });
+    }
+  });
+
+  // === RENEWAL REMINDERS — LIST ===
+  app.get("/api/portal/admin/renewals", requireAdmin, async (req, res) => {
+    try {
+      const apps = await storage.getApprovedMembershipApplications();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const members = apps.map((app) => {
+        const rd = app.renewalDate?.trim();
+        let status: "overdue" | "due-30" | "due-60" | "due-90" | "ok" | "unknown" = "unknown";
+        let daysUntil: number | null = null;
+
+        if (rd && /\d/.test(rd)) {
+          try {
+            const d = new Date(rd);
+            if (!isNaN(d.getTime())) {
+              d.setHours(0, 0, 0, 0);
+              daysUntil = Math.round((d.getTime() - today.getTime()) / 86400000);
+              if (daysUntil < 0) status = "overdue";
+              else if (daysUntil <= 30) status = "due-30";
+              else if (daysUntil <= 60) status = "due-60";
+              else if (daysUntil <= 90) status = "due-90";
+              else status = "ok";
+            }
+          } catch { /* ignore parse errors */ }
+        }
+
+        return {
+          id: app.id,
+          contactName: app.contactName,
+          companyName: app.companyName,
+          email: app.email,
+          membershipTier: app.membershipTier || app.membershipCategory || "",
+          renewalDate: rd || null,
+          status,
+          daysUntil,
+        };
+      });
+
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching renewals:", error);
+      res.status(500).json({ message: "Failed to fetch renewal data" });
+    }
+  });
+
+  // === RENEWAL REMINDERS — SEND ===
+  app.post("/api/portal/admin/renewals/send-reminder", requireAdmin, async (req, res) => {
+    try {
+      const { emails } = req.body as { emails: string[] };
+      if (!Array.isArray(emails) || emails.length === 0) {
+        res.status(400).json({ message: "emails array is required" });
+        return;
+      }
+
+      const apps = await storage.getApprovedMembershipApplications();
+      const byEmail = new Map(apps.map((a) => [a.email?.toLowerCase(), a]));
+
+      let sent = 0;
+      let failed = 0;
+      const BATCH = 4;
+      const DELAY = 1100;
+
+      for (let i = 0; i < emails.length; i += BATCH) {
+        const batch = emails.slice(i, i + BATCH);
+        await Promise.all(
+          batch.map(async (email) => {
+            const app = byEmail.get(email.toLowerCase());
+            if (!app) { failed++; return; }
+            const result = await sendRenewalReminderEmail(
+              email,
+              app.contactName || "Member",
+              app.companyName || "",
+              app.renewalDate || "",
+              app.membershipTier || app.membershipCategory || ""
+            );
+            if (result.success) sent++; else failed++;
+          })
+        );
+        if (i + BATCH < emails.length) {
+          await new Promise((r) => setTimeout(r, DELAY));
+        }
+      }
+
+      res.json({
+        message: `Renewal reminder sent to ${sent} member(s)${failed > 0 ? `, ${failed} failed` : ""}`,
+        sent,
+        failed,
+      });
+    } catch (error) {
+      console.error("Error sending renewal reminders:", error);
+      res.status(500).json({ message: "Failed to send renewal reminders" });
     }
   });
 

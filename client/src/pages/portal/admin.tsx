@@ -41,6 +41,8 @@ import {
   Building2,
   Mail,
   Plus,
+  CalendarClock,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -49,6 +51,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Redirect, useLocation } from "wouter";
 import { useState, useRef, Fragment } from "react";
 import type { MembershipApplication, BudgetCategory, FundingSource, Campaign } from "@shared/schema";
@@ -152,7 +155,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
-          <TabsList className={`grid w-full max-w-2xl ${user?.isAdmin ? "grid-cols-4" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full max-w-3xl ${user?.isAdmin ? "grid-cols-5" : "grid-cols-1"}`}>
             {user?.isAdmin && (
               <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
                 <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
@@ -162,13 +165,18 @@ export default function Admin() {
               <DollarSign className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Finance</span>
             </TabsTrigger>
             {user?.isAdmin && (
+              <TabsTrigger value="renewals" className="text-xs sm:text-sm" data-testid="tab-renewals">
+                <CalendarClock className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Renewals</span>
+              </TabsTrigger>
+            )}
+            {user?.isAdmin && (
               <TabsTrigger value="email" className="text-xs sm:text-sm" data-testid="tab-email-members">
-                <Mail className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Email Members</span>
+                <Mail className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Email</span>
               </TabsTrigger>
             )}
             {user?.isAdmin && (
               <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
-                <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS Invites</span>
+                <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS</span>
               </TabsTrigger>
             )}
           </TabsList>
@@ -319,6 +327,12 @@ export default function Admin() {
           <TabsContent value="finance">
             <FinanceDashboard />
           </TabsContent>
+
+          {user?.isAdmin && (
+            <TabsContent value="renewals">
+              <RenewalReminders />
+            </TabsContent>
+          )}
 
           {user?.isAdmin && (
             <TabsContent value="email">
@@ -1613,6 +1627,235 @@ function SmsInvitations() {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+type RenewalMember = {
+  id: string;
+  contactName: string;
+  companyName: string;
+  email: string;
+  membershipTier: string;
+  renewalDate: string | null;
+  status: "overdue" | "due-30" | "due-60" | "due-90" | "ok" | "unknown";
+  daysUntil: number | null;
+};
+
+function renewalStatusBadge(m: RenewalMember) {
+  if (m.status === "overdue") {
+    const days = m.daysUntil !== null ? Math.abs(m.daysUntil) : null;
+    return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs whitespace-nowrap">{days !== null ? `${days}d overdue` : "Overdue"}</Badge>;
+  }
+  if (m.status === "due-30") return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs whitespace-nowrap">{m.daysUntil !== null ? `${m.daysUntil}d` : "≤30d"}</Badge>;
+  if (m.status === "due-60") return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs whitespace-nowrap">{m.daysUntil !== null ? `${m.daysUntil}d` : "≤60d"}</Badge>;
+  if (m.status === "due-90") return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs whitespace-nowrap">{m.daysUntil !== null ? `${m.daysUntil}d` : "≤90d"}</Badge>;
+  return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">OK</Badge>;
+}
+
+type RenewalMemberTableProps = {
+  group: RenewalMember[];
+  groupKey: string;
+  actionable: boolean;
+  sendingEmails: Set<string>;
+  sendingGroup: string | null;
+  onSend: (emails: string[], groupKey?: string) => void;
+};
+
+function RenewalMemberTable({ group, groupKey, actionable, sendingEmails, sendingGroup, onSend }: RenewalMemberTableProps) {
+  if (group.length === 0) return <p className="text-sm text-muted-foreground py-2">No members in this group.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/40">
+            <th className="text-left p-2 font-medium">Member</th>
+            <th className="text-left p-2 font-medium hidden sm:table-cell">Company</th>
+            <th className="text-left p-2 font-medium hidden md:table-cell">Tier</th>
+            <th className="text-left p-2 font-medium">Renewal</th>
+            <th className="text-left p-2 font-medium">Status</th>
+            {actionable && <th className="text-right p-2 font-medium">Action</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {group.map(m => (
+            <tr key={m.id} className="border-b last:border-b-0 hover:bg-muted/30" data-testid={`row-renewal-${m.id}`}>
+              <td className="p-2">
+                <p className="font-medium">{m.contactName}</p>
+                <p className="text-xs text-muted-foreground">{m.email}</p>
+                <p className="text-xs text-muted-foreground sm:hidden">{m.companyName}</p>
+              </td>
+              <td className="p-2 hidden sm:table-cell text-muted-foreground">{m.companyName}</td>
+              <td className="p-2 hidden md:table-cell text-muted-foreground text-xs">{m.membershipTier || "—"}</td>
+              <td className="p-2 text-xs text-muted-foreground whitespace-nowrap">{m.renewalDate || "—"}</td>
+              <td className="p-2">{renewalStatusBadge(m)}</td>
+              {actionable && (
+                <td className="p-2 text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={sendingEmails.has(m.email) || sendingGroup === groupKey}
+                    onClick={() => onSend([m.email])}
+                    data-testid={`button-send-renewal-${m.id}`}
+                  >
+                    {sendingEmails.has(m.email) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                    Send
+                  </Button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type RenewalGroupCardProps = {
+  title: string;
+  icon: React.ReactNode;
+  group: RenewalMember[];
+  groupKey: string;
+  colorClass: string;
+  description: string;
+  isOpen: boolean;
+  onToggle: (open: boolean) => void;
+  sendingEmails: Set<string>;
+  sendingGroup: string | null;
+  onSend: (emails: string[], groupKey?: string) => void;
+};
+
+function RenewalGroupCard({ title, icon, group, groupKey, colorClass, description, isOpen, onToggle, sendingEmails, sendingGroup, onSend }: RenewalGroupCardProps) {
+  const actionable = groupKey !== "ok";
+  const validEmails = group.map(m => m.email).filter(Boolean);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={onToggle}>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${colorClass}`}>
+                {icon}
+              </div>
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  {title}
+                  <Badge className="ml-1" variant="secondary">{group.length}</Badge>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{description}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {actionable && validEmails.length > 0 && (
+                <Button
+                  size="sm"
+                  className="bg-[#E5A830] hover:bg-[#d4961f] text-black text-xs"
+                  disabled={sendingGroup === groupKey || sendingEmails.size > 0}
+                  onClick={() => onSend(validEmails, groupKey)}
+                  data-testid={`button-email-all-${groupKey}`}
+                >
+                  {sendingGroup === groupKey
+                    ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
+                    : <><Send className="h-3 w-3 mr-1" />Email All ({validEmails.length})</>
+                  }
+                </Button>
+              )}
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" data-testid={`button-toggle-${groupKey}`}>
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </div>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <RenewalMemberTable group={group} groupKey={groupKey} actionable={actionable} sendingEmails={sendingEmails} sendingGroup={sendingGroup} onSend={onSend} />
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
+function RenewalReminders() {
+  const { toast } = useToast();
+  const [sendingEmails, setSendingEmails] = useState<Set<string>>(new Set());
+  const [sendingGroup, setSendingGroup] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    overdue: true, "due-30": true, "due-60": true, "due-90": true, ok: true,
+  });
+
+  const { data: members = [], isLoading, refetch } = useQuery<RenewalMember[]>({
+    queryKey: ["/api/portal/admin/renewals"],
+  });
+
+  function toggleGroup(key: string, open: boolean) {
+    setOpenGroups(prev => ({ ...prev, [key]: open }));
+  }
+
+  async function sendReminders(emails: string[], groupKey?: string) {
+    if (groupKey) setSendingGroup(groupKey);
+    else setSendingEmails(prev => new Set([...prev, ...emails]));
+
+    try {
+      const res = await apiRequest("POST", "/api/portal/admin/renewals/send-reminder", { emails });
+      const data = await res.json();
+      toast({ title: "Reminders sent!", description: data.message });
+    } catch {
+      toast({ title: "Failed to send reminders", variant: "destructive" });
+    } finally {
+      if (groupKey) setSendingGroup(null);
+      else setSendingEmails(prev => {
+        const next = new Set(prev);
+        emails.forEach(e => next.delete(e));
+        return next;
+      });
+    }
+  }
+
+  const overdue = members.filter(m => m.status === "overdue");
+  const due30 = members.filter(m => m.status === "due-30");
+  const due60 = members.filter(m => m.status === "due-60");
+  const due90 = members.filter(m => m.status === "due-90");
+  const ok = members.filter(m => m.status === "ok" || m.status === "unknown");
+  const totalActionable = overdue.length + due30.length + due60.length + due90.length;
+
+  const shared = { sendingEmails, sendingGroup, onSend: sendReminders };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <CalendarClock className="h-5 w-5 text-[#E5A830]" />
+            Membership Dues Renewals
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isLoading ? "Loading…" : `${totalActionable} member${totalActionable !== 1 ? "s" : ""} need renewal outreach`}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh-renewals">
+          <RefreshCw className="h-4 w-4 mr-2" />Refresh
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <RenewalGroupCard title="Overdue" icon={<AlertCircle className="h-5 w-5 text-red-600" />} group={overdue} groupKey="overdue" colorClass="bg-red-100 dark:bg-red-900/30" description="Membership has already expired — send a reminder immediately" isOpen={!!openGroups["overdue"]} onToggle={() => toggleGroup("overdue")} {...shared} />
+          <RenewalGroupCard title="Due in 30 Days" icon={<CalendarClock className="h-5 w-5 text-amber-600" />} group={due30} groupKey="due-30" colorClass="bg-amber-100 dark:bg-amber-900/30" description="Renewal coming up within the next 30 days" isOpen={!!openGroups["due-30"]} onToggle={() => toggleGroup("due-30")} {...shared} />
+          <RenewalGroupCard title="Due in 31-60 Days" icon={<CalendarClock className="h-5 w-5 text-yellow-600" />} group={due60} groupKey="due-60" colorClass="bg-yellow-100 dark:bg-yellow-900/30" description="Renewal coming up in the next 31 to 60 days" isOpen={!!openGroups["due-60"]} onToggle={() => toggleGroup("due-60")} {...shared} />
+          <RenewalGroupCard title="Due in 61-90 Days" icon={<CalendarClock className="h-5 w-5 text-blue-600" />} group={due90} groupKey="due-90" colorClass="bg-blue-100 dark:bg-blue-900/30" description="Renewal coming up in the next 61 to 90 days" isOpen={!!openGroups["due-90"]} onToggle={() => toggleGroup("due-90")} {...shared} />
+          <RenewalGroupCard title="No Action Needed" icon={<CheckCircle className="h-5 w-5 text-green-600" />} group={ok} groupKey="ok" colorClass="bg-green-100 dark:bg-green-900/30" description="Members renewing in 90+ days or with no renewal date on file" isOpen={!!openGroups["ok"]} onToggle={() => toggleGroup("ok")} {...shared} />
+        </div>
+      )}
     </div>
   );
 }

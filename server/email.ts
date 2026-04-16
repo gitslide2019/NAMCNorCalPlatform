@@ -321,6 +321,84 @@ export async function sendGeneralMemberEmailBatch(
   return { sent, failed: results.length - sent };
 }
 
+export async function sendRenewalReminderEmail(
+  toEmail: string,
+  contactName: string,
+  companyName: string,
+  renewalDate: string,
+  membershipTier: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const firstName = contactName.split(" ")[0] || "Member";
+
+    const tierLabel = membershipTier || "NAMC NorCal";
+    const isOverdue = (() => {
+      try {
+        return new Date(renewalDate) < new Date();
+      } catch {
+        return false;
+      }
+    })();
+
+    const headline = isOverdue
+      ? "Your Membership Has Expired"
+      : "Your Membership is Coming Up for Renewal";
+
+    const bodyText = isOverdue
+      ? `Your <strong>${tierLabel}</strong> membership expired on <strong>${renewalDate}</strong>. Renew now to continue enjoying full access to NAMC NorCal resources, networking events, and project opportunities.`
+      : `Your <strong>${tierLabel}</strong> membership for <strong>${companyName}</strong> is scheduled to renew on <strong>${renewalDate}</strong>. Please take a moment to confirm your renewal so there's no interruption to your benefits.`;
+
+    const body = `
+      <h2 style="color: #1a1a1a; margin: 0 0 16px;">${headline}</h2>
+      <p style="color: #333; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="color: #333; line-height: 1.6;">${bodyText}</p>
+      <div style="background: #fdf8ed; border-left: 4px solid #E5A830; padding: 16px 20px; margin: 24px 0; border-radius: 0 6px 6px 0;">
+        <p style="margin: 0; color: #333; font-size: 14px;">
+          <strong>Member:</strong> ${contactName}<br>
+          <strong>Company:</strong> ${companyName}<br>
+          <strong>Tier:</strong> ${tierLabel}<br>
+          <strong>Renewal Date:</strong> ${renewalDate}
+        </p>
+      </div>
+      <p style="color: #333; line-height: 1.6;">
+        To renew your membership or if you have any questions, please contact us directly.
+      </p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="mailto:info@namcnorcal.org?subject=Membership Renewal - ${encodeURIComponent(companyName)}"
+           style="background-color: #E5A830; color: #000; text-decoration: none;
+                  padding: 14px 32px; border-radius: 6px; font-weight: 600;
+                  display: inline-block; font-size: 16px;">
+          Contact Us to Renew
+        </a>
+      </div>
+      <p style="color: #999; font-size: 13px; line-height: 1.6;">
+        You can also reach us at <a href="mailto:info@namcnorcal.org" style="color: #E5A830;">info@namcnorcal.org</a>
+        or call <a href="tel:+15108308294" style="color: #E5A830;">(510) 830-8294</a>.
+      </p>
+    `;
+
+    const subject = isOverdue
+      ? `Action Required: Your NAMC NorCal Membership Has Expired`
+      : `Reminder: Your NAMC NorCal Membership Renews on ${renewalDate}`;
+
+    const { data, error } = await client.emails.send({
+      from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
+      to: [toEmail],
+      subject,
+      html: emailWrapper(body, "You received this as an approved NAMC NorCal member."),
+      attachments: logoAttachments(),
+    });
+
+    if (error) {
+      return { success: false, error: error.message || "Send failed" };
+    }
+    return { success: true, id: data?.id };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to send email" };
+  }
+}
+
 export async function sendInvitationEmail(
   toEmail: string,
   subject: string,
