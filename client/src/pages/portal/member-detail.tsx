@@ -63,6 +63,10 @@ interface MemberDetail {
   certifications: string | null;
   bio: string | null;
   membershipCategory: string;
+  membershipTier: string | null;
+  county: string | null;
+  dateJoined: string | null;
+  renewalDate: string | null;
   isBoardMember: boolean;
   userId: string | null;
   yearEstablished: string | null;
@@ -407,9 +411,18 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
               {member.isBoardMember && (
                 <Badge className="bg-amber-500 hover:bg-amber-600 text-white" data-testid="badge-board-member">Board Member</Badge>
               )}
-              <Badge variant="secondary" className="capitalize" data-testid="text-member-category">
-                {member.membershipCategory}
-              </Badge>
+              {member.membershipTier ? (
+                <Badge variant="secondary" data-testid="text-member-tier">{member.membershipTier}</Badge>
+              ) : (
+                <Badge variant="secondary" className="capitalize" data-testid="text-member-category">
+                  {member.membershipCategory}
+                </Badge>
+              )}
+              {member.county && (
+                <Badge variant="outline" className="text-xs" data-testid="text-member-county">
+                  <MapPin className="h-3 w-3 mr-1" />{member.county} County
+                </Badge>
+              )}
               {member.userId && (
                 <Button onClick={onSendMessage} data-testid="button-send-message">
                   <Send className="h-4 w-4 mr-2" />Send Message
@@ -418,7 +431,7 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
             </div>
           </div>
 
-          {(member.yearEstablished || member.numberOfEmployees || member.annualRevenue) && (
+          {(member.yearEstablished || member.numberOfEmployees || member.annualRevenue || member.dateJoined) && (
             <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b">
               {member.yearEstablished && (
                 <div className="flex items-center gap-2 text-sm">
@@ -436,6 +449,18 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
                 <div className="flex items-center gap-2 text-sm">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span>{member.annualRevenue}</span>
+                </div>
+              )}
+              {member.dateJoined && (
+                <div className="flex items-center gap-2 text-sm" data-testid="text-member-joined">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span>Member since {member.dateJoined}</span>
+                </div>
+              )}
+              {member.renewalDate && (
+                <div className="flex items-center gap-2 text-sm" data-testid="text-member-renewal">
+                  <Star className="h-4 w-4 text-muted-foreground" />
+                  <span>Renews {member.renewalDate}</span>
                 </div>
               )}
             </div>

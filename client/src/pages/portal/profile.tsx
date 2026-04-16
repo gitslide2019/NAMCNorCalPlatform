@@ -158,6 +158,46 @@ export default function Profile() {
           </CardContent>
         </Card>
 
+        {((application as any).membershipTier || (application as any).county || (application as any).dateJoined || (application as any).renewalDate) && (
+          <Card className="mb-6" data-testid="card-membership-info">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-[#E5A830]" />
+                Membership Information
+              </CardTitle>
+              <CardDescription>Your membership details on file with NAMC NorCal</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {(application as any).membershipTier && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Tier</p>
+                    <Badge variant="secondary" data-testid="text-profile-tier">{(application as any).membershipTier}</Badge>
+                  </div>
+                )}
+                {(application as any).county && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">County</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-county">{(application as any).county}</p>
+                  </div>
+                )}
+                {(application as any).dateJoined && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Member Since</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-joined">{(application as any).dateJoined}</p>
+                  </div>
+                )}
+                {(application as any).renewalDate && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Renewal Date</p>
+                    <p className="text-sm font-medium" data-testid="text-profile-renewal">{(application as any).renewalDate}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-6">
           <ProfilePhotoSection application={application} />
           <CompanyRoleForm application={application} onSubmit={(data) => updateMutation.mutate(data)} isPending={updateMutation.isPending} />

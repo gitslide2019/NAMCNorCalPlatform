@@ -135,6 +135,8 @@ interface DirectoryMember {
   certifications: string | null;
   bio: string | null;
   membershipCategory: string;
+  membershipTier: string | null;
+  county: string | null;
   isBoardMember: boolean;
   profileImageUrl: string | null;
 }
@@ -454,7 +456,7 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
         <div className="space-y-1.5 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span>{member.city}, {member.state}</span>
+            <span>{member.city}{member.county ? `, ${member.county} County` : member.state ? `, ${member.state}` : ""}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-3.5 w-3.5 shrink-0" />
