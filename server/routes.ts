@@ -1777,9 +1777,13 @@ export async function registerRoutes(
   // === RENEWAL REMINDERS — SEND ===
   app.post("/api/portal/admin/renewals/send-reminder", requireAdmin, async (req, res) => {
     try {
-      const { emails } = req.body as { emails: string[] };
-      if (!Array.isArray(emails) || emails.length === 0) {
-        res.status(400).json({ message: "emails array is required" });
+      const raw = req.body as { emails?: string | string[]; email?: string };
+      const emailList = raw.emails
+        ? Array.isArray(raw.emails) ? raw.emails : [raw.emails]
+        : raw.email ? [raw.email] : [];
+      const emails = emailList.filter((e) => typeof e === "string" && e.includes("@"));
+      if (emails.length === 0) {
+        res.status(400).json({ message: "At least one valid email is required" });
         return;
       }
 
