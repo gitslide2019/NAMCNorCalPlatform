@@ -1720,6 +1720,78 @@ export async function registerRoutes(
     }
   });
 
+  // === SAVED PROJECTS ===
+  app.get("/api/portal/projects/saved", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const savedIds = await storage.getSavedProjectIds(user.id);
+      res.json(savedIds);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch saved projects" });
+    }
+  });
+
+  app.post("/api/portal/projects/:id/save", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      await storage.saveProject(user.id, req.params.id);
+      res.json({ saved: true });
+    } catch {
+      res.status(500).json({ message: "Failed to save project" });
+    }
+  });
+
+  app.delete("/api/portal/projects/:id/save", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      await storage.unsaveProject(user.id, req.params.id);
+      res.json({ saved: false });
+    } catch {
+      res.status(500).json({ message: "Failed to unsave project" });
+    }
+  });
+
+  // === ADMIN — MEMBER MANAGEMENT ===
+  app.get("/api/portal/admin/members", requireAdmin, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const apps = await storage.getApprovedMembershipApplications();
+      const appMap = new Map(apps.map(a => [a.id, a]));
+      const result = allUsers
+        .filter(u => !u.isAdmin && u.memberApplicationId)
+        .map(u => ({
+          id: u.id,
+          username: u.username,
+          isActive: u.isActive,
+          isBoardMember: u.isBoardMember,
+          memberApplicationId: u.memberApplicationId,
+          companyName: appMap.get(u.memberApplicationId!)?.companyName || u.username,
+          contactName: appMap.get(u.memberApplicationId!)?.contactName || "",
+          membershipCategory: appMap.get(u.memberApplicationId!)?.membershipCategory || "",
+        }));
+      res.json(result);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch members" });
+    }
+  });
+
+  app.patch("/api/portal/admin/members/:id", requireAdmin, async (req, res) => {
+    try {
+      const { isActive, isBoardMember } = req.body;
+      const updates: Partial<{ isActive: boolean; isBoardMember: boolean }> = {};
+      if (typeof isActive === "boolean") updates.isActive = isActive;
+      if (typeof isBoardMember === "boolean") updates.isBoardMember = isBoardMember;
+      const updated = await storage.updateUser(req.params.id, updates);
+      if (!updated) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Failed to update member" });
+    }
+  });
+
   // === SEND GENERAL MEMBER EMAIL ===
   app.post("/api/portal/admin/send-member-email", requireAdmin, async (req, res) => {
     try {

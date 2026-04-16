@@ -511,6 +511,19 @@ export default function Courses() {
                       value={courseDetail.enrollment.progress}
                       data-testid="progress-course"
                     />
+                    {courseDetail.enrollment.progress === 100 && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-950"
+                          onClick={() => window.open(`/portal/courses/${courseDetail.id}/certificate`, "_blank")}
+                          data-testid="button-view-certificate"
+                        >
+                          🎓 View Certificate
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

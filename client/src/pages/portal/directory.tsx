@@ -147,11 +147,16 @@ export default function Directory() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [countyFilter, setCountyFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const { data: members, isLoading } = useQuery<DirectoryMember[]>({
     queryKey: ["/api/portal/directory"],
   });
+
+  const availableCounties = Array.from(new Set(
+    (members || []).map(m => m.county).filter(Boolean) as string[]
+  )).sort();
 
   const filtered = (members || []).filter((m) => {
     const matchesSearch = !search || 
@@ -159,7 +164,8 @@ export default function Directory() {
       m.contactName.toLowerCase().includes(search.toLowerCase()) ||
       (m.primaryServices || "").toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.membershipCategory === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesCounty = countyFilter === "all" || m.county === countyFilter;
+    return matchesSearch && matchesCategory && matchesCounty;
   });
 
   const corporateMembers = filtered.filter(m => m.membershipCategory === "large");
@@ -206,6 +212,21 @@ export default function Directory() {
               <SelectItem value="government">Government</SelectItem>
             </SelectContent>
           </Select>
+          {availableCounties.length > 0 && (
+            <Select value={countyFilter} onValueChange={setCountyFilter}>
+              <SelectTrigger className="w-full sm:w-44" data-testid="select-county-filter">
+                <SelectValue placeholder="All Counties" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Counties</SelectItem>
+                {availableCounties.map(county => (
+                  <SelectItem key={county} value={county} data-testid={`county-item-${county.replace(/\s+/g, "-").toLowerCase()}`}>
+                    {county} County
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex rounded-lg border overflow-hidden">
             <Button
               variant={viewMode === "list" ? "default" : "ghost"}

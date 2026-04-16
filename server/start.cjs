@@ -24,20 +24,51 @@ const CHILD_PORT   = MAIN_PORT + 1;
 const MAX_RESTARTS = 10;
 const RESTART_DELAY_MS = 2000;
 
+// Hop-by-hop headers must not be forwarded by a proxy
+const HOP_BY_HOP = new Set([
+  'connection', 'keep-alive', 'transfer-encoding', 'te',
+  'trailer', 'trailers', 'upgrade', 'proxy-authorization',
+  'proxy-authenticate', 'proxy-connection',
+]);
+
 let appReady      = false;
 let currentChild  = null;
 let restartCount  = 0;
 let shuttingDown  = false;
 
 /* ------------------------------------------------------------------ */
+/* Strip hop-by-hop headers from a headers object                      */
+/* ------------------------------------------------------------------ */
+function stripHopByHop(headers) {
+  const result = {};
+  for (const key of Object.keys(headers)) {
+    if (!HOP_BY_HOP.has(key.toLowerCase())) {
+      result[key] = headers[key];
+    }
+  }
+  return result;
+}
+
+/* ------------------------------------------------------------------ */
 /* Proxy handlers                                                       */
 /* ------------------------------------------------------------------ */
 function handleRequest(req, res) {
   if (!appReady) {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('OK');
+    // Return a minimal valid HTML page so Replit's health checker is satisfied
+    const body = '<!DOCTYPE html><html><body>Starting...</body></html>';
+    res.writeHead(200, {
+      'Content-Type': 'text/html',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    res.end(body);
     return;
   }
+
+  const forwardHeaders = Object.assign(stripHopByHop(req.headers), {
+    'host': '127.0.0.1:' + CHILD_PORT,
+    'x-forwarded-for': req.socket.remoteAddress || '',
+    'x-forwarded-proto': 'https',
+  });
 
   const proxy = http.request(
     {
@@ -45,15 +76,17 @@ function handleRequest(req, res) {
       port: CHILD_PORT,
       path: req.url || '/',
       method: req.method,
-      headers: req.headers,
+      headers: forwardHeaders,
     },
     (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      const responseHeaders = stripHopByHop(proxyRes.headers);
+      res.writeHead(proxyRes.statusCode || 200, responseHeaders);
       proxyRes.pipe(res, { end: true });
     }
   );
 
-  proxy.on('error', () => {
+  proxy.on('error', (err) => {
+    console.error('[start] proxy error:', err.message);
     if (!res.headersSent) {
       res.writeHead(502);
       res.end('Bad Gateway');
@@ -69,11 +102,11 @@ function handleUpgrade(req, socket, head) {
     return;
   }
   const proxySocket = connect(CHILD_PORT, '127.0.0.1', () => {
-    const headers =
-      req.method + ' ' + req.url + ' HTTP/1.1\r\n' +
-      Object.entries(req.headers).map(function(e) { return e[0] + ': ' + e[1]; }).join('\r\n') +
-      '\r\n\r\n';
-    proxySocket.write(headers);
+    const requestLine = req.method + ' ' + req.url + ' HTTP/1.1\r\n';
+    const headerLines = Object.entries(req.headers)
+      .map(function(e) { return e[0] + ': ' + e[1]; })
+      .join('\r\n');
+    proxySocket.write(requestLine + headerLines + '\r\n\r\n');
     proxySocket.write(head);
     socket.pipe(proxySocket);
     proxySocket.pipe(socket);
@@ -87,6 +120,11 @@ function handleUpgrade(req, socket, head) {
 /* ------------------------------------------------------------------ */
 const server = http.createServer(handleRequest);
 server.on('upgrade', handleUpgrade);
+
+// Suppress unhandled errors on the server itself
+server.on('error', function(err) {
+  console.error('[start] server error:', err.message);
+});
 
 server.listen(MAIN_PORT, '0.0.0.0', function() {
   console.log('[start] placeholder ready on port ' + MAIN_PORT);
@@ -111,6 +149,10 @@ function startChild() {
       restartCount = 0;
       console.log('[start] main app ready, proxying to :' + CHILD_PORT);
     }
+  });
+
+  child.on('error', function(err) {
+    console.error('[start] child error:', err.message);
   });
 
   child.on('exit', function(code, signal) {

@@ -209,6 +209,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 
   const { data: notifCount } = useQuery<{ count: number }>({
     queryKey: ["/api/portal/notifications/unread-count"],
+    refetchInterval: 30000,
   });
 
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;

@@ -79,6 +79,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").notNull().default(false),
   isBoardMember: boolean("is_board_member").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
   memberApplicationId: varchar("member_application_id"),
 });
 
@@ -641,3 +642,18 @@ export const insertSmsContactSchema = createInsertSchema(smsContacts).omit({
 
 export type InsertSmsContact = z.infer<typeof insertSmsContactSchema>;
 export type SmsContact = typeof smsContacts.$inferSelect;
+
+export const savedProjectOpportunities = pgTable("saved_project_opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  projectId: varchar("project_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSavedProjectSchema = createInsertSchema(savedProjectOpportunities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSavedProject = z.infer<typeof insertSavedProjectSchema>;
+export type SavedProject = typeof savedProjectOpportunities.$inferSelect;

@@ -35,6 +35,8 @@ import {
   BarChart3,
   Mail,
   HelpCircle,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -256,6 +258,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
   const { toast } = useToast();
   const [, setProjectsLocation] = useWouterLocation();
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [viewSaved, setViewSaved] = useState(false);
   const [showMap, setShowMap] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -274,6 +277,26 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
     queryKey: ["/api/portal/projects"],
   });
 
+  const { data: savedIds = [] } = useQuery<string[]>({
+    queryKey: ["/api/portal/projects/saved"],
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ id, saved }: { id: string; saved: boolean }) => {
+      if (saved) {
+        await apiRequest("DELETE", `/api/portal/projects/${id}/save`);
+      } else {
+        await apiRequest("POST", `/api/portal/projects/${id}/save`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/projects/saved"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update bookmark", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof newProject) => {
       await apiRequest("POST", "/api/portal/projects", data);
@@ -289,13 +312,14 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
     },
   });
 
-  const openProjects = projects?.filter(p => p.status === "open") || [];
-  const pastProjects = projects?.filter(p => p.status !== "open") || [];
+  const allProjectsFlat = projects || [];
+  const openProjects = allProjectsFlat.filter(p => p.status === "open");
+  const pastProjects = allProjectsFlat.filter(p => p.status !== "open");
 
   const allCategories = ["All", ...Array.from(new Set(openProjects.map(p => p.category).filter(Boolean) as string[]))];
 
-  const filteredOpen = openProjects
-    .filter(p => categoryFilter === "All" || p.category === categoryFilter)
+  const filteredOpen = (viewSaved ? allProjectsFlat.filter(p => savedIds.includes(p.id)) : openProjects)
+    .filter(p => !viewSaved && (categoryFilter === "All" || p.category === categoryFilter) || viewSaved)
     .sort((a, b) => {
       if (!a.deadline && !b.deadline) return 0;
       if (!a.deadline) return 1;
@@ -327,6 +351,15 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant={viewSaved ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewSaved(!viewSaved)}
+            data-testid="button-toggle-saved"
+          >
+            <BookmarkCheck className="h-4 w-4 mr-1" />
+            Saved{savedIds.length > 0 ? ` (${savedIds.length})` : ""}
+          </Button>
           <Button
             variant={showMap ? "default" : "outline"}
             size="sm"
@@ -440,13 +473,13 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold flex items-center gap-2" data-testid="text-current-heading">
-                <List className="h-4 w-4" />
-                Current Opportunities
+                {viewSaved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <List className="h-4 w-4" />}
+                {viewSaved ? "Saved Opportunities" : "Current Opportunities"}
                 <span className="text-muted-foreground font-normal text-sm">({filteredOpen.length})</span>
               </h2>
             </div>
 
-            {allCategories.length > 1 && (
+            {!viewSaved && allCategories.length > 1 && (
               <div className="flex flex-wrap gap-2 mb-4" data-testid="category-filter-chips">
                 {allCategories.map(cat => (
                   <button
@@ -486,11 +519,24 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                       <CardContent className="p-5 space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-semibold text-base leading-snug flex-1">{project.title}</h3>
-                          {project.category && (
-                            <Badge className={`${getCategoryColor(project.category)} text-xs shrink-0`} data-testid={`badge-category-${project.id}`}>
-                              {project.category}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {project.category && (
+                              <Badge className={`${getCategoryColor(project.category)} text-xs`} data-testid={`badge-category-${project.id}`}>
+                                {project.category}
+                              </Badge>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); saveMutation.mutate({ id: project.id, saved: savedIds.includes(project.id) }); }}
+                              className="p-1 rounded hover:bg-muted transition-colors"
+                              title={savedIds.includes(project.id) ? "Remove bookmark" : "Bookmark"}
+                              data-testid={`button-bookmark-${project.id}`}
+                            >
+                              {savedIds.includes(project.id)
+                                ? <BookmarkCheck className="h-4 w-4 text-primary" />
+                                : <Bookmark className="h-4 w-4 text-muted-foreground" />
+                              }
+                            </button>
+                          </div>
                         </div>
 
                         {project.organization && (
@@ -575,9 +621,9 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                 <CardContent className="p-8 text-center">
                   <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground" data-testid="text-no-projects">
-                    {categoryFilter !== "All" ? `No open opportunities in "${categoryFilter}".` : "No current opportunities."}
+                    {viewSaved ? "You haven't bookmarked any opportunities yet." : categoryFilter !== "All" ? `No open opportunities in "${categoryFilter}".` : "No current opportunities."}
                   </p>
-                  {categoryFilter !== "All" && (
+                  {!viewSaved && categoryFilter !== "All" && (
                     <Button variant="ghost" size="sm" className="mt-2" onClick={() => setCategoryFilter("All")}>
                       Show all categories
                     </Button>
@@ -587,7 +633,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
             )}
           </div>
 
-          {pastProjects.length > 0 && (
+          {!viewSaved && pastProjects.length > 0 && (
             <PastOpportunitiesMetrics projects={pastProjects} />
           )}
         </div>

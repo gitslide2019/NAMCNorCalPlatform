@@ -79,6 +79,7 @@ import {
   toolBorrowRequests,
   smsInvitations,
   smsContacts,
+  savedProjectOpportunities,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike, count } from "drizzle-orm";
@@ -236,6 +237,10 @@ export interface IStorage {
   updateSmsContact(id: string, data: Partial<SmsContact>): Promise<SmsContact | undefined>;
   deleteSmsContact(id: string): Promise<void>;
   getSmsContactCount(): Promise<number>;
+
+  saveProject(userId: string, projectId: string): Promise<void>;
+  unsaveProject(userId: string, projectId: string): Promise<void>;
+  getSavedProjectIds(userId: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -962,6 +967,26 @@ export class DatabaseStorage implements IStorage {
   async getSmsContactCount(): Promise<number> {
     const [result] = await db.select({ value: count() }).from(smsContacts);
     return Number(result?.value || 0);
+  }
+
+  async saveProject(userId: string, projectId: string): Promise<void> {
+    await db.insert(savedProjectOpportunities).values({ userId, projectId }).onConflictDoNothing();
+  }
+
+  async unsaveProject(userId: string, projectId: string): Promise<void> {
+    await db.delete(savedProjectOpportunities).where(
+      and(
+        eq(savedProjectOpportunities.userId, userId),
+        eq(savedProjectOpportunities.projectId, projectId)
+      )
+    );
+  }
+
+  async getSavedProjectIds(userId: string): Promise<string[]> {
+    const rows = await db.select({ projectId: savedProjectOpportunities.projectId })
+      .from(savedProjectOpportunities)
+      .where(eq(savedProjectOpportunities.userId, userId));
+    return rows.map(r => r.projectId);
   }
 }
 

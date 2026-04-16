@@ -104,6 +104,8 @@ const httpServer = createServer(app);
   log("Application fully initialized and ready");
 
   if (process.send) {
+    // Suppress IPC errors if the parent process has already exited
+    process.on("error", () => {});
     try { process.send("ready"); } catch (_) {}
   }
 

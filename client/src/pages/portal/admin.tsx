@@ -155,31 +155,38 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
-          <TabsList className={`grid w-full max-w-3xl ${user?.isAdmin ? "grid-cols-5" : "grid-cols-1"}`}>
-            {user?.isAdmin && (
-              <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
-                <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
+          <div className="overflow-x-auto">
+            <TabsList className={`grid w-full max-w-4xl min-w-max ${user?.isAdmin ? "grid-cols-6" : "grid-cols-1"}`}>
+              {user?.isAdmin && (
+                <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
+                  <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
+                </TabsTrigger>
+              )}
+              {user?.isAdmin && (
+                <TabsTrigger value="members" className="text-xs sm:text-sm" data-testid="tab-members">
+                  <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Members</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="finance" className="text-xs sm:text-sm" data-testid="tab-finance">
+                <DollarSign className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Finance</span>
               </TabsTrigger>
-            )}
-            <TabsTrigger value="finance" className="text-xs sm:text-sm" data-testid="tab-finance">
-              <DollarSign className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Finance</span>
-            </TabsTrigger>
-            {user?.isAdmin && (
-              <TabsTrigger value="renewals" className="text-xs sm:text-sm" data-testid="tab-renewals">
-                <CalendarClock className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Renewals</span>
-              </TabsTrigger>
-            )}
-            {user?.isAdmin && (
-              <TabsTrigger value="email" className="text-xs sm:text-sm" data-testid="tab-email-members">
-                <Mail className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Email</span>
-              </TabsTrigger>
-            )}
-            {user?.isAdmin && (
-              <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
-                <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS</span>
-              </TabsTrigger>
-            )}
-          </TabsList>
+              {user?.isAdmin && (
+                <TabsTrigger value="renewals" className="text-xs sm:text-sm" data-testid="tab-renewals">
+                  <CalendarClock className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Renewals</span>
+                </TabsTrigger>
+              )}
+              {user?.isAdmin && (
+                <TabsTrigger value="email" className="text-xs sm:text-sm" data-testid="tab-email-members">
+                  <Mail className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Email</span>
+                </TabsTrigger>
+              )}
+              {user?.isAdmin && (
+                <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
+                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
           <TabsContent value="applications">
             <div className="space-y-6">
@@ -324,6 +331,12 @@ export default function Admin() {
             </div>
           </TabsContent>
 
+          {user?.isAdmin && (
+            <TabsContent value="members">
+              <MembersManagement />
+            </TabsContent>
+          )}
+
           <TabsContent value="finance">
             <FinanceDashboard />
           </TabsContent>
@@ -348,6 +361,131 @@ export default function Admin() {
         </Tabs>
       </div>
     </PortalLayout>
+  );
+}
+
+type AdminMember = {
+  id: string;
+  username: string;
+  isActive: boolean;
+  isBoardMember: boolean;
+  memberApplicationId: string | null;
+  companyName: string;
+  contactName: string;
+  membershipCategory: string;
+};
+
+function MembersManagement() {
+  const { toast } = useToast();
+  const [search, setSearch] = useState("");
+
+  const { data: members, isLoading } = useQuery<AdminMember[]>({
+    queryKey: ["/api/portal/admin/members"],
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: "isActive" | "isBoardMember"; value: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/portal/admin/members/${id}`, { [field]: value });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/admin/members"] });
+      toast({ title: "Member updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const filtered = (members || []).filter(m =>
+    !search ||
+    m.companyName.toLowerCase().includes(search.toLowerCase()) ||
+    m.username.toLowerCase().includes(search.toLowerCase()) ||
+    m.contactName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold">Member Accounts</h2>
+          <p className="text-sm text-muted-foreground">Toggle access and board status for member accounts.</p>
+        </div>
+        <Input
+          placeholder="Search members..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full sm:w-64"
+          data-testid="input-member-search"
+        />
+      </div>
+
+      {isLoading ? (
+        <Card><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">No members found.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-members">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Company</th>
+                    <th className="text-left p-3 font-medium hidden sm:table-cell">Username</th>
+                    <th className="text-left p-3 font-medium hidden md:table-cell">Category</th>
+                    <th className="text-center p-3 font-medium">Active</th>
+                    <th className="text-center p-3 font-medium">Board</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(member => (
+                    <tr key={member.id} className="border-b last:border-b-0 hover:bg-muted/30" data-testid={`row-member-${member.id}`}>
+                      <td className="p-3">
+                        <p className="font-medium">{member.companyName}</p>
+                        <p className="text-xs text-muted-foreground sm:hidden">{member.username}</p>
+                      </td>
+                      <td className="p-3 hidden sm:table-cell text-muted-foreground">{member.username}</td>
+                      <td className="p-3 hidden md:table-cell capitalize text-muted-foreground">{member.membershipCategory}</td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => toggleMutation.mutate({ id: member.id, field: "isActive", value: !member.isActive })}
+                          disabled={toggleMutation.isPending}
+                          className={`inline-flex items-center justify-center w-10 h-6 rounded-full transition-colors ${
+                            member.isActive ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                          }`}
+                          data-testid={`toggle-active-${member.id}`}
+                          title={member.isActive ? "Deactivate" : "Activate"}
+                        >
+                          <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isActive ? "translate-x-2" : "-translate-x-2"}`} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => toggleMutation.mutate({ id: member.id, field: "isBoardMember", value: !member.isBoardMember })}
+                          disabled={toggleMutation.isPending}
+                          className={`inline-flex items-center justify-center w-10 h-6 rounded-full transition-colors ${
+                            member.isBoardMember ? "bg-amber-500" : "bg-gray-300 dark:bg-gray-600"
+                          }`}
+                          data-testid={`toggle-board-${member.id}`}
+                          title={member.isBoardMember ? "Remove from board" : "Add to board"}
+                        >
+                          <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isBoardMember ? "translate-x-2" : "-translate-x-2"}`} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 

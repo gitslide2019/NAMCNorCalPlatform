@@ -28,6 +28,7 @@ import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash
 import { useLocation as useWouterLocation } from "wouter";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
 import discussionBanner from "@assets/generated_images/discussion_banner.png";
+import ReactMarkdown from "react-markdown";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
 type TopicWithReplies = DiscussionTopic & { replies: DiscussionReply[] };
@@ -257,9 +258,9 @@ export default function Discussions() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="whitespace-pre-wrap mb-4" data-testid="text-topic-content">
-                    {topicDetail.content}
-                  </p>
+                  <div className="prose prose-sm dark:prose-invert max-w-none mb-4" data-testid="text-topic-content">
+                    <ReactMarkdown>{topicDetail.content}</ReactMarkdown>
+                  </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span data-testid="text-topic-author">{getUsername(topicDetail.authorId)}</span>
                     <span>·</span>
@@ -280,9 +281,9 @@ export default function Discussions() {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="whitespace-pre-wrap mb-2" data-testid={`text-reply-content-${reply.id}`}>
-                            {reply.content}
-                          </p>
+                          <div className="prose prose-sm dark:prose-invert max-w-none mb-2" data-testid={`text-reply-content-${reply.id}`}>
+                            <ReactMarkdown>{reply.content}</ReactMarkdown>
+                          </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span data-testid={`text-reply-author-${reply.id}`}>
                               {getUsername(reply.authorId)}

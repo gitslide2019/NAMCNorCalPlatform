@@ -424,3 +424,52 @@ export async function sendInvitationEmail(
     return { success: false, error: err.message || "Failed to send email" };
   }
 }
+
+export async function sendEventReminderEmail(
+  toEmail: string,
+  eventTitle: string,
+  eventDate: string,
+  eventTime: string | null | undefined,
+  eventLocation: string | null | undefined,
+  eventDescription: string | null | undefined
+): Promise<{ success: boolean; error?: string }> {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return { success: false, error: "RESEND_API_KEY not configured" };
+
+  const client = new Resend(resendKey);
+
+  const timeStr = eventTime ? ` at ${eventTime}` : "";
+  const locationHtml = eventLocation
+    ? `<p style="margin: 6px 0;"><strong>Location:</strong> ${eventLocation}</p>`
+    : "";
+  const descHtml = eventDescription
+    ? `<p style="margin: 12px 0; color: #555;">${eventDescription}</p>`
+    : "";
+
+  const htmlBody = `
+    <h2 style="color: #E5A830; margin: 0 0 16px;">Event Reminder</h2>
+    <p style="margin: 0 0 12px;">You have an upcoming NAMC NorCal event tomorrow:</p>
+    <div style="background: #f9f9f9; border-left: 4px solid #E5A830; padding: 16px; border-radius: 4px; margin-bottom: 16px;">
+      <h3 style="margin: 0 0 8px; font-size: 18px;">${eventTitle}</h3>
+      <p style="margin: 6px 0;"><strong>Date:</strong> ${eventDate}${timeStr}</p>
+      ${locationHtml}
+      ${descHtml}
+    </div>
+    <p style="color: #888; font-size: 13px;">Log in to the NAMC NorCal member portal to view full event details.</p>
+  `;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: "NAMC NorCal <noreply@resend.dev>",
+      to: [toEmail],
+      subject: `Reminder: ${eventTitle} is tomorrow`,
+      html: emailWrapper(htmlBody),
+      attachments: LOGO_ATTACHMENT ? [LOGO_ATTACHMENT] : [],
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, id: (data as any)?.id };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to send reminder" };
+  }
+}

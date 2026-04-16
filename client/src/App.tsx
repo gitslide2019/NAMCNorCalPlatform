@@ -20,6 +20,7 @@ import CalendarPage from "@/pages/portal/calendar";
 import Newsletters from "@/pages/portal/newsletters";
 import ToolLibrary from "@/pages/portal/tools";
 import Courses from "@/pages/portal/courses";
+import CourseCertificate from "@/pages/portal/certificate";
 import MemberDetail from "@/pages/portal/member-detail";
 import ResetPasswordPage from "@/pages/reset-password";
 import Documents from "@/pages/portal/documents";
@@ -65,6 +66,9 @@ function Router() {
       </Route>
       <Route path="/portal/tools">
         <ProtectedRoute><ToolLibrary /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/courses/:id/certificate">
+        <ProtectedRoute><CourseCertificate /></ProtectedRoute>
       </Route>
       <Route path="/portal/courses">
         <ProtectedRoute><Courses /></ProtectedRoute>

@@ -700,6 +700,20 @@ export async function ensureTables() {
       await db.execute(sql.raw(`ALTER TABLE sms_contacts ADD COLUMN IF NOT EXISTS ${col} text`));
     }
 
+    await db.execute(sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS saved_project_opportunities (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        project_id varchar NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        UNIQUE(user_id, project_id)
+      )
+    `);
+
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);
