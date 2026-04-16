@@ -508,6 +508,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/portal/projects/saved", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const savedIds = await storage.getSavedProjectIds(user.id);
+      res.json(savedIds);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch saved projects" });
+    }
+  });
+
   app.get("/api/portal/projects/:id", requireAuth, async (req, res) => {
     try {
       const project = await storage.getProject(req.params.id);
@@ -1728,16 +1738,6 @@ export async function registerRoutes(
   });
 
   // === SAVED PROJECTS ===
-  app.get("/api/portal/projects/saved", requireAuth, async (req, res) => {
-    try {
-      const user = req.user!;
-      const savedIds = await storage.getSavedProjectIds(user.id);
-      res.json(savedIds);
-    } catch {
-      res.status(500).json({ message: "Failed to fetch saved projects" });
-    }
-  });
-
   app.post("/api/portal/projects/:id/save", requireAuth, async (req, res) => {
     try {
       const user = req.user!;

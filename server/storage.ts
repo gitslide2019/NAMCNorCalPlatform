@@ -604,7 +604,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEnrollmentProgress(id: string, progress: number, completedLessons: string): Promise<CourseEnrollment | undefined> {
-    const [e] = await db.update(courseEnrollments).set({ progress, completedLessons }).where(eq(courseEnrollments.id, id)).returning();
+    const updates: Partial<typeof courseEnrollments.$inferInsert> = { progress, completedLessons };
+    if (progress >= 100) updates.completedAt = new Date();
+    const [e] = await db.update(courseEnrollments).set(updates).where(eq(courseEnrollments.id, id)).returning();
     return e;
   }
 

@@ -355,6 +355,7 @@ export const courseEnrollments = pgTable("course_enrollments", {
   progress: integer("progress").notNull().default(0),
   completedLessons: text("completed_lessons").notNull().default(""),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
 });
 
 export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments).omit({
@@ -362,6 +363,7 @@ export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments
   progress: true,
   completedLessons: true,
   enrolledAt: true,
+  completedAt: true,
 });
 
 export type InsertCourseEnrollment = z.infer<typeof insertCourseEnrollmentSchema>;
