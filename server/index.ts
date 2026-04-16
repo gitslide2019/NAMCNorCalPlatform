@@ -152,7 +152,9 @@ const httpServer = createServer(app);
     }
   }
 
-  // Schedule daily at 8:00 AM server time — compute ms until next 8 AM then repeat every 24h
+  // Run immediately on startup (catches up if server restarted after 8 AM),
+  // then schedule daily at 8:00 AM server time.
+  runEventReminderJob();
   function scheduleDailyAt8AM() {
     const now = new Date();
     const next = new Date(now);

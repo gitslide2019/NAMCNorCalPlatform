@@ -714,6 +714,10 @@ export async function ensureTables() {
       )
     `);
 
+    await db.execute(sql`
+      ALTER TABLE course_enrollments ADD COLUMN IF NOT EXISTS completed_at timestamp
+    `);
+
     console.log("All tables ensured successfully");
   } catch (error) {
     console.error("Error ensuring tables:", error);
