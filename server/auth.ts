@@ -88,6 +88,9 @@ export function setupAuth(app: Express) {
         if (!isMatch) {
           return done(null, false, { message: "Invalid username or password" });
         }
+        if (user.isActive === false) {
+          return done(null, false, { message: "Your account has been deactivated. Please contact NAMC NorCal." });
+        }
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -274,6 +277,11 @@ export function setupAuth(app: Express) {
 export function requireAuth(req: any, res: any, next: any) {
   if (!req.isAuthenticated()) {
     res.status(401).json({ message: "Authentication required" });
+    return;
+  }
+  if (req.user?.isActive === false) {
+    req.logout(() => {});
+    res.status(403).json({ message: "Your account has been deactivated. Please contact NAMC NorCal." });
     return;
   }
   next();

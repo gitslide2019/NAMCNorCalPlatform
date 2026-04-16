@@ -520,7 +520,7 @@ export default function Courses() {
                           onClick={() => window.open(`/portal/courses/${courseDetail.id}/certificate`, "_blank")}
                           data-testid="button-view-certificate"
                         >
-                          🎓 View Certificate
+                          Download Certificate
                         </Button>
                       </div>
                     )}
