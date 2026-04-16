@@ -294,6 +294,14 @@ export async function seedSampleContent() {
       await db.insert(projectOpportunities).values(missingProjects);
       console.log(`Inserted ${missingProjects.length} missing real project opportunities`);
     }
+    const finalCount = await db.select({ count: sql<number>`count(*)` }).from(projectOpportunities);
+    const expectedTotal = REAL_PROJECTS.length;
+    const actualTotal = Number(finalCount[0]?.count || 0);
+    if (actualTotal < expectedTotal) {
+      console.warn(`Project opportunities: expected at least ${expectedTotal}, found ${actualTotal}. Some feed entries may be missing.`);
+    } else {
+      console.log(`Project opportunities: ${actualTotal} total (${expectedTotal} from NAMC feed)`);
+    }
 
     const campaignCount = await db.select({ count: sql<number>`count(*)` }).from(campaigns);
     if (Number(campaignCount[0]?.count || 0) === 0) {

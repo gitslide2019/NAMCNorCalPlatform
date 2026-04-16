@@ -167,7 +167,7 @@ function ProjectMapView({ projects, onSelectProject }: {
 }
 
 function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[] }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const byCategory = projects.reduce<Record<string, number>>((acc, p) => {
     const cat = p.category || "Other";
