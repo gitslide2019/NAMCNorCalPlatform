@@ -449,7 +449,7 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
             </div>
           </div>
 
-          {(member.yearEstablished || member.numberOfEmployees || member.annualRevenue || member.dateJoined) && (
+          {(member.yearEstablished || member.numberOfEmployees || member.annualRevenue || member.dateJoined || member.renewalDate) && (
             <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b">
               {member.yearEstablished && (
                 <div className="flex items-center gap-2 text-sm">
