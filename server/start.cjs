@@ -7,6 +7,9 @@
  * runs in a forked child process on MAIN_PORT+1. Once the child signals
  * "ready" via IPC, all traffic is proxied to it.
  *
+ * If the child crashes, it is automatically restarted (up to MAX_RESTARTS).
+ * Port 5000 stays open the entire time, returning 200 during restart gaps.
+ *
  * Run: node ./dist/start.cjs
  * No --require flags needed.
  */
@@ -16,10 +19,15 @@ const { fork }    = require('child_process');
 const { connect } = require('net');
 const { join }    = require('path');
 
-const MAIN_PORT  = parseInt(process.env.PORT || '5000', 10);
-const CHILD_PORT = MAIN_PORT + 1;
+const MAIN_PORT    = parseInt(process.env.PORT || '5000', 10);
+const CHILD_PORT   = MAIN_PORT + 1;
+const MAX_RESTARTS = 10;
+const RESTART_DELAY_MS = 2000;
 
-let appReady = false;
+let appReady      = false;
+let currentChild  = null;
+let restartCount  = 0;
+let shuttingDown  = false;
 
 /* ------------------------------------------------------------------ */
 /* Proxy handlers                                                       */
@@ -85,30 +93,57 @@ server.listen(MAIN_PORT, '0.0.0.0', function() {
 });
 
 /* ------------------------------------------------------------------ */
-/* Fork the real Express app in its own process                        */
+/* Fork / restart the real Express app                                  */
 /* ------------------------------------------------------------------ */
-const child = fork(join(__dirname, 'index-server.cjs'), [], {
-  env: Object.assign({}, process.env, { PORT: String(CHILD_PORT) }),
-  stdio: 'inherit',
-});
+function startChild() {
+  appReady = false;
 
-child.on('message', function(msg) {
-  if (msg === 'ready') {
-    appReady = true;
-    console.log('[start] main app ready — proxying :' + MAIN_PORT + ' → :' + CHILD_PORT);
-  }
-});
+  const child = fork(join(__dirname, 'index-server.cjs'), [], {
+    env: Object.assign({}, process.env, { PORT: String(CHILD_PORT) }),
+    stdio: 'inherit',
+  });
 
-child.on('exit', function(code, signal) {
-  if (signal === 'SIGTERM' || signal === 'SIGINT') {
-    process.exit(0);
-  }
-  console.error('[start] child exited code=' + code + ' signal=' + signal);
-  process.exit(code != null ? code : 1);
-});
+  currentChild = child;
+
+  child.on('message', function(msg) {
+    if (msg === 'ready') {
+      appReady = true;
+      restartCount = 0;
+      console.log('[start] main app ready, proxying to :' + CHILD_PORT);
+    }
+  });
+
+  child.on('exit', function(code, signal) {
+    if (shuttingDown || signal === 'SIGTERM' || signal === 'SIGINT') {
+      process.exit(0);
+    }
+
+    console.error('[start] child exited code=' + code + ' signal=' + signal);
+    appReady = false;
+
+    if (restartCount >= MAX_RESTARTS) {
+      console.error('[start] too many restarts (' + MAX_RESTARTS + '), giving up');
+      process.exit(1);
+    }
+
+    restartCount++;
+    console.log('[start] restarting child in ' + RESTART_DELAY_MS + 'ms (attempt ' + restartCount + '/' + MAX_RESTARTS + ')');
+    setTimeout(startChild, RESTART_DELAY_MS);
+  });
+}
+
+startChild();
 
 /* ------------------------------------------------------------------ */
 /* Graceful shutdown                                                    */
 /* ------------------------------------------------------------------ */
-process.on('SIGTERM', function() { child.kill('SIGTERM'); server.close(); });
-process.on('SIGINT',  function() { child.kill('SIGINT');  server.close(); });
+process.on('SIGTERM', function() {
+  shuttingDown = true;
+  if (currentChild) currentChild.kill('SIGTERM');
+  server.close();
+});
+process.on('SIGINT', function() {
+  shuttingDown = true;
+  if (currentChild) currentChild.kill('SIGINT');
+  server.close();
+});
