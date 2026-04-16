@@ -73,6 +73,10 @@ async function buildAll() {
     logLevel: "info",
   });
 
+  console.log("copying start.cjs entry point...");
+  await copyFile("server/start.cjs", "dist/start.cjs");
+  console.log("copied dist/start.cjs");
+
   console.log("copying preload script...");
   await copyFile("server/preload.cjs", "dist/preload.cjs");
   console.log("copied dist/preload.cjs");
