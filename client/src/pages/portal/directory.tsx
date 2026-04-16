@@ -150,22 +150,30 @@ export default function Directory() {
   const [countyFilter, setCountyFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
+  const directoryUrl = countyFilter !== "all"
+    ? `/api/portal/directory?county=${encodeURIComponent(countyFilter)}`
+    : "/api/portal/directory";
+
   const { data: members, isLoading } = useQuery<DirectoryMember[]>({
+    queryKey: [directoryUrl],
+  });
+
+  // Always fetch the full list to populate county dropdown options
+  const { data: allMembers } = useQuery<DirectoryMember[]>({
     queryKey: ["/api/portal/directory"],
   });
 
   const availableCounties = Array.from(new Set(
-    (members || []).map(m => m.county).filter(Boolean) as string[]
+    (allMembers || []).map(m => m.county).filter(Boolean) as string[]
   )).sort();
 
   const filtered = (members || []).filter((m) => {
-    const matchesSearch = !search || 
+    const matchesSearch = !search ||
       m.companyName.toLowerCase().includes(search.toLowerCase()) ||
       m.contactName.toLowerCase().includes(search.toLowerCase()) ||
       (m.primaryServices || "").toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || m.membershipCategory === categoryFilter;
-    const matchesCounty = countyFilter === "all" || m.county === countyFilter;
-    return matchesSearch && matchesCategory && matchesCounty;
+    return matchesSearch && matchesCategory;
   });
 
   const corporateMembers = filtered.filter(m => m.membershipCategory === "large");

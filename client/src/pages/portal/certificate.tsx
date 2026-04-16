@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface CourseCertData {
   id: string;
@@ -19,6 +20,14 @@ export default function CourseCertificate() {
   const { data: course, isLoading } = useQuery<CourseCertData>({
     queryKey: ["/api/portal/courses", id],
   });
+
+  // Auto-trigger print dialog once the certificate is ready
+  useEffect(() => {
+    if (course && course.enrollment && course.enrollment.progress >= 100) {
+      const timer = setTimeout(() => window.print(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [course?.id, course?.enrollment?.progress]);
 
   if (isLoading) {
     return (
@@ -48,8 +57,8 @@ export default function CourseCertificate() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-start py-12 px-4">
       <div className="no-print mb-6 flex gap-3">
         <Button onClick={() => window.print()} data-testid="button-print-certificate">
-          <Printer className="h-4 w-4 mr-2" />
-          Print / Save PDF
+          <Download className="h-4 w-4 mr-2" />
+          Download Certificate
         </Button>
         <Button variant="outline" onClick={() => window.close()}>Close</Button>
       </div>

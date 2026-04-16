@@ -367,11 +367,12 @@ export default function Admin() {
 type AdminMember = {
   id: string;
   username: string;
+  email: string;
+  contactName: string;
   isActive: boolean;
   isBoardMember: boolean;
   memberApplicationId: string | null;
   companyName: string;
-  contactName: string;
   membershipCategory: string;
 };
 
@@ -385,7 +386,10 @@ function MembersManagement() {
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: "isActive" | "isBoardMember"; value: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/portal/admin/members/${id}`, { [field]: value });
+      const endpoint = field === "isBoardMember"
+        ? `/api/portal/admin/members/${id}/board`
+        : `/api/portal/admin/members/${id}/active`;
+      const res = await apiRequest("PATCH", endpoint, { [field]: value });
       return await res.json();
     },
     onSuccess: () => {
@@ -436,7 +440,8 @@ function MembersManagement() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left p-3 font-medium">Company</th>
-                    <th className="text-left p-3 font-medium hidden sm:table-cell">Username</th>
+                    <th className="text-left p-3 font-medium hidden sm:table-cell">Contact</th>
+                    <th className="text-left p-3 font-medium hidden lg:table-cell">Email</th>
                     <th className="text-left p-3 font-medium hidden md:table-cell">Category</th>
                     <th className="text-center p-3 font-medium">Active</th>
                     <th className="text-center p-3 font-medium">Board</th>
@@ -447,9 +452,14 @@ function MembersManagement() {
                     <tr key={member.id} className="border-b last:border-b-0 hover:bg-muted/30" data-testid={`row-member-${member.id}`}>
                       <td className="p-3">
                         <p className="font-medium">{member.companyName}</p>
-                        <p className="text-xs text-muted-foreground sm:hidden">{member.username}</p>
+                        <p className="text-xs text-muted-foreground sm:hidden">{member.contactName || member.username}</p>
                       </td>
-                      <td className="p-3 hidden sm:table-cell text-muted-foreground">{member.username}</td>
+                      <td className="p-3 hidden sm:table-cell text-muted-foreground">{member.contactName || member.username}</td>
+                      <td className="p-3 hidden lg:table-cell text-muted-foreground text-xs">
+                        {member.email ? (
+                          <a href={`mailto:${member.email}`} className="hover:underline" data-testid={`link-email-${member.id}`}>{member.email}</a>
+                        ) : "—"}
+                      </td>
                       <td className="p-3 hidden md:table-cell capitalize text-muted-foreground">{member.membershipCategory}</td>
                       <td className="p-3 text-center">
                         <button

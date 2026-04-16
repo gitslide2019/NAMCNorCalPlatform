@@ -432,7 +432,7 @@ export async function sendEventReminderEmail(
   eventTime: string | null | undefined,
   eventLocation: string | null | undefined,
   eventDescription: string | null | undefined
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; id?: string }> {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return { success: false, error: "RESEND_API_KEY not configured" };
 
@@ -468,8 +468,8 @@ export async function sendEventReminderEmail(
     });
 
     if (error) return { success: false, error: error.message };
-    return { success: true, id: (data as any)?.id };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to send reminder" };
+    return { success: true, id: (data as { id?: string })?.id };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Failed to send reminder" };
   }
 }

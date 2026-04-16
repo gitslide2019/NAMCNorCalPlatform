@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,76 @@ type PortalUser = { id: string; username: string };
 
 const CATEGORIES = ["general", "technical", "business", "networking"] as const;
 
+function MarkdownToolbar({
+  textareaRef,
+  value,
+  onChange,
+}: {
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const wrapSelection = (before: string, after: string) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = value.slice(start, end);
+    const updated = value.slice(0, start) + before + selected + after + value.slice(end);
+    onChange(updated);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
+  const insertLinePrefix = (prefix: string) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    const updated = value.slice(0, lineStart) + prefix + value.slice(lineStart);
+    onChange(updated);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, start + prefix.length);
+    }, 0);
+  };
+
+  return (
+    <div className="flex gap-1 mb-2 flex-wrap" data-testid="markdown-toolbar">
+      <button
+        type="button"
+        onClick={() => wrapSelection("**", "**")}
+        className="px-2 py-0.5 text-xs font-bold border rounded hover:bg-muted transition-colors"
+        title="Bold"
+        data-testid="toolbar-bold"
+      >B</button>
+      <button
+        type="button"
+        onClick={() => wrapSelection("_", "_")}
+        className="px-2 py-0.5 text-xs italic border rounded hover:bg-muted transition-colors"
+        title="Italic"
+        data-testid="toolbar-italic"
+      >I</button>
+      <button
+        type="button"
+        onClick={() => insertLinePrefix("- ")}
+        className="px-2 py-0.5 text-xs border rounded hover:bg-muted transition-colors"
+        title="Bullet list"
+        data-testid="toolbar-bullet"
+      >• List</button>
+      <button
+        type="button"
+        onClick={() => insertLinePrefix("1. ")}
+        className="px-2 py-0.5 text-xs border rounded hover:bg-muted transition-colors"
+        title="Numbered list"
+        data-testid="toolbar-numbered"
+      ># List</button>
+    </div>
+  );
+}
+
 function categoryColor(cat: string) {
   switch (cat) {
     case "technical":
@@ -60,6 +130,8 @@ export default function Discussions() {
   const [newCategory, setNewCategory] = useState("general");
   const [newContent, setNewContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const newTopicTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [editTopicDialogOpen, setEditTopicDialogOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState("general");
@@ -319,8 +391,14 @@ export default function Discussions() {
 
               <Card data-testid="card-reply-form">
                 <CardContent className="p-4">
+                  <MarkdownToolbar
+                    textareaRef={replyTextareaRef}
+                    value={replyContent}
+                    onChange={setReplyContent}
+                  />
                   <Textarea
-                    placeholder="Write your reply..."
+                    ref={replyTextareaRef}
+                    placeholder="Write your reply... (supports **bold**, _italic_, - lists)"
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
                     className="mb-3"
@@ -449,8 +527,14 @@ export default function Discussions() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <MarkdownToolbar
+                      textareaRef={newTopicTextareaRef}
+                      value={newContent}
+                      onChange={setNewContent}
+                    />
                     <Textarea
-                      placeholder="What would you like to discuss?"
+                      ref={newTopicTextareaRef}
+                      placeholder="What would you like to discuss? (supports **bold**, _italic_, - lists)"
                       value={newContent}
                       onChange={(e) => setNewContent(e.target.value)}
                       rows={5}

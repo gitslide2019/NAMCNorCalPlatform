@@ -115,7 +115,7 @@ export async function registerRoutes(
   app.get("/api/portal/directory", requireAuth, async (req, res) => {
     try {
       const applications = await storage.getApprovedMembershipApplications();
-      const directory = applications.map(app => ({
+      let directory = applications.map(app => ({
         id: app.id,
         companyName: app.companyName,
         contactName: app.contactName,
@@ -140,6 +140,10 @@ export async function registerRoutes(
         socialUrl: app.socialUrl,
         partnerOpportunities: app.partnerOpportunities,
       }));
+      const county = typeof req.query.county === "string" ? req.query.county : null;
+      if (county) {
+        directory = directory.filter(m => m.county === county);
+      }
       res.json(directory);
     } catch (error) {
       console.error("Error fetching directory:", error);
@@ -495,7 +499,10 @@ export async function registerRoutes(
   app.get("/api/portal/projects", requireAuth, async (req, res) => {
     try {
       const projects = await storage.getProjects();
-      res.json(projects);
+      const user = req.user!;
+      const savedIds = await storage.getSavedProjectIds(user.id);
+      const savedSet = new Set(savedIds);
+      res.json(projects.map(p => ({ ...p, isSaved: savedSet.has(p.id) })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch projects" });
     }
@@ -1762,11 +1769,12 @@ export async function registerRoutes(
         .map(u => ({
           id: u.id,
           username: u.username,
+          email: appMap.get(u.memberApplicationId!)?.email || "",
+          contactName: appMap.get(u.memberApplicationId!)?.contactName || "",
           isActive: u.isActive,
           isBoardMember: u.isBoardMember,
           memberApplicationId: u.memberApplicationId,
           companyName: appMap.get(u.memberApplicationId!)?.companyName || u.username,
-          contactName: appMap.get(u.memberApplicationId!)?.contactName || "",
           membershipCategory: appMap.get(u.memberApplicationId!)?.membershipCategory || "",
         }));
       res.json(result);
@@ -1775,20 +1783,43 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/portal/admin/members/:id", requireAdmin, async (req, res) => {
+  app.patch("/api/portal/admin/members/:id/active", requireAdmin, async (req, res) => {
     try {
-      const { isActive, isBoardMember } = req.body;
-      const updates: Partial<{ isActive: boolean; isBoardMember: boolean }> = {};
-      if (typeof isActive === "boolean") updates.isActive = isActive;
-      if (typeof isBoardMember === "boolean") updates.isBoardMember = isBoardMember;
-      const updated = await storage.updateUser(req.params.id, updates);
+      const { isActive } = req.body;
+      if (typeof isActive !== "boolean") {
+        res.status(400).json({ message: "isActive must be a boolean" });
+        return;
+      }
+      const updated = await storage.updateUser(req.params.id, { isActive });
       if (!updated) {
         res.status(404).json({ message: "User not found" });
         return;
       }
       res.json(updated);
     } catch {
-      res.status(500).json({ message: "Failed to update member" });
+      res.status(500).json({ message: "Failed to update member active status" });
+    }
+  });
+
+  app.patch("/api/portal/admin/members/:id/board", requireAdmin, async (req, res) => {
+    try {
+      const { isBoardMember } = req.body;
+      if (typeof isBoardMember !== "boolean") {
+        res.status(400).json({ message: "isBoardMember must be a boolean" });
+        return;
+      }
+      const updated = await storage.updateUser(req.params.id, { isBoardMember });
+      if (!updated) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      // Also sync to membership_applications so the directory reflects the change
+      if (updated.memberApplicationId) {
+        await storage.updateMembershipApplication(updated.memberApplicationId, { isBoardMember });
+      }
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Failed to update member board status" });
     }
   });
 

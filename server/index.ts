@@ -4,6 +4,8 @@ import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { ensureTables, ensureAdminUser, seedMembers, seedMemberAccounts, seedSampleContent } from "./db";
+import { storage } from "./storage";
+import { sendEventReminderEmail } from "./email";
 
 declare module "http" {
   interface IncomingMessage {
@@ -114,4 +116,41 @@ const httpServer = createServer(app);
   await seedMemberAccounts();
   await seedSampleContent();
   log("Background seeding complete");
+
+  // Daily event reminder job — sends emails to RSVP'd attendees for events tomorrow
+  async function runEventReminderJob() {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().slice(0, 10); // YYYY-MM-DD
+      const events = await storage.getEvents();
+      const tomorrowEvents = events.filter(e => e.eventDate === tomorrowStr);
+      let reminded = 0;
+      for (const event of tomorrowEvents) {
+        const rsvps = await storage.getRsvps(event.id);
+        const attendingIds = rsvps.filter(r => r.status === "attending").map(r => r.userId);
+        for (const userId of attendingIds) {
+          const u = await storage.getUser(userId);
+          if (u?.email) {
+            await sendEventReminderEmail(
+              u.email,
+              event.title,
+              event.eventDate,
+              event.eventTime,
+              event.location,
+              event.description,
+            );
+            reminded++;
+          }
+        }
+      }
+      log(`Event reminder job: ${tomorrowEvents.length} events, ${reminded} reminders sent`);
+    } catch (err) {
+      console.error("Event reminder job error:", err);
+    }
+  }
+
+  // Run once after 1 minute, then every 24 hours
+  setTimeout(runEventReminderJob, 60_000);
+  setInterval(runEventReminderJob, 24 * 60 * 60 * 1000);
 })();
