@@ -131,9 +131,11 @@ const httpServer = createServer(app);
         const attendingIds = rsvps.filter(r => r.status === "attending").map(r => r.userId);
         for (const userId of attendingIds) {
           const u = await storage.getUser(userId);
-          if (u?.email) {
+          if (!u?.memberApplicationId) continue;
+          const app = await storage.getMembershipApplication(u.memberApplicationId);
+          if (app?.email) {
             await sendEventReminderEmail(
-              u.email,
+              app.email,
               event.title,
               event.eventDate,
               event.eventTime,
