@@ -44,6 +44,14 @@ export const membershipApplications = pgTable("membership_applications", {
   profileImageUrl: text("profile_image_url"),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  tagline: text("tagline"),
+  servicesDescription: text("services_description"),
+  specialties: text("specialties"),
+  linkedinUrl: text("linkedin_url"),
+  facebookUrl: text("facebook_url"),
+  instagramUrl: text("instagram_url"),
+  yelpUrl: text("yelp_url"),
+  partnerOpportunities: text("partner_opportunities"),
 });
 
 export const insertMembershipApplicationSchema = createInsertSchema(membershipApplications).omit({

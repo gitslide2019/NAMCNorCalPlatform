@@ -133,6 +133,10 @@ export async function registerRoutes(
         county: app.county,
         isBoardMember: app.isBoardMember,
         profileImageUrl: app.profileImageUrl,
+        tagline: app.tagline,
+        specialties: app.specialties,
+        linkedinUrl: app.linkedinUrl,
+        partnerOpportunities: app.partnerOpportunities,
       }));
       res.json(directory);
     } catch (error) {
@@ -187,6 +191,14 @@ export async function registerRoutes(
         numberOfEmployees: application.numberOfEmployees,
         annualRevenue: application.annualRevenue,
         profileImageUrl: application.profileImageUrl,
+        tagline: application.tagline,
+        servicesDescription: application.servicesDescription,
+        specialties: application.specialties,
+        linkedinUrl: application.linkedinUrl,
+        facebookUrl: application.facebookUrl,
+        instagramUrl: application.instagramUrl,
+        yelpUrl: application.yelpUrl,
+        partnerOpportunities: application.partnerOpportunities,
         memberProjects: memberProjectsList,
         memberDocuments: memberDocumentsList,
       });
@@ -218,7 +230,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "No linked application found" });
         return;
       }
-      const allowedFields = ["companyName", "title", "bio", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl"];
+      const allowedFields = ["companyName", "title", "bio", "contactName", "email", "phone", "address", "city", "state", "zipCode", "website", "primaryServices", "certifications", "yearEstablished", "numberOfEmployees", "annualRevenue", "profileImageUrl", "tagline", "servicesDescription", "specialties", "linkedinUrl", "facebookUrl", "instagramUrl", "yelpUrl", "partnerOpportunities"];
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {

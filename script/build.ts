@@ -44,21 +44,7 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
-  console.log("building start proxy (dist/index.cjs)...");
-  await esbuild({
-    entryPoints: ["server/start.ts"],
-    platform: "node",
-    bundle: true,
-    format: "cjs",
-    outfile: "dist/index.cjs",
-    define: {
-      "process.env.NODE_ENV": '"production"',
-    },
-    external: ["child_process", "http", "net", "path"],
-    logLevel: "info",
-  });
-
-  console.log("building server (dist/index-server.cjs)...");
+  console.log("building main app (dist/index-server.cjs)...");
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
@@ -73,13 +59,9 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("copying start.cjs entry point...");
+  console.log("copying fast-boot proxy (dist/start.cjs)...");
   await copyFile("server/start.cjs", "dist/start.cjs");
-  console.log("copied dist/start.cjs");
-
-  console.log("copying preload script...");
-  await copyFile("server/preload.cjs", "dist/preload.cjs");
-  console.log("copied dist/preload.cjs");
+  console.log("done — run command: node ./dist/start.cjs");
 }
 
 buildAll().catch((err) => {
