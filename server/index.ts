@@ -152,7 +152,17 @@ const httpServer = createServer(app);
     }
   }
 
-  // Run once after 1 minute, then every 24 hours
-  setTimeout(runEventReminderJob, 60_000);
-  setInterval(runEventReminderJob, 24 * 60 * 60 * 1000);
+  // Schedule daily at 8:00 AM server time — compute ms until next 8 AM then repeat every 24h
+  function scheduleDailyAt8AM() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(8, 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const msUntil = next.getTime() - now.getTime();
+    setTimeout(() => {
+      runEventReminderJob();
+      setInterval(runEventReminderJob, 24 * 60 * 60 * 1000);
+    }, msUntil);
+  }
+  scheduleDailyAt8AM();
 })();

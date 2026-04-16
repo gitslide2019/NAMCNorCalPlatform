@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, numeric, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -648,7 +648,9 @@ export const savedProjectOpportunities = pgTable("saved_project_opportunities", 
   userId: varchar("user_id").notNull(),
   projectId: varchar("project_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  uniqueUserProject: unique().on(table.userId, table.projectId),
+}));
 
 export const insertSavedProjectSchema = createInsertSchema(savedProjectOpportunities).omit({
   id: true,
