@@ -140,6 +140,7 @@ interface DirectoryMember {
   isBoardMember: boolean;
   profileImageUrl: string | null;
   tagline: string | null;
+  servicesDescription: string | null;
 }
 
 export default function Directory() {
@@ -368,8 +369,8 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                       <MapPin className="h-3 w-3" />{member.city}, {member.state}
                     </p>
-                    {member.primaryServices && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{member.primaryServices}</p>
+                    {(member.servicesDescription || member.primaryServices) && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{member.servicesDescription || member.primaryServices}</p>
                     )}
                     <button
                       className="text-xs text-primary hover:underline font-medium"
@@ -453,9 +454,11 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
         {member.bio && (
           <p className="text-sm text-muted-foreground mb-2 italic" data-testid={`text-member-bio-${member.id}`}>{member.bio}</p>
         )}
-        {member.primaryServices && (
+        {member.servicesDescription ? (
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2" data-testid={`text-services-desc-${member.id}`}>{member.servicesDescription}</p>
+        ) : member.primaryServices ? (
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{member.primaryServices}</p>
-        )}
+        ) : null}
 
         <div className="space-y-1.5 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">

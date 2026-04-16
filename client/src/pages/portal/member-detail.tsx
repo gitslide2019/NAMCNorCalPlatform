@@ -60,6 +60,7 @@ interface MemberDetail {
   zipCode: string;
   website: string | null;
   primaryServices: string | null;
+  servicesDescription: string | null;
   certifications: string | null;
   bio: string | null;
   membershipCategory: string;
@@ -235,7 +236,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         </div>
       )}
 
-      {member.primaryServices && (
+      {(member.servicesDescription || member.primaryServices) && (
         <Card data-testid="card-corporate-services">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -243,8 +244,13 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
               Our Services
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground leading-relaxed">{member.primaryServices}</p>
+          <CardContent className="space-y-2">
+            {member.servicesDescription && (
+              <p className="text-muted-foreground leading-relaxed" data-testid="text-member-services-desc">{member.servicesDescription}</p>
+            )}
+            {member.primaryServices && (
+              <p className="text-xs text-muted-foreground font-medium">License Types / Trade Codes: {member.primaryServices}</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -521,12 +527,21 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
             </div>
 
             <div className="space-y-4">
-              {member.primaryServices && (
+              {(member.servicesDescription || member.primaryServices) && (
                 <div>
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Services</h2>
                   <div className="flex items-start gap-3">
                     <Briefcase className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                    <p data-testid="text-member-services">{member.primaryServices}</p>
+                    <div className="space-y-1">
+                      {member.servicesDescription && (
+                        <p data-testid="text-member-services-desc">{member.servicesDescription}</p>
+                      )}
+                      {member.primaryServices && (
+                        <p className="text-sm text-muted-foreground" data-testid="text-member-services">
+                          License Types: {member.primaryServices}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

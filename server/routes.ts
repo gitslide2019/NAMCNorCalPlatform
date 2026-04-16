@@ -126,6 +126,7 @@ export async function registerRoutes(
         state: app.state,
         website: app.website,
         primaryServices: app.primaryServices,
+        servicesDescription: app.servicesDescription,
         certifications: app.certifications,
         bio: app.bio,
         membershipCategory: app.membershipCategory,

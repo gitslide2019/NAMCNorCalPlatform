@@ -144,8 +144,10 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
           {application.bio && (
             <p className="text-sm text-muted-foreground mb-2 italic" data-testid="preview-bio">{application.bio}</p>
           )}
-          {application.primaryServices && (
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{application.primaryServices}</p>
+          {(application.servicesDescription || application.primaryServices) && (
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+              {application.servicesDescription || application.primaryServices}
+            </p>
           )}
 
           <div className="space-y-1.5 text-sm">
