@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile, copyFile } from "fs/promises";
+import { rm, readFile, copyFile, writeFile } from "fs/promises";
 
 const allowlist = [
   "@google/generative-ai",
@@ -61,7 +61,10 @@ async function buildAll() {
 
   console.log("copying fast-boot proxy (dist/start.cjs)...");
   await copyFile("server/start.cjs", "dist/start.cjs");
-  console.log("done — run command: node ./dist/start.cjs");
+
+  // dist/index.cjs exists so "npm start" (node dist/index.cjs) still works
+  await writeFile("dist/index.cjs", "'use strict';\nrequire('./start.cjs');\n");
+  console.log("done — run command: node ./dist/start.cjs  (or npm start)");
 }
 
 buildAll().catch((err) => {
