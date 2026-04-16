@@ -23,11 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import type { MembershipApplication, MemberProject, MemberDocument } from "@shared/schema";
 
-/* ─────────────────────────────────────────────
-   Profile completeness config
-   Each field maps to a section ID so the banner
-   can scroll directly to the right edit card.
-───────────────────────────────────────────── */
 interface ProfileField {
   key: keyof MembershipApplication;
   label: string;
@@ -35,6 +30,7 @@ interface ProfileField {
   inputId: string;
 }
 
+// Each field maps to its section ID so the completeness banner can scroll+focus it
 const PROFILE_FIELDS: ProfileField[] = [
   { key: "profileImageUrl",      label: "Profile Photo",             sectionId: "section-photo",    inputId: "button-upload-photo" },
   { key: "companyName",          label: "Company Name",              sectionId: "section-identity",  inputId: "input-profile-company" },
@@ -47,6 +43,7 @@ const PROFILE_FIELDS: ProfileField[] = [
   { key: "specialties",          label: "Specialties",               sectionId: "section-business",  inputId: "input-profile-specialties" },
   { key: "yearEstablished",      label: "Year Established",          sectionId: "section-business",  inputId: "input-profile-year" },
   { key: "numberOfEmployees",    label: "Employee Count",            sectionId: "section-business",  inputId: "input-profile-employees" },
+  { key: "annualRevenue",        label: "Annual Revenue",            sectionId: "section-business",  inputId: "input-profile-revenue" },
   { key: "partnerOpportunities", label: "Partnership Opportunities", sectionId: "section-partners",  inputId: "input-partner-opportunities" },
   { key: "linkedinUrl",          label: "LinkedIn",                  sectionId: "section-social",    inputId: "input-profile-linkedin" },
   { key: "socialUrl",            label: "Social Profile URL",        sectionId: "section-social",    inputId: "input-profile-social-url" },
@@ -55,6 +52,9 @@ const PROFILE_FIELDS: ProfileField[] = [
   { key: "email",                label: "Email",                     sectionId: "section-contact",   inputId: "input-profile-email" },
   { key: "phone",                label: "Phone",                     sectionId: "section-contact",   inputId: "input-profile-phone" },
   { key: "address",              label: "Address",                   sectionId: "section-contact",   inputId: "input-profile-address" },
+  { key: "city",                 label: "City",                      sectionId: "section-contact",   inputId: "input-profile-city" },
+  { key: "state",                label: "State",                     sectionId: "section-contact",   inputId: "input-profile-state" },
+  { key: "zipCode",              label: "ZIP Code",                  sectionId: "section-contact",   inputId: "input-profile-zip" },
 ];
 
 function getProfileCompleteness(app: MembershipApplication) {
@@ -85,9 +85,6 @@ function formatFileSize(bytes: number | null | undefined): string {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-/* ─────────────────────────────────────────────
-   Preview dialog — reuses exact MemberCard markup
-───────────────────────────────────────────── */
 function ProfilePreviewDialog({ application }: { application: MembershipApplication }) {
   const isCorporate = application.membershipCategory === "large";
   const certList = application.certifications
@@ -105,7 +102,7 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
         <DialogHeader>
           <DialogTitle>How Other Members See You</DialogTitle>
         </DialogHeader>
-        {/* Exact MemberCard layout — no hover-elevate since it's not a clickable nav */}
+        {/* Exact MemberCard layout from directory.tsx — same structure and anchors */}
         <div className={`rounded-lg border p-6 ${isCorporate ? "border-l-4 border-l-[#E5A830]" : ""}`} data-testid="preview-card">
           <div className="flex items-start gap-3 mb-3">
             {application.profileImageUrl ? (
@@ -123,7 +120,7 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg leading-tight">{application.companyName}</h3>
               {application.tagline && (
-                <p className="text-xs text-[#E5A830] font-medium" data-testid="preview-tagline">{application.tagline}</p>
+                <p className="text-xs text-[#E5A830] font-medium truncate" data-testid="preview-tagline">{application.tagline}</p>
               )}
               <p className="text-sm text-muted-foreground">{application.contactName} - {application.title}</p>
             </div>
@@ -158,16 +155,16 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Phone className="h-3.5 w-3.5 shrink-0" />
-              <span>{application.phone}</span>
+              <a href={`tel:${application.phone}`} className="hover:text-primary">{application.phone}</a>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{application.email}</span>
+              <a href={`mailto:${application.email}`} className="hover:text-primary truncate">{application.email}</a>
             </div>
             {application.website && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{application.website}</span>
+                <a href={application.website.startsWith("http") ? application.website : `https://${application.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary truncate">{application.website}</a>
               </div>
             )}
           </div>
@@ -179,22 +176,12 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
               ))}
             </div>
           )}
-
-          {application.partnerOpportunities && (
-            <div className="mt-3 pt-3 border-t">
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Partnership Opportunities</p>
-              <p className="text-xs text-muted-foreground" data-testid="preview-partner-opp">{application.partnerOpportunities}</p>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Main Profile Page
-───────────────────────────────────────────── */
 export default function Profile() {
   useAuth();
   const { toast } = useToast();
@@ -398,9 +385,6 @@ export default function Profile() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   Profile Photo
-───────────────────────────────────────────── */
 function ProfilePhotoSection({ application }: { application: MembershipApplication }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -472,9 +456,6 @@ function ProfilePhotoSection({ application }: { application: MembershipApplicati
   );
 }
 
-/* ─────────────────────────────────────────────
-   Company & Identity
-───────────────────────────────────────────── */
 function CompanyIdentityForm({
   application, onSubmit, isPending,
 }: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
@@ -542,9 +523,6 @@ function CompanyIdentityForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   Business Details
-───────────────────────────────────────────── */
 function BusinessDetailsForm({
   application, onSubmit, isPending,
 }: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
@@ -640,9 +618,6 @@ function BusinessDetailsForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   Partnership Opportunities
-───────────────────────────────────────────── */
 function PartnerOpportunitiesForm({
   application, onSubmit, isPending,
 }: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
@@ -681,9 +656,6 @@ function PartnerOpportunitiesForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   Online Presence & Social Media
-───────────────────────────────────────────── */
 function SocialPresenceForm({
   application, onSubmit, isPending,
 }: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
@@ -764,9 +736,6 @@ function SocialPresenceForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   Contact Information
-───────────────────────────────────────────── */
 function ContactInfoForm({
   application, onSubmit, isPending,
 }: { application: MembershipApplication; onSubmit: (d: Partial<Record<keyof MembershipApplication, string>>) => void; isPending: boolean }) {
@@ -856,9 +825,6 @@ function ContactInfoForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   My Documents
-───────────────────────────────────────────── */
 function MyDocumentsSection() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1004,9 +970,6 @@ function MyDocumentsSection() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   My Projects / Portfolio
-───────────────────────────────────────────── */
 function MyProjectsSection() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -139,6 +139,7 @@ interface DirectoryMember {
   county: string | null;
   isBoardMember: boolean;
   profileImageUrl: string | null;
+  tagline: string | null;
 }
 
 export default function Directory() {
@@ -427,6 +428,9 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
           )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg leading-tight">{member.companyName}</h3>
+            {member.tagline && (
+              <p className="text-xs text-[#E5A830] font-medium truncate" data-testid={`text-tagline-${member.id}`}>{member.tagline}</p>
+            )}
             <p className="text-sm text-muted-foreground">{member.contactName} - {member.title}</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
