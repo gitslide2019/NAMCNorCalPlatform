@@ -28,14 +28,19 @@ import {
   Briefcase,
   Plus,
   MapPin,
-  DollarSign,
   Calendar,
   ArrowLeft,
-  Send,
-  CheckCircle,
   XCircle,
   List,
   Map as MapIcon,
+  Building2,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Tag,
+  Clock,
+  BarChart3,
+  Mail,
 } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -44,7 +49,7 @@ import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import type { ProjectOpportunity, ProjectBid } from "@shared/schema";
+import type { ProjectOpportunity } from "@shared/schema";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -53,11 +58,10 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const greenMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#22c55e"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
-const greyMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#9ca3af"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
+const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#E5A830"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
 
 const openMarkerIcon = new L.Icon({
-  iconUrl: `data:image/svg+xml,${greenMarkerSvg}`,
+  iconUrl: `data:image/svg+xml,${goldMarkerSvg}`,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -65,39 +69,28 @@ const openMarkerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-const closedMarkerIcon = new L.Icon({
-  iconUrl: `data:image/svg+xml,${greyMarkerSvg}`,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: markerShadow,
-  shadowSize: [41, 41],
-});
+const CATEGORY_COLORS: Record<string, string> = {
+  "Networking": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  "RFP": "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  "Bid opportunity": "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  "Training": "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  "Outreach": "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  "Policy": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  "RFQ": "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  "RFQ notice": "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  "Paid study participation": "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+};
 
-type ProjectWithBids = ProjectOpportunity & { bids: ProjectBid[] };
-type PortalUser = { id: string; username: string };
-
-function formatBudget(budget: string | null | undefined): string {
-  if (!budget) return "";
-  const num = parseFloat(budget.replace(/[^0-9.]/g, ""));
-  if (isNaN(num)) return budget;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num);
+function getCategoryColor(category: string | null | undefined): string {
+  if (!category) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  return CATEGORY_COLORS[category] || "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
 
-function formatDeadline(deadline: string | null | undefined): string {
-  if (!deadline) return "";
-  const date = new Date(deadline);
-  if (isNaN(date.getTime())) return deadline;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatDate(date: string | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function getDeadlineUrgency(deadline: string | null | undefined): {
@@ -110,8 +103,7 @@ function getDeadlineUrgency(deadline: string | null | undefined): {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
-  const diffMs = date.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return { label: "Deadline passed", variant: "red" };
   if (diffDays === 0) return { label: "Due today", variant: "amber" };
   if (diffDays === 1) return { label: "1 day left", variant: "amber" };
@@ -119,22 +111,16 @@ function getDeadlineUrgency(deadline: string | null | undefined): {
   return { label: `${diffDays} days left`, variant: "green" };
 }
 
-function ProjectMapView({
-  projects,
-  onSelectProject,
-}: {
+function ProjectMapView({ projects, onSelectProject }: {
   projects: ProjectOpportunity[];
   onSelectProject: (id: string) => void;
 }) {
-  const mappable = projects.filter(
-    (p) => p.latitude && p.longitude
-  );
-
+  const mappable = projects.filter(p => p.latitude && p.longitude);
   return (
-    <div className="rounded-lg overflow-hidden border h-[350px] sm:h-[500px]" data-testid="map-container">
+    <div className="rounded-lg overflow-hidden border h-[300px] sm:h-[420px]" data-testid="map-container">
       <MapContainer
-        center={[37.8, -122.25]}
-        zoom={10}
+        center={[37.78, -122.38]}
+        zoom={11}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
       >
@@ -146,39 +132,20 @@ function ProjectMapView({
           <Marker
             key={project.id}
             position={[parseFloat(project.latitude!), parseFloat(project.longitude!)]}
-            icon={project.status === "open" ? openMarkerIcon : closedMarkerIcon}
+            icon={openMarkerIcon}
           >
             <Popup>
-              <div className="min-w-[200px]" data-testid={`popup-project-${project.id}`}>
+              <div className="min-w-[180px]" data-testid={`popup-project-${project.id}`}>
                 <h3 className="font-semibold text-sm mb-1">{project.title}</h3>
-                <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
+                {project.organization && (
+                  <p className="text-xs text-gray-600 mb-1">{project.organization}</p>
+                )}
+                <p className="text-xs text-gray-600 flex items-center gap-1 mb-2">
                   <MapPin className="h-3 w-3 inline-block" /> {project.location}
                 </p>
-                {project.budget && (
-                  <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
-                    <DollarSign className="h-3 w-3 inline-block" /> {formatBudget(project.budget)}
-                  </p>
-                )}
-                {project.deadline && (
-                  <p className="text-xs text-gray-600 flex items-center gap-1 mb-1">
-                    <Calendar className="h-3 w-3 inline-block" /> {formatDeadline(project.deadline)}
-                    {(() => {
-                      const urgency = getDeadlineUrgency(project.deadline);
-                      if (!urgency) return null;
-                      const color =
-                        urgency.variant === "red" ? "#dc2626" :
-                        urgency.variant === "amber" ? "#d97706" : "#16a34a";
-                      return (
-                        <span style={{ color, fontWeight: 600, marginLeft: 6 }}>
-                          ({urgency.label})
-                        </span>
-                      );
-                    })()}
-                  </p>
-                )}
                 <button
                   onClick={() => onSelectProject(project.id)}
-                  className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
                   data-testid={`link-view-details-${project.id}`}
                 >
                   View Details →
@@ -192,24 +159,115 @@ function ProjectMapView({
   );
 }
 
-function ProjectListView({
-  onSelectProject,
-}: {
-  onSelectProject: (id: string) => void;
-}) {
+function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const byCategory = projects.reduce<Record<string, number>>((acc, p) => {
+    const cat = p.category || "Other";
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {});
+
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+  const displayList = showAll ? projects : projects.slice(0, 8);
+
+  return (
+    <div className="mt-10 border-t pt-8">
+      <button
+        className="flex items-center gap-2 w-full text-left group"
+        onClick={() => setExpanded(!expanded)}
+        data-testid="button-toggle-past"
+      >
+        <BarChart3 className="h-5 w-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+          Past Opportunities ({projects.length})
+        </h2>
+        {expanded ? <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" /> : <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />}
+      </button>
+      <p className="text-sm text-muted-foreground mt-1 mb-4">
+        Opportunities from the NAMC email feed that have closed or passed.
+      </p>
+
+      {expanded && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {sorted.map(([cat, count]) => (
+              <div key={cat} className="bg-muted/40 rounded-lg p-3 text-center" data-testid={`metric-category-${cat.replace(/\s+/g, "-").toLowerCase()}`}>
+                <div className="text-2xl font-bold">{count}</div>
+                <div className="text-xs text-muted-foreground mt-1 leading-tight">{cat}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {displayList.map((p) => (
+              <div key={p.id} className="flex items-start gap-3 py-2 border-b border-muted/50 last:border-0" data-testid={`row-past-project-${p.id}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    {p.organization && (
+                      <span className="text-xs text-muted-foreground truncate">{p.organization}</span>
+                    )}
+                    {p.emailSentDate && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(p.emailSentDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {p.category && (
+                  <Badge className={`${getCategoryColor(p.category)} text-xs shrink-0`}>
+                    {p.category}
+                  </Badge>
+                )}
+                {p.gmailLink && (
+                  <a
+                    href={p.gmailLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    data-testid={`link-gmail-past-${p.id}`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            ))}
+            {projects.length > 8 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAll(!showAll)}
+                className="w-full mt-2"
+                data-testid="button-toggle-show-all-past"
+              >
+                {showAll ? "Show Less" : `Show All ${projects.length} Past Opportunities`}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setProjectsLocation] = useWouterLocation();
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [showMap, setShowMap] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     title: "",
     description: "",
     location: "",
-    budget: "",
     deadline: "",
     contactEmail: "",
+    category: "",
+    organization: "",
     latitude: "",
     longitude: "",
   });
@@ -226,30 +284,21 @@ function ProjectListView({
       queryClient.invalidateQueries({ queryKey: ["/api/portal/projects"] });
       toast({ title: "Project posted successfully" });
       setDialogOpen(false);
-      setNewProject({
-        title: "",
-        description: "",
-        location: "",
-        budget: "",
-        deadline: "",
-        contactEmail: "",
-        latitude: "",
-        longitude: "",
-      });
+      setNewProject({ title: "", description: "", location: "", deadline: "", contactEmail: "", category: "", organization: "", latitude: "", longitude: "" });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to post project", description: error.message, variant: "destructive" });
     },
   });
 
-  const filtered = projects
-    ?.filter((p) => {
-      if (statusFilter === "all") return true;
-      return p.status === statusFilter;
-    })
+  const openProjects = projects?.filter(p => p.status === "open") || [];
+  const pastProjects = projects?.filter(p => p.status !== "open") || [];
+
+  const allCategories = ["All", ...Array.from(new Set(openProjects.map(p => p.category).filter(Boolean) as string[]))];
+
+  const filteredOpen = openProjects
+    .filter(p => categoryFilter === "All" || p.category === categoryFilter)
     .sort((a, b) => {
-      if (a.status === "open" && b.status !== "open") return -1;
-      if (a.status !== "open" && b.status === "open") return 1;
       if (!a.deadline && !b.deadline) return 0;
       if (!a.deadline) return 1;
       if (!b.deadline) return -1;
@@ -268,14 +317,15 @@ function ProjectListView({
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Dashboard
       </Button>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-projects-title">
             <Briefcase className="h-7 w-7" />
             Project Opportunities
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Browse and bid on available project opportunities.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Real opportunities sourced from the NAMC NorCal email feed.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -288,34 +338,30 @@ function ProjectListView({
             <MapIcon className="h-4 w-4 mr-1" />
             {showMap ? "Hide Map" : "Show Map"}
           </Button>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
           {user?.isAdmin && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button data-testid="button-post-project">
+                <Button size="sm" data-testid="button-post-project">
                   <Plus className="h-4 w-4 mr-2" />
                   Post Project
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Post New Project</DialogTitle>
+                  <DialogTitle>Post New Opportunity</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 mt-2">
+                <div className="space-y-3 mt-2">
                   <Input
-                    placeholder="Project Title"
+                    placeholder="Title"
                     value={newProject.title}
                     onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
                     data-testid="input-project-title"
+                  />
+                  <Input
+                    placeholder="Organization / Agency"
+                    value={newProject.organization}
+                    onChange={(e) => setNewProject({ ...newProject, organization: e.target.value })}
+                    data-testid="input-project-organization"
                   />
                   <Textarea
                     placeholder="Description"
@@ -330,21 +376,20 @@ function ProjectListView({
                     data-testid="input-project-location"
                   />
                   <Input
-                    placeholder="Budget"
-                    value={newProject.budget}
-                    onChange={(e) => setNewProject({ ...newProject, budget: e.target.value })}
-                    data-testid="input-project-budget"
+                    placeholder="Category (e.g. RFP, Networking, Bid opportunity)"
+                    value={newProject.category}
+                    onChange={(e) => setNewProject({ ...newProject, category: e.target.value })}
+                    data-testid="input-project-category"
                   />
                   <Input
-                    placeholder="Deadline"
+                    placeholder="Deadline / Event Date"
                     type="date"
                     value={newProject.deadline}
                     onChange={(e) => setNewProject({ ...newProject, deadline: e.target.value })}
                     data-testid="input-project-deadline"
                   />
                   <Input
-                    placeholder="Contact Email"
-                    type="email"
+                    placeholder="Contact / RSVP"
                     value={newProject.contactEmail}
                     onChange={(e) => setNewProject({ ...newProject, contactEmail: e.target.value })}
                     data-testid="input-project-contact-email"
@@ -363,14 +408,14 @@ function ProjectListView({
                       data-testid="input-project-longitude"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground -mt-2">Add coordinates to show this project on the map. You can find them on Google Maps.</p>
+                  <p className="text-xs text-muted-foreground -mt-1">Coordinates place the opportunity on the map.</p>
                   <Button
                     className="w-full"
                     onClick={() => createMutation.mutate(newProject)}
                     disabled={createMutation.isPending || !newProject.title || !newProject.description || !newProject.location}
                     data-testid="button-submit-project"
                   >
-                    {createMutation.isPending ? "Posting..." : "Post Project"}
+                    {createMutation.isPending ? "Posting..." : "Post Opportunity"}
                   </Button>
                 </div>
               </DialogContent>
@@ -380,163 +425,159 @@ function ProjectListView({
       </div>
 
       {isLoading ? (
-        <div className="space-y-6">
-          <Skeleton className="h-[400px] w-full rounded-lg" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <Skeleton className="h-24 w-full" />
-                </CardContent>
-              </Card>
+        <div className="space-y-4">
+          <Skeleton className="h-[300px] w-full rounded-lg" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}><CardContent className="p-5"><Skeleton className="h-28 w-full" /></CardContent></Card>
             ))}
           </div>
         </div>
       ) : (
         <div className="space-y-6">
-          {showMap && filtered && filtered.length > 0 && (
-            <ProjectMapView projects={filtered} onSelectProject={onSelectProject} />
+          {showMap && filteredOpen.length > 0 && (
+            <ProjectMapView projects={filteredOpen} onSelectProject={onSelectProject} />
           )}
 
           <div>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" data-testid="text-project-list-heading">
-              <List className="h-5 w-5" />
-              {filtered?.length || 0} Project{(filtered?.length || 0) !== 1 ? "s" : ""}
-            </h2>
-            {filtered && filtered.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((project) => (
-                  <Card
-                    key={project.id}
-                    className="cursor-pointer hover-elevate"
-                    onClick={() => onSelectProject(project.id)}
-                    data-testid={`card-project-${project.id}`}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold flex items-center gap-2" data-testid="text-current-heading">
+                <List className="h-4 w-4" />
+                Current Opportunities
+                <span className="text-muted-foreground font-normal text-sm">({filteredOpen.length})</span>
+              </h2>
+            </div>
+
+            {allCategories.length > 1 && (
+              <div className="flex flex-wrap gap-2 mb-4" data-testid="category-filter-chips">
+                {allCategories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors border ${
+                      categoryFilter === cat
+                        ? "bg-foreground text-background border-foreground"
+                        : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`chip-category-${cat.replace(/\s+/g, "-").toLowerCase()}`}
                   >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-lg leading-snug">{project.title}</CardTitle>
-                        <Badge
-                          className={
-                            project.status === "open"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                          }
-                          data-testid={`badge-project-status-${project.id}`}
-                        >
-                          {project.status === "open" ? "Open" : "Closed"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-project-desc-${project.id}`}>
-                        {project.description}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {project.location}
-                        </span>
-                        {project.budget && (
-                          <span className="flex items-center gap-1" data-testid={`text-project-budget-${project.id}`}>
-                            <DollarSign className="h-3.5 w-3.5" />
-                            {formatBudget(project.budget)}
-                          </span>
-                        )}
-                        {project.deadline && (
-                          <span className="flex items-center gap-1" data-testid={`text-project-deadline-${project.id}`}>
-                            <Calendar className="h-3.5 w-3.5" />
-                            {formatDeadline(project.deadline)}
-                          </span>
-                        )}
-                      </div>
-                      {(() => {
-                        const urgency = getDeadlineUrgency(project.deadline);
-                        if (!urgency) return null;
-                        const urgencyClasses =
-                          urgency.variant === "red"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            : urgency.variant === "amber"
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-                        return (
-                          <Badge
-                            className={urgencyClasses}
-                            data-testid={`badge-project-urgency-${project.id}`}
-                          >
-                            {urgency.label}
-                          </Badge>
-                        );
-                      })()}
-                    </CardContent>
-                  </Card>
+                    {cat}
+                  </button>
                 ))}
+              </div>
+            )}
+
+            {filteredOpen.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredOpen.map((project) => {
+                  const urgency = getDeadlineUrgency(project.deadline);
+                  const urgencyClasses = urgency
+                    ? urgency.variant === "red"
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : urgency.variant === "amber"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "";
+                  return (
+                    <Card
+                      key={project.id}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => onSelectProject(project.id)}
+                      data-testid={`card-project-${project.id}`}
+                    >
+                      <CardContent className="p-5 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold text-base leading-snug flex-1">{project.title}</h3>
+                          {project.category && (
+                            <Badge className={`${getCategoryColor(project.category)} text-xs shrink-0`} data-testid={`badge-category-${project.id}`}>
+                              {project.category}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {project.organization && (
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid={`text-org-${project.id}`}>
+                            <Building2 className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{project.organization}</span>
+                          </div>
+                        )}
+
+                        <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-desc-${project.id}`}>
+                          {project.description}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1 min-w-0">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{project.location}</span>
+                          </span>
+                          {project.deadline && (
+                            <span className="flex items-center gap-1 shrink-0" data-testid={`text-deadline-${project.id}`}>
+                              <Calendar className="h-3.5 w-3.5" />
+                              {formatDate(project.deadline)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <div className="flex items-center gap-2">
+                            {urgency && (
+                              <Badge className={`${urgencyClasses} text-xs`} data-testid={`badge-urgency-${project.id}`}>
+                                {urgency.label}
+                              </Badge>
+                            )}
+                          </div>
+                          {project.gmailLink && (
+                            <a
+                              href={project.gmailLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              data-testid={`link-gmail-${project.id}`}
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                              View Email
+                            </a>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground" data-testid="text-no-projects">No projects found.</p>
+                  <p className="text-muted-foreground" data-testid="text-no-projects">
+                    {categoryFilter !== "All" ? `No open opportunities in "${categoryFilter}".` : "No current opportunities."}
+                  </p>
+                  {categoryFilter !== "All" && (
+                    <Button variant="ghost" size="sm" className="mt-2" onClick={() => setCategoryFilter("All")}>
+                      Show all categories
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
           </div>
+
+          {pastProjects.length > 0 && (
+            <PastOpportunitiesMetrics projects={pastProjects} />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function ProjectDetailView({
-  projectId,
-  onBack,
-}: {
-  projectId: string;
-  onBack: () => void;
-}) {
+function ProjectDetailView({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [bidAmount, setBidAmount] = useState("");
-  const [bidProposal, setBidProposal] = useState("");
 
-  const { data: project, isLoading } = useQuery<ProjectWithBids>({
+  const { data: project, isLoading } = useQuery<ProjectOpportunity & { bids: any[] }>({
     queryKey: ["/api/portal/projects", projectId],
-  });
-
-  const { data: portalUsers } = useQuery<PortalUser[]>({
-    queryKey: ["/api/portal/users"],
-  });
-
-  const userMap = new Map(portalUsers?.map((u) => [u.id, u.username]) || []);
-
-  const submitBidMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", `/api/portal/projects/${projectId}/bids`, {
-        amount: bidAmount,
-        proposal: bidProposal,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/projects", projectId] });
-      toast({ title: "Bid submitted successfully" });
-      setBidAmount("");
-      setBidProposal("");
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to submit bid", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateBidMutation = useMutation({
-    mutationFn: async ({ bidId, status }: { bidId: string; status: string }) => {
-      await apiRequest("PATCH", `/api/portal/projects/${projectId}/bids/${bidId}`, { status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/projects", projectId] });
-      toast({ title: "Bid updated" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to update bid", description: error.message, variant: "destructive" });
-    },
   });
 
   const closeProjectMutation = useMutation({
@@ -546,10 +587,10 @@ function ProjectDetailView({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/portal/projects", projectId] });
       queryClient.invalidateQueries({ queryKey: ["/api/portal/projects"] });
-      toast({ title: "Project closed" });
+      toast({ title: "Opportunity closed" });
     },
     onError: (error: Error) => {
-      toast({ title: "Failed to close project", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to close", description: error.message, variant: "destructive" });
     },
   });
 
@@ -569,255 +610,141 @@ function ProjectDetailView({
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Projects
         </Button>
-        <p className="mt-4 text-muted-foreground">Project not found.</p>
+        <p className="mt-4 text-muted-foreground">Opportunity not found.</p>
       </div>
     );
   }
+
+  const urgency = getDeadlineUrgency(project.deadline);
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-4xl">
       <Button variant="ghost" onClick={onBack} className="mb-6" data-testid="button-back">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Projects
+        Back to Opportunities
       </Button>
 
       <Card data-testid="card-project-detail">
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <CardTitle className="text-xl sm:text-2xl">{project.title}</CardTitle>
-            <Badge
-              className={
-                project.status === "open"
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl sm:text-2xl leading-snug">{project.title}</CardTitle>
+              {project.organization && (
+                <p className="flex items-center gap-1.5 text-muted-foreground mt-2 text-sm" data-testid="text-detail-org">
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  {project.organization}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {project.category && (
+                <Badge className={getCategoryColor(project.category)} data-testid="badge-detail-category">
+                  <Tag className="h-3 w-3 mr-1" />
+                  {project.category}
+                </Badge>
+              )}
+              <Badge
+                className={project.status === "open"
                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-              }
-              data-testid="badge-project-detail-status"
-            >
-              {project.status === "open" ? "Open" : "Closed"}
-            </Badge>
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}
+                data-testid="badge-detail-status"
+              >
+                {project.status === "open" ? "Open" : "Closed"}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="whitespace-pre-wrap" data-testid="text-project-full-description">
+        <CardContent className="space-y-5">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed" data-testid="text-project-full-description">
             {project.description}
           </p>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              {project.location}
-            </span>
-            {project.budget && (
-              <span className="flex items-center gap-1" data-testid="text-detail-budget">
-                <DollarSign className="h-4 w-4" />
-                {formatBudget(project.budget)}
-              </span>
-            )}
-            {project.deadline && (
-              <span className="flex items-center gap-1" data-testid="text-detail-deadline">
-                <Calendar className="h-4 w-4" />
-                {formatDeadline(project.deadline)}
-              </span>
-            )}
-            {(() => {
-              const urgency = getDeadlineUrgency(project.deadline);
-              if (!urgency) return null;
-              const urgencyClasses =
-                urgency.variant === "red"
-                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  : urgency.variant === "amber"
-                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-              return (
-                <Badge
-                  className={urgencyClasses}
-                  data-testid="badge-detail-urgency"
-                >
-                  {urgency.label}
-                </Badge>
-              );
-            })()}
-          </div>
-          {project.contactEmail && (
-            <p className="text-sm text-muted-foreground" data-testid="text-contact-email">
-              Contact: {project.contactEmail}
-            </p>
+
+          {project.notes && (
+            <div className="bg-muted/40 rounded-lg p-4 text-sm space-y-1" data-testid="text-detail-notes">
+              <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">Key Dates & Notes</p>
+              <p className="leading-relaxed">{project.notes}</p>
+            </div>
           )}
 
-          {user?.isAdmin && project.status === "open" && (
-            <Button
-              variant="destructive"
-              onClick={() => closeProjectMutation.mutate()}
-              disabled={closeProjectMutation.isPending}
-              data-testid="button-close-project"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              {closeProjectMutation.isPending ? "Closing..." : "Close Project"}
-            </Button>
-          )}
+          <div className="grid sm:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <div className="flex items-start gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                <span data-testid="text-detail-location">{project.location}</span>
+              </div>
+              {project.deadline && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span data-testid="text-detail-deadline">{formatDate(project.deadline)}</span>
+                  {urgency && (
+                    <Badge className={
+                      urgency.variant === "red" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs" :
+                      urgency.variant === "amber" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs" :
+                      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs"
+                    }>
+                      {urgency.label}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {project.contactEmail && (
+                <div className="flex items-start gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="break-all" data-testid="text-detail-contact">{project.contactEmail}</span>
+                </div>
+              )}
+              {project.emailSentDate && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="text-xs">Received {formatDate(project.emailSentDate)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            {project.gmailLink && (
+              <a
+                href={project.gmailLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="link-view-email"
+              >
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Original Email
+                </Button>
+              </a>
+            )}
+            {user?.isAdmin && project.status === "open" && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => closeProjectMutation.mutate()}
+                disabled={closeProjectMutation.isPending}
+                data-testid="button-close-project"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                {closeProjectMutation.isPending ? "Closing..." : "Mark as Closed"}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      {project.status === "open" && !user?.isAdmin && (
-        <Card className="mt-6" data-testid="card-submit-bid">
-          <CardHeader>
-            <CardTitle className="text-lg">Submit a Bid</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="Bid Amount"
-              value={bidAmount}
-              onChange={(e) => setBidAmount(e.target.value)}
-              data-testid="input-bid-amount"
-            />
-            <Textarea
-              placeholder="Your proposal..."
-              value={bidProposal}
-              onChange={(e) => setBidProposal(e.target.value)}
-              data-testid="input-bid-proposal"
-            />
-            <Button
-              onClick={() => submitBidMutation.mutate()}
-              disabled={submitBidMutation.isPending || !bidAmount || !bidProposal}
-              data-testid="button-submit-bid"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {submitBidMutation.isPending ? "Submitting..." : "Submit Bid"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {!user?.isAdmin && project.bids && project.bids.length > 0 && (
-        <Card className="mt-6" data-testid="card-my-bids">
-          <CardHeader>
-            <CardTitle className="text-lg">Your Bids</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {project.bids.map((bid) => (
-              <div
-                key={bid.id}
-                className="border rounded-md p-4 space-y-2"
-                data-testid={`card-bid-${bid.id}`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <DollarSign className="h-3.5 w-3.5" />
-                    {bid.amount}
-                  </p>
-                  <Badge
-                    className={
-                      bid.status === "accepted"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : bid.status === "rejected"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    }
-                    data-testid={`badge-bid-status-${bid.id}`}
-                  >
-                    {bid.status}
-                  </Badge>
-                </div>
-                <p className="text-sm" data-testid={`text-bid-proposal-${bid.id}`}>
-                  {bid.proposal}
-                </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {user?.isAdmin && project.bids && project.bids.length > 0 && (
-        <Card className="mt-6" data-testid="card-bids-list">
-          <CardHeader>
-            <CardTitle className="text-lg">Bids ({project.bids.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {project.bids.map((bid) => (
-              <div
-                key={bid.id}
-                className="border rounded-md p-4 space-y-2"
-                data-testid={`card-bid-${bid.id}`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-medium" data-testid={`text-bidder-${bid.id}`}>
-                      {userMap.get(bid.bidderId) || "Unknown User"}
-                    </p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <DollarSign className="h-3.5 w-3.5" />
-                      {bid.amount}
-                    </p>
-                  </div>
-                  <Badge
-                    className={
-                      bid.status === "accepted"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : bid.status === "rejected"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    }
-                    data-testid={`badge-bid-status-${bid.id}`}
-                  >
-                    {bid.status}
-                  </Badge>
-                </div>
-                <p className="text-sm" data-testid={`text-bid-proposal-${bid.id}`}>
-                  {bid.proposal}
-                </p>
-                {bid.status === "pending" && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => updateBidMutation.mutate({ bidId: bid.id, status: "accepted" })}
-                      disabled={updateBidMutation.isPending}
-                      data-testid={`button-accept-bid-${bid.id}`}
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                      Accept
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateBidMutation.mutate({ bidId: bid.id, status: "rejected" })}
-                      disabled={updateBidMutation.isPending}
-                      data-testid={`button-reject-bid-${bid.id}`}
-                    >
-                      <XCircle className="h-3.5 w-3.5 mr-1" />
-                      Reject
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {user?.isAdmin && project.bids && project.bids.length === 0 && (
-        <Card className="mt-6">
-          <CardContent className="p-6 text-center text-muted-foreground" data-testid="text-no-bids">
-            No bids have been submitted yet.
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
 
 export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-
   return (
     <PortalLayout>
       {selectedProjectId ? (
-        <ProjectDetailView
-          projectId={selectedProjectId}
-          onBack={() => setSelectedProjectId(null)}
-        />
+        <ProjectDetailView projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
       ) : (
-        <ProjectListView
-          onSelectProject={setSelectedProjectId}
-        />
+        <ProjectListView onSelectProject={setSelectedProjectId} />
       )}
     </PortalLayout>
   );

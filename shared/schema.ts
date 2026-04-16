@@ -158,6 +158,11 @@ export const projectOpportunities = pgTable("project_opportunities", {
   status: text("status").notNull().default("open"),
   latitude: text("latitude"),
   longitude: text("longitude"),
+  category: text("category"),
+  organization: text("organization"),
+  gmailLink: text("gmail_link"),
+  emailSentDate: text("email_sent_date"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
