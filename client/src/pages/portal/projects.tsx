@@ -88,7 +88,7 @@ function extractContactLink(contactEmail: string | null | undefined): { href: st
   }
   const emailMatch = trimmed.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
   if (emailMatch) {
-    return { href: `mailto:${emailMatch[0]}`, label: emailMatch[0] };
+    return { href: `mailto:${emailMatch[0]}`, label: `Contact: ${emailMatch[0]}` };
   }
   return null;
 }
@@ -531,7 +531,16 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
                               <ExternalLink className="h-3 w-3 shrink-0" />
                               {contact.label}
                             </a>
-                          ) : null;
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                              data-testid={`link-apply-${project.id}`}
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                              View Details / Apply →
+                            </button>
+                          );
                         })()}
 
                         <div className="flex items-center justify-between gap-2 pt-0.5">

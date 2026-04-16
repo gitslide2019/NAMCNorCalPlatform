@@ -275,12 +275,7 @@ export async function seedSampleContent() {
     ];
 
     await db.execute(sql`
-      DELETE FROM project_opportunities WHERE title IN (
-        'Oakland Unified School District — Roosevelt Middle School Renovation',
-        'City of Berkeley — Streetscape Improvement Project',
-        'BART — Platform Safety Improvements (Multiple Stations)',
-        'Affordable Housing Development — East 14th Street'
-      )
+      DELETE FROM project_opportunities WHERE gmail_link IS NULL AND organization IS NULL
     `);
     await db.execute(sql`
       UPDATE project_opportunities SET status = 'unknown'
