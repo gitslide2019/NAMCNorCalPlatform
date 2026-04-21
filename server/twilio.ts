@@ -50,6 +50,9 @@ async function getCredentials() {
 
 export async function getTwilioClient() {
   const { accountSid, apiKey, apiKeySecret } = await getCredentials();
+  if (process.env.TWILIO_AUTH_TOKEN) {
+    return twilio(accountSid, process.env.TWILIO_AUTH_TOKEN);
+  }
   return twilio(apiKey, apiKeySecret, { accountSid });
 }
 
