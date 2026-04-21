@@ -33,10 +33,17 @@ async function getCredentials() {
   if (!accountSid || !accountSid.startsWith('AC')) {
     throw new Error('Twilio Account SID missing or invalid (must start with "AC"). Set TWILIO_ACCOUNT_SID env var to your Twilio Account SID.');
   }
+  const connectorApiKey = connectionSettings.settings.api_key;
+  const apiKey = process.env.TWILIO_API_KEY_SID
+    || (typeof connectorApiKey === 'string' && connectorApiKey.startsWith('SK') ? connectorApiKey : undefined);
+  if (!apiKey || !apiKey.startsWith('SK')) {
+    throw new Error('Twilio API Key SID missing or invalid (must start with "SK"). Set TWILIO_API_KEY_SID env var.');
+  }
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET || connectionSettings.settings.api_key_secret;
   return {
     accountSid,
-    apiKey: connectionSettings.settings.api_key,
-    apiKeySecret: connectionSettings.settings.api_key_secret,
+    apiKey,
+    apiKeySecret,
     phoneNumber: connectionSettings.settings.phone_number
   };
 }
