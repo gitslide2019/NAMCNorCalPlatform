@@ -27,8 +27,14 @@ async function getCredentials() {
   if (!connectionSettings || (!connectionSettings.settings.account_sid || !connectionSettings.settings.api_key || !connectionSettings.settings.api_key_secret)) {
     throw new Error('Twilio not connected. Please connect your Twilio account in the Replit integrations panel.');
   }
+  const connectorAccountSid = connectionSettings.settings.account_sid;
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+    || (typeof connectorAccountSid === 'string' && connectorAccountSid.startsWith('AC') ? connectorAccountSid : undefined);
+  if (!accountSid || !accountSid.startsWith('AC')) {
+    throw new Error('Twilio Account SID missing or invalid (must start with "AC"). Set TWILIO_ACCOUNT_SID env var to your Twilio Account SID.');
+  }
   return {
-    accountSid: connectionSettings.settings.account_sid,
+    accountSid,
     apiKey: connectionSettings.settings.api_key,
     apiKeySecret: connectionSettings.settings.api_key_secret,
     phoneNumber: connectionSettings.settings.phone_number

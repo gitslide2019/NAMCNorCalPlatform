@@ -96,3 +96,7 @@ waitForPort = 5000
 
 [agent]
 integrations = ["resend:1.0.0", "twilio:1.0.0", "github:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
