@@ -23,6 +23,7 @@ import Courses from "@/pages/portal/courses";
 import CourseCertificate from "@/pages/portal/certificate";
 import MemberDetail from "@/pages/portal/member-detail";
 import ResetPasswordPage from "@/pages/reset-password";
+import SmsTerms from "@/pages/sms-terms";
 import Documents from "@/pages/portal/documents";
 import Campaigns from "@/pages/portal/campaigns";
 import Notifications from "@/pages/portal/notifications";
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/sms-terms" component={SmsTerms} />
       <Route path="/portal">
         <ProtectedRoute><Dashboard /></ProtectedRoute>
       </Route>
