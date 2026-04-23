@@ -64,12 +64,14 @@ export async function getTwilioFromPhoneNumber() {
 export async function sendSms(to: string, body: string): Promise<{ success: boolean; sid?: string; error?: string }> {
   try {
     const client = await getTwilioClient();
-    const fromNumber = await getTwilioFromPhoneNumber();
-    const message = await client.messages.create({
-      body,
-      from: fromNumber,
-      to,
-    });
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+    const params: any = { body, to };
+    if (messagingServiceSid) {
+      params.messagingServiceSid = messagingServiceSid;
+    } else {
+      params.from = await getTwilioFromPhoneNumber();
+    }
+    const message = await client.messages.create(params);
     return { success: true, sid: message.sid };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to send SMS' };
