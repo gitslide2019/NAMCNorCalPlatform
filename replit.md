@@ -14,6 +14,8 @@ Key capabilities include:
 
 Preferred communication style: Simple, everyday language.
 
+**Critical: Never send SMS, email, or any outbound messages (Twilio, Resend, etc.) without explicit per-action permission from the user. This applies to test sends, bulk blasts, single recipients — all of it.**
+
 ## System Architecture
 
 ### Frontend Architecture
