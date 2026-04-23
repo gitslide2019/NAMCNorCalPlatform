@@ -36,10 +36,11 @@ async function getCredentials() {
   const connectorApiKey = connectionSettings.settings.api_key;
   const apiKey = process.env.TWILIO_API_KEY_SID
     || (typeof connectorApiKey === 'string' && connectorApiKey.startsWith('SK') ? connectorApiKey : undefined);
-  if (!apiKey || !apiKey.startsWith('SK')) {
-    throw new Error('Twilio API Key SID missing or invalid (must start with "SK"). Set TWILIO_API_KEY_SID env var.');
-  }
   const apiKeySecret = process.env.TWILIO_API_KEY_SECRET || connectionSettings.settings.api_key_secret;
+  // If Auth Token is set, API Key fields are optional (we'll auth as accountSid+authToken)
+  if (!process.env.TWILIO_AUTH_TOKEN && (!apiKey || !apiKey.startsWith('SK'))) {
+    throw new Error('Twilio API Key SID missing or invalid (must start with "SK"), and no TWILIO_AUTH_TOKEN fallback set.');
+  }
   return {
     accountSid,
     apiKey,
