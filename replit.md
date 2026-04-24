@@ -18,7 +18,7 @@ Preferred communication style: Simple, everyday language.
 
 **Email sending domain**: All Resend emails go from `NAMC NorCal <noreply@namcnorcal.org>` (hardcoded in `server/email.ts`). The `namcnorcal.org` domain has SPF/DKIM/DMARC records published at Squarespace DNS and is verified at Resend. This bypasses whatever `from_email` is configured on the Resend connector.
 
-**GitHub sync rhythm**: The Replit codebase is mirrored at `github.com/gitslide2019/NAMCNorCalPlatform`. After significant work or before/after every published deploy, push local main to GitHub (`git push origin main`) to keep the two in sync. If GitHub gets ahead (someone edits there directly), fetch and reconcile before pushing.
+**GitHub sync rhythm**: The Replit codebase is mirrored at `github.com/gitslide2019/NAMCNorCalPlatform`. After significant work or before/after every published deploy, push local main to GitHub (`git push origin main`) to keep the two in sync. If GitHub gets ahead (someone edits there directly), fetch and reconcile before pushing. The Resend From address is sourced from the Resend connector (`from_email`), not hardcoded — keep it that way so local edits to `server/email.ts` don't fight the connector setting.
 
 ## System Architecture
 

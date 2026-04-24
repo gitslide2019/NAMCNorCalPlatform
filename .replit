@@ -104,3 +104,7 @@ integrations = ["resend:1.0.0", "twilio:1.0.0", "github:1.0.0"]
 [userenv]
 
 [userenv.shared]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
