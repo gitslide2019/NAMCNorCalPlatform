@@ -54,11 +54,29 @@ function stripHopByHop(headers) {
 /* ------------------------------------------------------------------ */
 function handleRequest(req, res) {
   if (!appReady) {
-    // Return a minimal valid HTML page so Replit's health checker is satisfied
-    const body = '<!DOCTYPE html><html><body>Starting...</body></html>';
+    // Health-check endpoints get a tiny 200 so Replit's checker stays happy.
+    // Browser requests get a self-refreshing splash so users don't sit on
+    // a dead "Starting..." page during cold starts.
+    const accept = String(req.headers['accept'] || '');
+    const isBrowser = accept.includes('text/html');
+    const body = isBrowser
+      ? '<!DOCTYPE html><html><head><title>Starting NAMC NorCal Member Portal</title>'
+        + '<meta http-equiv="refresh" content="3">'
+        + '<style>body{font-family:system-ui,-apple-system,sans-serif;background:#0e1628;color:#f5f9fc;'
+        + 'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}'
+        + '.box{max-width:420px;padding:2rem}h1{font-size:1.25rem;font-weight:500;margin:0 0 .75rem}'
+        + 'p{color:#9aa5b1;margin:0;font-size:.9rem}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;'
+        + 'background:#FFD700;margin:0 3px;animation:pulse 1.4s infinite ease-in-out}'
+        + '.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}'
+        + '@keyframes pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}</style></head>'
+        + '<body><div class="box"><h1>Waking up the portal'
+        + '<span class="dot"></span><span class="dot"></span><span class="dot"></span></h1>'
+        + '<p>This usually takes 10–20 seconds. The page will reload automatically.</p></div></body></html>'
+      : '{"status":"starting"}';
     res.writeHead(200, {
-      'Content-Type': 'text/html',
+      'Content-Type': isBrowser ? 'text/html' : 'application/json',
       'Content-Length': Buffer.byteLength(body),
+      'Cache-Control': 'no-store',
     });
     res.end(body);
     return;
