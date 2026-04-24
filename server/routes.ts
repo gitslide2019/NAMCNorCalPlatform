@@ -1,6 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
 import { storage } from "./storage";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema, insertSmsInvitationSchema } from "@shared/schema";
 import { sendSms } from "./twilio";
 import { z, ZodError } from "zod";
@@ -105,6 +109,36 @@ export async function registerRoutes(
         res.status(404).json({ message: "Application not found" });
         return;
       }
+
+      // When approving, ensure the applicant has a portal user account so they
+      // can sign in via the email magic-link flow. The password is set to an
+      // unguessable random hash — members must use the magic-link or
+      // password-reset flow to gain entry. No outbound email is sent here.
+      if (status === "approved" && application.email) {
+        const [existing] = await db
+          .select()
+          .from(users)
+          .where(eq(users.memberApplicationId, application.id));
+        if (!existing) {
+          const username = application.email.trim().toLowerCase();
+          const [collision] = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, username));
+          const finalUsername = collision ? `${username}+${application.id.slice(0, 6)}` : username;
+          const lockedPassword = `${randomBytes(64).toString("hex")}.${randomBytes(16).toString("hex")}`;
+          await db.insert(users).values({
+            username: finalUsername,
+            password: lockedPassword,
+            isAdmin: false,
+            isBoardMember: application.isBoardMember ?? false,
+            isActive: true,
+            memberApplicationId: application.id,
+          });
+          console.log(`[approve] auto-created portal user ${finalUsername} for application ${application.id}`);
+        }
+      }
+
       res.json(application);
     } catch (error) {
       console.error("Error updating application status:", error);
