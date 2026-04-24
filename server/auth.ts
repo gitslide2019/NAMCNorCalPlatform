@@ -285,7 +285,16 @@ export function setupAuth(app: Express) {
 
       const baseUrl = getAppBaseUrl(req);
       const loginUrl = `${baseUrl}/api/auth/verify-login?token=${token}`;
-      await sendLoginLinkEmail(application.email, loginUrl, application.contactName);
+      try {
+        await sendLoginLinkEmail(application.email, loginUrl, application.contactName);
+      } catch (sendErr) {
+        console.error("Login-link send failed:", sendErr);
+        res.status(502).json({
+          message:
+            "We couldn't send the sign-in email right now. Please try again in a few minutes, or contact NAMC NorCal directly for help.",
+        });
+        return;
+      }
 
       res.json({
         email: application.email,
@@ -457,7 +466,16 @@ export function setupAuth(app: Express) {
       const baseUrl = getAppBaseUrl(req);
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-      await sendPasswordResetEmail(application.email, resetUrl, application.contactName);
+      try {
+        await sendPasswordResetEmail(application.email, resetUrl, application.contactName);
+      } catch (sendErr) {
+        console.error("Password reset send failed:", sendErr);
+        res.status(502).json({
+          message:
+            "We couldn't send the password reset email right now. Please try again in a few minutes, or contact NAMC NorCal directly for help.",
+        });
+        return;
+      }
 
       res.json({
         email: application.email,
