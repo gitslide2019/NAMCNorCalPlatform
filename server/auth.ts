@@ -21,6 +21,17 @@ function getAppBaseUrl(req: any): string {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL.replace(/\/$/, "");
   }
+  if (process.env.NODE_ENV === "production") {
+    const forwardedHost = req?.headers?.["x-forwarded-host"];
+    if (typeof forwardedHost === "string" && forwardedHost.length > 0) {
+      const proto = req.headers["x-forwarded-proto"] || "https";
+      return `${proto}://${forwardedHost.split(",")[0].trim()}`;
+    }
+    const replitDomains = process.env.REPLIT_DOMAINS;
+    if (replitDomains) {
+      return `https://${replitDomains.split(",")[0].trim()}`;
+    }
+  }
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }

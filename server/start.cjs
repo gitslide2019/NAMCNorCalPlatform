@@ -64,10 +64,12 @@ function handleRequest(req, res) {
     return;
   }
 
+  const originalHost = req.headers['host'] || '';
   const forwardHeaders = Object.assign(stripHopByHop(req.headers), {
     'host': '127.0.0.1:' + CHILD_PORT,
     'x-forwarded-for': req.socket.remoteAddress || '',
     'x-forwarded-proto': 'https',
+    'x-forwarded-host': req.headers['x-forwarded-host'] || originalHost,
   });
 
   const proxy = http.request(
