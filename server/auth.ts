@@ -7,9 +7,9 @@ import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { db } from "./db";
-import { type User, users, membershipApplications, passwordResetTokens } from "@shared/schema";
-import { eq, and, gt } from "drizzle-orm";
-import { sendPasswordResetEmail } from "./email";
+import { type User, users, membershipApplications, passwordResetTokens, loginTokens } from "@shared/schema";
+import { eq, and, gt, sql, desc } from "drizzle-orm";
+import { sendPasswordResetEmail, sendLoginLinkEmail } from "./email";
 
 const scryptAsync = promisify(scrypt);
 
@@ -173,6 +173,166 @@ export function setupAuth(app: Express) {
     }
     const { password: _, ...safeUser } = req.user!;
     res.json(safeUser);
+  });
+
+  // In-memory IP throttle for the magic-link endpoint.
+  // 10 requests per IP per 5 minutes. Cheap brute-force/abuse mitigation.
+  const ipRequestLog = new Map<string, number[]>();
+  const IP_WINDOW_MS = 5 * 60 * 1000;
+  const IP_MAX_REQUESTS = 10;
+
+  function checkIpThrottle(ip: string): boolean {
+    const now = Date.now();
+    const cutoff = now - IP_WINDOW_MS;
+    const recent = (ipRequestLog.get(ip) || []).filter((t) => t > cutoff);
+    if (recent.length >= IP_MAX_REQUESTS) {
+      ipRequestLog.set(ip, recent);
+      return false;
+    }
+    recent.push(now);
+    ipRequestLog.set(ip, recent);
+    // Opportunistic cleanup so the map doesn't grow forever
+    if (ipRequestLog.size > 5000) {
+      for (const [k, v] of ipRequestLog) {
+        const filtered = v.filter((t) => t > cutoff);
+        if (filtered.length === 0) ipRequestLog.delete(k);
+        else ipRequestLog.set(k, filtered);
+      }
+    }
+    return true;
+  }
+
+  app.post("/api/auth/request-login-link", async (req, res) => {
+    const genericMessage = "If that email is on file, we've sent you a sign-in link.";
+
+    const { email } = req.body || {};
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ message: "Email is required" });
+      return;
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      res.status(400).json({ message: "Email is required" });
+      return;
+    }
+
+    const ip =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0].trim() ||
+      req.socket.remoteAddress ||
+      "unknown";
+    if (!checkIpThrottle(ip)) {
+      res.status(429).json({ message: "Too many requests. Please wait a few minutes and try again." });
+      return;
+    }
+
+    // Respond immediately with the generic message so the response time
+    // doesn't leak whether the email matches an existing account.
+    res.json({ message: genericMessage });
+
+    // Do the lookup + send in the background. Errors are logged, never surfaced.
+    (async () => {
+      try {
+        const [application] = await db
+          .select()
+          .from(membershipApplications)
+          .where(sql`lower(${membershipApplications.email}) = ${normalizedEmail}`);
+        if (!application) return;
+
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.memberApplicationId, application.id));
+        if (!user || user.isActive === false) return;
+
+        // Per-user throttle: skip if a link was issued in the last 60s
+        const [recent] = await db
+          .select()
+          .from(loginTokens)
+          .where(
+            and(
+              eq(loginTokens.userId, user.id),
+              gt(loginTokens.createdAt, new Date(Date.now() - 60 * 1000))
+            )
+          )
+          .orderBy(desc(loginTokens.createdAt))
+          .limit(1);
+        if (recent) return;
+
+        const token = randomBytes(32).toString("hex");
+        const tokenHash = hashToken(token);
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        await db.insert(loginTokens).values({
+          userId: user.id,
+          token: tokenHash,
+          expiresAt,
+        });
+
+        const baseUrl = getAppBaseUrl(req);
+        const loginUrl = `${baseUrl}/api/auth/verify-login?token=${token}`;
+        await sendLoginLinkEmail(application.email, loginUrl, application.contactName);
+      } catch (error) {
+        console.error("Background login-link processing error:", error);
+      }
+    })();
+  });
+
+  app.get("/api/auth/verify-login", async (req, res, next) => {
+    try {
+      const token = typeof req.query.token === "string" ? req.query.token : "";
+      if (!token) {
+        res.redirect("/auth?expired=1");
+        return;
+      }
+
+      const tokenHash = hashToken(token);
+
+      const [loginToken] = await db
+        .select()
+        .from(loginTokens)
+        .where(
+          and(
+            eq(loginTokens.token, tokenHash),
+            gt(loginTokens.expiresAt, new Date())
+          )
+        );
+
+      if (!loginToken || loginToken.usedAt) {
+        res.redirect("/auth?expired=1");
+        return;
+      }
+
+      // Mark token used immediately (single-use even on race)
+      const [claimed] = await db
+        .update(loginTokens)
+        .set({ usedAt: new Date() })
+        .where(and(eq(loginTokens.id, loginToken.id), sql`${loginTokens.usedAt} IS NULL`))
+        .returning();
+
+      if (!claimed) {
+        res.redirect("/auth?expired=1");
+        return;
+      }
+
+      const user = await storage.getUser(loginToken.userId);
+      if (!user) {
+        res.redirect("/auth?expired=1");
+        return;
+      }
+
+      if (user.isActive === false) {
+        res.redirect("/auth?expired=1");
+        return;
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.redirect("/portal");
+      });
+    } catch (error) {
+      console.error("Verify login error:", error);
+      res.redirect("/auth?expired=1");
+    }
   });
 
   app.post("/api/auth/forgot-password", async (req, res) => {

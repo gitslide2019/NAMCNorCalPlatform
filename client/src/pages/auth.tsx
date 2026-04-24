@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -11,8 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Mail, AlertCircle } from "lucide-react";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
+
+const magicLinkSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -28,14 +32,27 @@ const registerSchema = z.object({
   path: ["confirmPassword"],
 });
 
+type MagicLinkForm = z.infer<typeof magicLinkSchema>;
 type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
 
+type Mode = "magic" | "login" | "register" | "forgot";
+
 export default function AuthPage() {
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+  const [mode, setMode] = useState<Mode>("magic");
+  const [linkExpired, setLinkExpired] = useState(false);
   const { user, loginMutation, registerMutation } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("expired") === "1") {
+      setLinkExpired(true);
+      // Clean the query string so the warning doesn't reappear on reload
+      window.history.replaceState({}, "", "/auth");
+    }
+  }, [location]);
 
   if (user) {
     navigate("/portal");
@@ -54,7 +71,24 @@ export default function AuthPage() {
             <p className="text-muted-foreground">Member Portal</p>
           </div>
 
-          {mode === "login" ? (
+          {linkExpired && (mode === "magic" || mode === "login") && (
+            <div
+              className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-sm p-3 rounded-md mb-4 flex gap-2"
+              data-testid="alert-link-expired"
+            >
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">That sign-in link has expired or already been used.</p>
+                <p className="mt-1">Enter your email below to get a fresh one.</p>
+              </div>
+            </div>
+          )}
+
+          {mode === "magic" ? (
+            <MagicLinkForm
+              onShowAdminLogin={() => setMode("login")}
+            />
+          ) : mode === "login" ? (
             <LoginForm
               onSubmit={(data) => {
                 loginMutation.mutate(data, {
@@ -66,6 +100,7 @@ export default function AuthPage() {
               }}
               isPending={loginMutation.isPending}
               onForgotPassword={() => setMode("forgot")}
+              onBackToMagic={() => setMode("magic")}
             />
           ) : mode === "register" ? (
             <RegisterForm
@@ -83,16 +118,30 @@ export default function AuthPage() {
             <ForgotPasswordForm onBackToLogin={() => setMode("login")} />
           )}
 
-          {mode !== "forgot" && (
+          {mode === "login" && (
             <p className="text-center text-sm text-muted-foreground mt-6">
-              {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+              Don't have an account?{" "}
               <button
                 type="button"
                 className="text-primary font-medium hover:underline"
-                onClick={() => setMode(mode === "login" ? "register" : "login")}
+                onClick={() => setMode("register")}
                 data-testid="button-toggle-auth"
               >
-                {mode === "login" ? "Register" : "Sign In"}
+                Register
+              </button>
+            </p>
+          )}
+
+          {mode === "register" && (
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Already have an account?{" "}
+              <button
+                type="button"
+                className="text-primary font-medium hover:underline"
+                onClick={() => setMode("magic")}
+                data-testid="button-toggle-auth"
+              >
+                Sign In
               </button>
             </p>
           )}
@@ -128,7 +177,122 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data: LoginForm) => void; isPending: boolean; onForgotPassword: () => void }) {
+function MagicLinkForm({ onShowAdminLogin }: { onShowAdminLogin: () => void }) {
+  const form = useForm<MagicLinkForm>({
+    resolver: zodResolver(magicLinkSchema),
+    defaultValues: { email: "" },
+  });
+
+  const requestMutation = useMutation({
+    mutationFn: async (data: MagicLinkForm) => {
+      const res = await apiRequest("POST", "/api/auth/request-login-link", data);
+      return res.json();
+    },
+  });
+
+  if (requestMutation.isSuccess) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+          <h2 className="text-lg font-bold mb-2" data-testid="text-magic-success">Check your inbox</h2>
+          <p className="text-muted-foreground text-sm mb-2">
+            If that email is on file, we've sent you a sign-in link.
+          </p>
+          <p className="text-muted-foreground text-sm mb-6">
+            The link expires in 15 minutes. Check your spam folder if you don't see it.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => requestMutation.reset()}
+            data-testid="button-send-another"
+          >
+            Use a different email
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle data-testid="text-magic-title">Sign in to the Member Portal</CardTitle>
+        <CardDescription>
+          Enter the email on file with your NAMC NorCal membership and we'll send you a one-time sign-in link.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {requestMutation.isError && (
+          <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md mb-4" data-testid="text-magic-error">
+            {(requestMutation.error as Error)?.message || "Something went wrong. Please try again."}
+          </div>
+        )}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit((data) => requestMutation.mutate(data))}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email address</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="you@company.com"
+                      autoComplete="email"
+                      {...field}
+                      data-testid="input-magic-email"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={requestMutation.isPending}
+              data-testid="button-send-link"
+            >
+              {requestMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
+              )}
+              Send me a sign-in link
+            </Button>
+          </form>
+        </Form>
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          <button
+            type="button"
+            className="text-primary font-medium hover:underline"
+            onClick={onShowAdminLogin}
+            data-testid="button-admin-signin"
+          >
+            Admin sign-in
+          </button>
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoginForm({
+  onSubmit,
+  isPending,
+  onForgotPassword,
+  onBackToMagic,
+}: {
+  onSubmit: (data: LoginForm) => void;
+  isPending: boolean;
+  onForgotPassword: () => void;
+  onBackToMagic: () => void;
+}) {
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { username: "", password: "" },
@@ -137,8 +301,8 @@ function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data:
   return (
     <Card>
       <CardHeader>
-        <CardTitle data-testid="text-login-title">Sign In</CardTitle>
-        <CardDescription>Enter your credentials to access the member portal</CardDescription>
+        <CardTitle data-testid="text-login-title">Admin Sign In</CardTitle>
+        <CardDescription>Use your username and password.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -150,7 +314,7 @@ function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data:
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-username" />
+                    <Input {...field} autoComplete="username" data-testid="input-username" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -173,7 +337,7 @@ function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data:
                     </button>
                   </div>
                   <FormControl>
-                    <Input type="password" {...field} data-testid="input-password" />
+                    <Input type="password" autoComplete="current-password" {...field} data-testid="input-password" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,6 +349,17 @@ function LoginForm({ onSubmit, isPending, onForgotPassword }: { onSubmit: (data:
             </Button>
           </form>
         </Form>
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          Member?{" "}
+          <button
+            type="button"
+            className="text-primary font-medium hover:underline"
+            onClick={onBackToMagic}
+            data-testid="button-back-to-magic"
+          >
+            Sign in with email link instead
+          </button>
+        </p>
       </CardContent>
     </Card>
   );

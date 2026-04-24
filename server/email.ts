@@ -149,6 +149,56 @@ export async function sendPasswordResetEmail(
   return data;
 }
 
+export async function sendLoginLinkEmail(
+  toEmail: string,
+  loginUrl: string,
+  contactName: string
+) {
+  const { client, fromEmail } = await getUncachableResendClient();
+
+  const firstName = contactName.split(" ")[0] || "Member";
+
+  const body = `
+    <h2 style="color: #1a1a1a; margin: 0 0 16px;">Your sign-in link</h2>
+    <p style="color: #333; line-height: 1.6;">Hi ${firstName},</p>
+    <p style="color: #333; line-height: 1.6;">
+      Click the button below to sign in to the NAMC NorCal Member Portal.
+      No password needed.
+    </p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${loginUrl}"
+         style="background-color: #E5A830; color: #000; text-decoration: none;
+                padding: 14px 32px; border-radius: 6px; font-weight: 600;
+                display: inline-block; font-size: 16px;">
+        Sign In to Member Portal
+      </a>
+    </div>
+    <p style="color: #666; font-size: 14px; line-height: 1.6;">
+      This link expires in 15 minutes and can only be used once.
+      If you didn't request this, you can safely ignore this email.
+    </p>
+    <p style="color: #999; font-size: 12px; margin-top: 20px; word-break: break-all;">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <a href="${loginUrl}" style="color: #E5A830;">${loginUrl}</a>
+    </p>
+  `;
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
+    to: [toEmail],
+    subject: "Your NAMC NorCal sign-in link",
+    html: emailWrapper(body),
+    attachments: logoAttachments(),
+  });
+
+  if (error) {
+    console.error("Failed to send login link email:", error);
+    throw new Error("Failed to send login link email");
+  }
+
+  return data;
+}
+
 export async function sendNewsletterEmail(
   toEmail: string,
   title: string,
