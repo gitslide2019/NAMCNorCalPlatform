@@ -202,9 +202,18 @@ export function setupAuth(app: Express) {
     return true;
   }
 
-  app.post("/api/auth/request-login-link", async (req, res) => {
-    const genericMessage = "If that email is on file, we've sent you a sign-in link.";
+  function getClientIp(req: any): string {
+    return (
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0].trim() ||
+      req.socket.remoteAddress ||
+      "unknown"
+    );
+  }
 
+  const NO_ACCOUNT_MSG =
+    "We couldn't find a member account with that email. Double-check the spelling, or contact NAMC NorCal if you think this is a mistake.";
+
+  app.post("/api/auth/request-login-link", async (req, res) => {
     const { email } = req.body || {};
     if (!email || typeof email !== "string") {
       res.status(400).json({ message: "Email is required" });
@@ -216,65 +225,131 @@ export function setupAuth(app: Express) {
       return;
     }
 
-    const ip =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0].trim() ||
-      req.socket.remoteAddress ||
-      "unknown";
-    if (!checkIpThrottle(ip)) {
+    if (!checkIpThrottle(getClientIp(req))) {
       res.status(429).json({ message: "Too many requests. Please wait a few minutes and try again." });
       return;
     }
 
-    // Respond immediately with the generic message so the response time
-    // doesn't leak whether the email matches an existing account.
-    res.json({ message: genericMessage });
-
-    // Do the lookup + send in the background. Errors are logged, never surfaced.
-    (async () => {
-      try {
-        const [application] = await db
-          .select()
-          .from(membershipApplications)
-          .where(sql`lower(${membershipApplications.email}) = ${normalizedEmail}`);
-        if (!application) return;
-
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.memberApplicationId, application.id));
-        if (!user || user.isActive === false) return;
-
-        // Per-user throttle: skip if a link was issued in the last 60s
-        const [recent] = await db
-          .select()
-          .from(loginTokens)
-          .where(
-            and(
-              eq(loginTokens.userId, user.id),
-              gt(loginTokens.createdAt, new Date(Date.now() - 60 * 1000))
-            )
-          )
-          .orderBy(desc(loginTokens.createdAt))
-          .limit(1);
-        if (recent) return;
-
-        const token = randomBytes(32).toString("hex");
-        const tokenHash = hashToken(token);
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-        await db.insert(loginTokens).values({
-          userId: user.id,
-          token: tokenHash,
-          expiresAt,
-        });
-
-        const baseUrl = getAppBaseUrl(req);
-        const loginUrl = `${baseUrl}/api/auth/verify-login?token=${token}`;
-        await sendLoginLinkEmail(application.email, loginUrl, application.contactName);
-      } catch (error) {
-        console.error("Background login-link processing error:", error);
+    try {
+      const [application] = await db
+        .select()
+        .from(membershipApplications)
+        .where(sql`lower(${membershipApplications.email}) = ${normalizedEmail}`);
+      if (!application) {
+        res.status(404).json({ message: NO_ACCOUNT_MSG });
+        return;
       }
-    })();
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.memberApplicationId, application.id));
+      if (!user) {
+        res.status(404).json({ message: NO_ACCOUNT_MSG });
+        return;
+      }
+      if (user.isActive === false) {
+        res.status(403).json({ message: "Your account has been deactivated. Please contact NAMC NorCal." });
+        return;
+      }
+
+      // Per-user throttle: don't issue more than one link per 60s
+      const [recent] = await db
+        .select()
+        .from(loginTokens)
+        .where(
+          and(
+            eq(loginTokens.userId, user.id),
+            gt(loginTokens.createdAt, new Date(Date.now() - 60 * 1000))
+          )
+        )
+        .orderBy(desc(loginTokens.createdAt))
+        .limit(1);
+      if (recent) {
+        res.json({
+          email: application.email,
+          message: `We just sent a sign-in link to ${application.email} a moment ago — check your inbox.`,
+        });
+        return;
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const tokenHash = hashToken(token);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await db.insert(loginTokens).values({
+        userId: user.id,
+        token: tokenHash,
+        expiresAt,
+      });
+
+      const baseUrl = getAppBaseUrl(req);
+      const loginUrl = `${baseUrl}/api/auth/verify-login?token=${token}`;
+      await sendLoginLinkEmail(application.email, loginUrl, application.contactName);
+
+      res.json({
+        email: application.email,
+        message: `We sent a sign-in link to ${application.email}. It expires in 15 minutes.`,
+      });
+    } catch (error) {
+      console.error("Login-link request error:", error);
+      res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/auth/login-with-email", async (req, res, next) => {
+    try {
+      const { email, password } = req.body || {};
+      if (!email || !password) {
+        res.status(400).json({ message: "Email and password are required" });
+        return;
+      }
+      const normalizedEmail = String(email).trim().toLowerCase();
+
+      if (!checkIpThrottle(getClientIp(req))) {
+        res.status(429).json({ message: "Too many sign-in attempts. Please wait a few minutes and try again." });
+        return;
+      }
+
+      const [application] = await db
+        .select()
+        .from(membershipApplications)
+        .where(sql`lower(${membershipApplications.email}) = ${normalizedEmail}`);
+      if (!application) {
+        res.status(401).json({ message: NO_ACCOUNT_MSG });
+        return;
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.memberApplicationId, application.id));
+      if (!user) {
+        res.status(401).json({ message: NO_ACCOUNT_MSG });
+        return;
+      }
+      if (user.isActive === false) {
+        res.status(403).json({ message: "Your account has been deactivated. Please contact NAMC NorCal." });
+        return;
+      }
+
+      const ok = await comparePasswords(password, user.password);
+      if (!ok) {
+        res.status(401).json({
+          message: "Wrong password. Try again, or use the email sign-in link instead.",
+        });
+        return;
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        const { password: _pw, ...safeUser } = user;
+        res.json(safeUser);
+      });
+    } catch (error) {
+      console.error("Email login error:", error);
+      res.status(500).json({ message: "Sign-in failed. Please try again." });
+    }
   });
 
   app.get("/api/auth/verify-login", async (req, res, next) => {
@@ -342,14 +417,20 @@ export function setupAuth(app: Express) {
         res.status(400).json({ message: "Email is required" });
         return;
       }
+      const normalizedEmail = String(email).trim().toLowerCase();
+
+      if (!checkIpThrottle(getClientIp(req))) {
+        res.status(429).json({ message: "Too many requests. Please wait a few minutes and try again." });
+        return;
+      }
 
       const [application] = await db
         .select()
         .from(membershipApplications)
-        .where(eq(membershipApplications.email, email));
+        .where(sql`lower(${membershipApplications.email}) = ${normalizedEmail}`);
 
       if (!application) {
-        res.json({ message: "If an account with that email exists, a reset link has been sent." });
+        res.status(404).json({ message: NO_ACCOUNT_MSG });
         return;
       }
 
@@ -359,7 +440,7 @@ export function setupAuth(app: Express) {
         .where(eq(users.memberApplicationId, application.id));
 
       if (!user) {
-        res.json({ message: "If an account with that email exists, a reset link has been sent." });
+        res.status(404).json({ message: NO_ACCOUNT_MSG });
         return;
       }
 
@@ -378,7 +459,10 @@ export function setupAuth(app: Express) {
 
       await sendPasswordResetEmail(application.email, resetUrl, application.contactName);
 
-      res.json({ message: "If an account with that email exists, a reset link has been sent." });
+      res.json({
+        email: application.email,
+        message: `We sent a password reset link to ${application.email}. It expires in 1 hour.`,
+      });
     } catch (error) {
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Something went wrong. Please try again later." });
