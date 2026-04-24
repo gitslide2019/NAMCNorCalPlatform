@@ -88,14 +88,13 @@ async function getCredentials() {
   };
 }
 
+const FROM_EMAIL = "NAMC NorCal <noreply@namcnorcal.org>";
+
 async function getUncachableResendClient() {
-  const { apiKey, fromEmail } = await getCredentials();
-  const formattedFrom = fromEmail
-    ? `NAMC NorCal <${fromEmail}>`
-    : "NAMC NorCal <noreply@resend.dev>";
+  const { apiKey } = await getCredentials();
   return {
     client: new Resend(apiKey),
-    fromEmail: formattedFrom,
+    fromEmail: FROM_EMAIL,
   };
 }
 
@@ -483,11 +482,6 @@ export async function sendEventReminderEmail(
   eventLocation: string | null | undefined,
   eventDescription: string | null | undefined
 ): Promise<{ success: boolean; error?: string; id?: string }> {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return { success: false, error: "RESEND_API_KEY not configured" };
-
-  const client = new Resend(resendKey);
-
   const timeStr = eventTime ? ` at ${eventTime}` : "";
   const locationHtml = eventLocation
     ? `<p style="margin: 6px 0;"><strong>Location:</strong> ${eventLocation}</p>`
@@ -509,12 +503,13 @@ export async function sendEventReminderEmail(
   `;
 
   try {
+    const { client, fromEmail } = await getUncachableResendClient();
     const { data, error } = await client.emails.send({
-      from: "NAMC NorCal <noreply@resend.dev>",
+      from: fromEmail || "NAMC NorCal <noreply@resend.dev>",
       to: [toEmail],
       subject: `Reminder: ${eventTitle} is tomorrow`,
       html: emailWrapper(htmlBody),
-      attachments: LOGO_ATTACHMENT ? [LOGO_ATTACHMENT] : [],
+      attachments: logoAttachments(),
     });
 
     if (error) return { success: false, error: error.message };
