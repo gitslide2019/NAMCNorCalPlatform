@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, committees, committeeMeetings, committeeTasks } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema, insertSmsInvitationSchema } from "@shared/schema";
 import { sendSms } from "./twilio";
@@ -2865,11 +2865,16 @@ export async function registerRoutes(
         res.status(403).json({ message: "Only the chair or an admin can edit this committee" });
         return;
       }
-      const allowed = ["name", "slug", "description", "mission", "category", "chairId", "isActive"];
-      const updates: Record<string, any> = {};
-      for (const k of allowed) {
-        if (req.body[k] !== undefined) updates[k] = req.body[k];
-      }
+      type CommitteeUpdate = Partial<Pick<typeof committees.$inferInsert, "name" | "slug" | "description" | "mission" | "category" | "chairId" | "isActive">>;
+      const updates: CommitteeUpdate = {};
+      const b = req.body as Record<string, unknown>;
+      if (typeof b.name === "string") updates.name = b.name;
+      if (typeof b.slug === "string") updates.slug = b.slug;
+      if (b.description === null || typeof b.description === "string") updates.description = b.description;
+      if (b.mission === null || typeof b.mission === "string") updates.mission = b.mission;
+      if (typeof b.category === "string") updates.category = b.category;
+      if (b.chairId === null || typeof b.chairId === "string") updates.chairId = b.chairId;
+      if (typeof b.isActive === "boolean") updates.isActive = b.isActive;
       // Archive/reactivate is an admin-only action — block chairs from toggling isActive
       if (updates.isActive !== undefined && !req.user?.isAdmin) {
         res.status(403).json({ message: "Only admins can archive or reactivate a committee" });
@@ -2986,6 +2991,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/portal/committees/:id/meetings", requireAuth, async (req, res) => {
+    try {
+      const committee = await storage.getCommittee(req.params.id);
+      if (!committee) { res.status(404).json({ message: "Committee not found" }); return; }
+      const meetings = await storage.getCommitteeMeetings(req.params.id);
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error listing meetings:", error);
+      res.status(500).json({ message: "Failed to list meetings" });
+    }
+  });
+
   app.post("/api/portal/committees/:id/meetings", requireAuth, async (req, res) => {
     try {
       if (!(await canManageCommittee(req, req.params.id))) {
@@ -3022,11 +3039,15 @@ export async function registerRoutes(
         res.status(403).json({ message: "Only the chair or an admin can edit meetings" });
         return;
       }
-      const allowed = ["title", "meetingDate", "meetingTime", "location", "agenda", "minutes"];
-      const updates: Record<string, any> = {};
-      for (const k of allowed) {
-        if (req.body[k] !== undefined) updates[k] = req.body[k];
-      }
+      type MeetingUpdate = Partial<Pick<typeof committeeMeetings.$inferInsert, "title" | "meetingDate" | "meetingTime" | "location" | "agenda" | "minutes">>;
+      const updates: MeetingUpdate = {};
+      const b = req.body as Record<string, unknown>;
+      if (typeof b.title === "string") updates.title = b.title;
+      if (typeof b.meetingDate === "string") updates.meetingDate = b.meetingDate;
+      if (b.meetingTime === null || typeof b.meetingTime === "string") updates.meetingTime = b.meetingTime;
+      if (b.location === null || typeof b.location === "string") updates.location = b.location;
+      if (b.agenda === null || typeof b.agenda === "string") updates.agenda = b.agenda;
+      if (b.minutes === null || typeof b.minutes === "string") updates.minutes = b.minutes;
       const updated = await storage.updateCommitteeMeeting(req.params.meetingId, updates);
       res.json(updated);
     } catch (error) {
@@ -3051,6 +3072,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting meeting:", error);
       res.status(500).json({ message: "Failed to delete meeting" });
+    }
+  });
+
+  app.get("/api/portal/committees/:id/tasks", requireAuth, async (req, res) => {
+    try {
+      const committee = await storage.getCommittee(req.params.id);
+      if (!committee) { res.status(404).json({ message: "Committee not found" }); return; }
+      const tasks = await storage.getCommitteeTasks(req.params.id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error listing tasks:", error);
+      res.status(500).json({ message: "Failed to list tasks" });
     }
   });
 
@@ -3095,17 +3128,23 @@ export async function registerRoutes(
       const isManager = await canManageCommittee(req, req.params.id);
       const isAssignee = task.assignedToId === req.user!.id;
 
-      const allowedForManager = ["title", "description", "assignedToId", "dueDate", "status", "completionNote"];
-      const allowedForAssignee = ["status", "completionNote"];
-      const allowed = isManager ? allowedForManager : (isAssignee ? allowedForAssignee : []);
-      if (allowed.length === 0) {
+      if (!isManager && !isAssignee) {
         res.status(403).json({ message: "Not allowed to edit this task" });
         return;
       }
-      const updates: Record<string, any> = {};
-      for (const k of allowed) {
-        if (req.body[k] !== undefined) updates[k] = req.body[k];
+      type TaskUpdate = Partial<Pick<typeof committeeTasks.$inferInsert, "title" | "description" | "assignedToId" | "dueDate" | "status" | "completionNote" | "completedAt">>;
+      const updates: TaskUpdate = {};
+      const b = req.body as Record<string, unknown>;
+      // Manager-only fields
+      if (isManager) {
+        if (typeof b.title === "string") updates.title = b.title;
+        if (b.description === null || typeof b.description === "string") updates.description = b.description;
+        if (b.assignedToId === null || typeof b.assignedToId === "string") updates.assignedToId = b.assignedToId;
+        if (b.dueDate === null || typeof b.dueDate === "string") updates.dueDate = b.dueDate;
       }
+      // Fields any manager OR assignee may update
+      if (typeof b.status === "string") updates.status = b.status;
+      if (b.completionNote === null || typeof b.completionNote === "string") updates.completionNote = b.completionNote;
       if (updates.assignedToId) {
         const m = await storage.getCommitteeMembershipByUser(req.params.id, updates.assignedToId);
         if (!m) {

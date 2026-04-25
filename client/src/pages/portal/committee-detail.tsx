@@ -309,7 +309,7 @@ export default function CommitteeDetail() {
 
   const taskStatusMutation = useMutation({
     mutationFn: async ({ id, status, completionNote }: { id: string; status: string; completionNote?: string }) => {
-      const body: Record<string, any> = { status };
+      const body: { status: string; completionNote?: string | null } = { status };
       if (completionNote !== undefined) body.completionNote = completionNote || null;
       await apiRequest("PATCH", `/api/portal/committees/${committeeId}/tasks/${id}`, body);
     },
@@ -595,18 +595,18 @@ export default function CommitteeDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="meetings" className="mt-6 space-y-4">
+          <TabsContent value="meetings" className="mt-6 space-y-6">
             {canManage && (
               <Button size="sm" onClick={openCreateMeeting} data-testid="button-add-meeting">
                 <Plus className="h-4 w-4 mr-1" />
                 Schedule Meeting
               </Button>
             )}
-            {meetings.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No meetings scheduled.</CardContent></Card>
-            ) : (
-              <div className="space-y-3">
-                {meetings.map((m) => (
+            {(() => {
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const upcoming = meetings.filter((m) => m.meetingDate >= todayStr).sort((a, b) => a.meetingDate.localeCompare(b.meetingDate));
+              const past = meetings.filter((m) => m.meetingDate < todayStr).sort((a, b) => b.meetingDate.localeCompare(a.meetingDate));
+              const renderCard = (m: typeof meetings[number]) => (
                   <Card key={m.id} data-testid={`card-meeting-${m.id}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
@@ -652,9 +652,31 @@ export default function CommitteeDetail() {
                       </CardContent>
                     )}
                   </Card>
-                ))}
-              </div>
-            )}
+              );
+              if (meetings.length === 0) {
+                return <Card><CardContent className="py-12 text-center text-muted-foreground">No meetings scheduled.</CardContent></Card>;
+              }
+              return (
+                <>
+                  <section data-testid="section-meetings-upcoming">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Upcoming</h3>
+                    {upcoming.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No upcoming meetings.</p>
+                    ) : (
+                      <div className="space-y-3">{upcoming.map(renderCard)}</div>
+                    )}
+                  </section>
+                  <section data-testid="section-meetings-past">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Past</h3>
+                    {past.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No past meetings yet.</p>
+                    ) : (
+                      <div className="space-y-3">{past.map(renderCard)}</div>
+                    )}
+                  </section>
+                </>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6 space-y-4">
@@ -664,13 +686,13 @@ export default function CommitteeDetail() {
                 Add Task
               </Button>
             )}
-            {tasks.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No tasks yet.</CardContent></Card>
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <ul className="divide-y">
-                    {tasks.map((t) => {
+            {(() => {
+              if (tasks.length === 0) {
+                return <Card><CardContent className="py-12 text-center text-muted-foreground">No tasks yet.</CardContent></Card>;
+              }
+              const openTasks = tasks.filter((t) => t.status !== "completed");
+              const doneTasks = tasks.filter((t) => t.status === "completed");
+              const renderRow = (t: typeof tasks[number]) => {
                       const canEditStatus = canManage || (t.assignedToId && t.assignedToId === user?.id);
                       return (
                         <li key={t.id} className="p-4" data-testid={`row-task-${t.id}`}>
@@ -735,11 +757,28 @@ export default function CommitteeDetail() {
                           </div>
                         </li>
                       );
-                    })}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
+              };
+              return (
+                <>
+                  <section data-testid="section-tasks-open">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Open</h3>
+                    {openTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No open tasks.</p>
+                    ) : (
+                      <Card><CardContent className="p-0"><ul className="divide-y">{openTasks.map(renderRow)}</ul></CardContent></Card>
+                    )}
+                  </section>
+                  <section data-testid="section-tasks-done" className="mt-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Done</h3>
+                    {doneTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No completed tasks yet.</p>
+                    ) : (
+                      <Card><CardContent className="p-0"><ul className="divide-y">{doneTasks.map(renderRow)}</ul></CardContent></Card>
+                    )}
+                  </section>
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
 
