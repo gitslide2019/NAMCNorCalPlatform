@@ -151,6 +151,7 @@ export default function CommitteeDetail() {
     mutationFn: async () => {
       await apiRequest("PATCH", `/api/portal/committees/${committeeId}`, {
         name: editName,
+        mission: editMission || null,
         description: editDescription || null,
         category: editCategory,
         chairId: editChairId || null,
@@ -339,6 +340,7 @@ export default function CommitteeDetail() {
   const openEdit = () => {
     if (!data) return;
     setEditName(data.committee.name);
+    setEditMission(data.committee.mission || "");
     setEditDescription(data.committee.description || "");
     setEditCategory(data.committee.category);
     setEditChairId(data.committee.chairId || "");
@@ -481,14 +483,27 @@ export default function CommitteeDetail() {
               <CardHeader>
                 <CardTitle>About this committee</CardTitle>
               </CardHeader>
-              <CardContent>
-                {committee.description ? (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed" data-testid="text-committee-description">
-                    {committee.description}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No description provided yet.</p>
-                )}
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Mission</h3>
+                  {committee.mission ? (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed" data-testid="text-committee-mission">
+                      {committee.mission}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No mission statement yet.</p>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Description</h3>
+                  {committee.description ? (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed" data-testid="text-committee-description">
+                      {committee.description}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No description provided yet.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -754,6 +769,10 @@ export default function CommitteeDetail() {
                     {memberOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Mission</label>
+                <Textarea value={editMission} onChange={(e) => setEditMission(e.target.value)} rows={3} placeholder="What is this committee's mission?" data-testid="input-edit-mission" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Description</label>
