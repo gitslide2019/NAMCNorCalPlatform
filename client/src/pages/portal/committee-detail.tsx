@@ -45,6 +45,7 @@ import {
   UserMinus,
   UserPlus,
   LogOut,
+  CheckCircle2,
 } from "lucide-react";
 import type { Committee, CommitteeMembership, CommitteeMeeting, CommitteeTask } from "@shared/schema";
 
@@ -101,6 +102,7 @@ export default function CommitteeDetail() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editMission, setEditMission] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("general");
   const [editChairId, setEditChairId] = useState<string>("");
@@ -124,6 +126,10 @@ export default function CommitteeDetail() {
   const [tAssigneeId, setTAssigneeId] = useState<string>("");
   const [tDueDate, setTDueDate] = useState("");
   const [tStatus, setTStatus] = useState("open");
+
+  // Completion note dialog (shown when marking a task "completed")
+  const [completeTaskId, setCompleteTaskId] = useState<string | null>(null);
+  const [completeNote, setCompleteNote] = useState("");
 
   const { data, isLoading } = useQuery<DetailResponse>({
     queryKey: ["/api/portal/committees", committeeId],
@@ -158,32 +164,67 @@ export default function CommitteeDetail() {
     onError: (e: Error) => toast({ title: "Update failed", description: e.message, variant: "destructive" }),
   });
 
-  const deleteCommitteeMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("DELETE", `/api/portal/committees/${committeeId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/committees"] });
-      toast({ title: "Committee deleted" });
-      setLocation("/portal/committees");
-    },
-    onError: (e: Error) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
-  });
-
   const joinMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", `/api/portal/committees/${committeeId}/join`);
     },
-    onSuccess: () => { invalidate(); toast({ title: "Joined committee" }); },
-    onError: (e: Error) => toast({ title: "Could not join", description: e.message, variant: "destructive" }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["/api/portal/committees", committeeId] });
+      const previous = queryClient.getQueryData<DetailResponse>(["/api/portal/committees", committeeId]);
+      if (previous && user) {
+        queryClient.setQueryData<DetailResponse>(["/api/portal/committees", committeeId], {
+          ...previous,
+          isMember: true,
+          myMembershipId: previous.myMembershipId ?? "optimistic",
+          members: previous.members.find((m) => m.userId === user.id)
+            ? previous.members
+            : [
+                ...previous.members,
+                {
+                  id: "optimistic",
+                  committeeId: committeeId!,
+                  userId: user.id,
+                  joinedAt: new Date() as any,
+                  username: user.username,
+                  displayName: (user as any).displayName || user.username,
+                  memberApplicationId: null,
+                } as any,
+              ],
+        });
+      }
+      return { previous };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["/api/portal/committees", committeeId], ctx.previous);
+      toast({ title: "Could not join", description: e.message, variant: "destructive" });
+    },
+    onSuccess: () => { toast({ title: "Joined committee" }); },
+    onSettled: () => { invalidate(); },
   });
 
   const leaveMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/portal/committees/${committeeId}/leave`);
     },
-    onSuccess: () => { invalidate(); toast({ title: "Left committee" }); },
-    onError: (e: Error) => toast({ title: "Could not leave", description: e.message, variant: "destructive" }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["/api/portal/committees", committeeId] });
+      const previous = queryClient.getQueryData<DetailResponse>(["/api/portal/committees", committeeId]);
+      if (previous && user) {
+        queryClient.setQueryData<DetailResponse>(["/api/portal/committees", committeeId], {
+          ...previous,
+          isMember: false,
+          myMembershipId: null,
+          members: previous.members.filter((m) => m.userId !== user.id),
+        });
+      }
+      return { previous };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["/api/portal/committees", committeeId], ctx.previous);
+      toast({ title: "Could not leave", description: e.message, variant: "destructive" });
+    },
+    onSuccess: () => { toast({ title: "Left committee" }); },
+    onSettled: () => { invalidate(); },
   });
 
   const addMemberMutation = useMutation({
@@ -265,12 +306,27 @@ export default function CommitteeDetail() {
   });
 
   const taskStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      await apiRequest("PATCH", `/api/portal/committees/${committeeId}/tasks/${id}`, { status });
+    mutationFn: async ({ id, status, completionNote }: { id: string; status: string; completionNote?: string }) => {
+      const body: Record<string, any> = { status };
+      if (completionNote !== undefined) body.completionNote = completionNote || null;
+      await apiRequest("PATCH", `/api/portal/committees/${committeeId}/tasks/${id}`, body);
     },
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      setCompleteTaskId(null);
+      setCompleteNote("");
+    },
     onError: (e: Error) => toast({ title: "Update failed", description: e.message, variant: "destructive" }),
   });
+
+  const handleStatusChange = (taskId: string, currentStatus: string, newStatus: string) => {
+    if (newStatus === "completed" && currentStatus !== "completed") {
+      setCompleteTaskId(taskId);
+      setCompleteNote("");
+      return;
+    }
+    taskStatusMutation.mutate({ id: taskId, status: newStatus });
+  };
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -407,22 +463,6 @@ export default function CommitteeDetail() {
               <Button variant="outline" size="sm" onClick={openEdit} data-testid="button-edit-committee">
                 <Pencil className="h-4 w-4 mr-1" />
                 Edit
-              </Button>
-            )}
-            {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (confirm(`Delete "${committee.name}" and all its meetings and tasks? This cannot be undone.`)) {
-                    deleteCommitteeMutation.mutate();
-                  }
-                }}
-                disabled={deleteCommitteeMutation.isPending}
-                data-testid="button-delete-committee"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
               </Button>
             )}
           </div>
@@ -630,13 +670,25 @@ export default function CommitteeDetail() {
                               <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-3">
                                 {t.assignedToName && <span>Assigned to: {t.assignedToName}</span>}
                                 {t.dueDate && <span>Due: {formatDate(t.dueDate)}</span>}
+                                {t.completedAt && (
+                                  <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Completed {new Date(t.completedAt).toLocaleDateString()}
+                                  </span>
+                                )}
                               </div>
+                              {t.completionNote && (
+                                <div className="mt-2 text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900 rounded px-2 py-1.5" data-testid={`text-completion-note-${t.id}`}>
+                                  <span className="font-medium">Completion note: </span>
+                                  <span className="whitespace-pre-wrap">{t.completionNote}</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {canEditStatus && (
                                 <Select
                                   value={t.status}
-                                  onValueChange={(v) => taskStatusMutation.mutate({ id: t.id, status: v })}
+                                  onValueChange={(v) => handleStatusChange(t.id, t.status, v)}
                                 >
                                   <SelectTrigger className="w-32" data-testid={`select-task-status-${t.id}`}>
                                     <SelectValue />
@@ -733,6 +785,46 @@ export default function CommitteeDetail() {
             <DialogFooter>
               <Button onClick={() => meetingMutation.mutate()} disabled={!mTitle.trim() || !mDate || meetingMutation.isPending} data-testid="button-save-meeting">
                 {meetingMutation.isPending ? "Saving..." : "Save meeting"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Completion note dialog */}
+        <Dialog open={completeTaskId !== null} onOpenChange={(o) => { if (!o) { setCompleteTaskId(null); setCompleteNote(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                Mark task complete
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Add a short note about what was done (optional).
+              </p>
+              <Textarea
+                value={completeNote}
+                onChange={(e) => setCompleteNote(e.target.value)}
+                placeholder="e.g. Spoke with three vendors, picked Acme Catering. Contract signed."
+                rows={4}
+                data-testid="input-completion-note"
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setCompleteTaskId(null); setCompleteNote(""); }}
+                data-testid="button-cancel-complete"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => completeTaskId && taskStatusMutation.mutate({ id: completeTaskId, status: "completed", completionNote: completeNote })}
+                disabled={taskStatusMutation.isPending}
+                data-testid="button-confirm-complete"
+              >
+                {taskStatusMutation.isPending ? "Saving..." : "Mark complete"}
               </Button>
             </DialogFooter>
           </DialogContent>

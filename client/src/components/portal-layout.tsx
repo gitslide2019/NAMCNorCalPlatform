@@ -49,6 +49,7 @@ interface SearchResults {
   events: { id: string; title: string; eventDate: string; type: string }[];
   newsletters: { id: string; title: string; type: string }[];
   committees: { id: string; title: string; category: string; type: string }[];
+  meetings: { id: string; title: string; committeeId: string; committeeName: string; meetingDate: string; type: string }[];
 }
 
 const navItems = [
@@ -117,7 +118,7 @@ function GlobalSearch() {
     setLocation(path);
   };
 
-  const totalResults = results ? results.members.length + results.projects.length + results.discussions.length + results.events.length + results.newsletters.length + (results.committees?.length || 0) : 0;
+  const totalResults = results ? results.members.length + results.projects.length + results.discussions.length + results.events.length + results.newsletters.length + (results.committees?.length || 0) + (results.meetings?.length || 0) : 0;
 
   return (
     <div ref={ref} className="relative">
@@ -193,12 +194,23 @@ function GlobalSearch() {
                   </div>
                 )}
                 {results.committees && results.committees.length > 0 && (
-                  <div>
+                  <div className="mb-2">
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Committees</p>
                     {results.committees.map(c => (
                       <button key={c.id} onClick={() => navigate(`/portal/committees/${c.id}`)} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-committee-${c.id}`}>
                         <span className="font-medium">{c.title}</span>
                         <Badge variant="secondary" className="ml-2 text-[10px]">{c.category}</Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.meetings && results.meetings.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground px-2 py-1">Committee Meetings</p>
+                    {results.meetings.map(m => (
+                      <button key={m.id} onClick={() => navigate(`/portal/committees/${m.committeeId}`)} className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer" data-testid={`search-result-meeting-${m.id}`}>
+                        <span className="font-medium">{m.title}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{m.committeeName}</span>
                       </button>
                     ))}
                   </div>

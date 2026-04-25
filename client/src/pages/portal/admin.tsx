@@ -43,6 +43,9 @@ import {
   Plus,
   CalendarClock,
   RefreshCw,
+  UsersRound,
+  Trash2,
+  Crown,
 } from "lucide-react";
 import {
   Dialog,
@@ -156,7 +159,7 @@ export default function Admin() {
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className={`grid w-full max-w-4xl min-w-max ${user?.isAdmin ? "grid-cols-6" : "grid-cols-1"}`}>
+            <TabsList className={`grid w-full max-w-5xl min-w-max ${user?.isAdmin ? "grid-cols-7" : "grid-cols-1"}`}>
               {user?.isAdmin && (
                 <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
                   <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
@@ -183,6 +186,11 @@ export default function Admin() {
               {user?.isAdmin && (
                 <TabsTrigger value="sms" className="text-xs sm:text-sm" data-testid="tab-sms">
                   <MessageSquare className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">SMS</span>
+                </TabsTrigger>
+              )}
+              {user?.isAdmin && (
+                <TabsTrigger value="committees" className="text-xs sm:text-sm" data-testid="tab-committees">
+                  <UsersRound className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Committees</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -356,6 +364,12 @@ export default function Admin() {
           {user?.isAdmin && (
             <TabsContent value="sms">
               <SmsInvitations />
+            </TabsContent>
+          )}
+
+          {user?.isAdmin && (
+            <TabsContent value="committees">
+              <CommitteesAdmin />
             </TabsContent>
           )}
         </Tabs>
@@ -2002,6 +2016,258 @@ function RenewalReminders() {
           <RenewalGroupCard title="Due in 31-60 Days" icon={<CalendarClock className="h-5 w-5 text-yellow-600" />} group={due60} groupKey="due-60" colorClass="bg-yellow-100 dark:bg-yellow-900/30" description="Renewal coming up in the next 31 to 60 days" isOpen={!!openGroups["due-60"]} onToggle={(open) => toggleGroup("due-60", open)} {...shared} />
           <RenewalGroupCard title="Due in 61-90 Days" icon={<CalendarClock className="h-5 w-5 text-blue-600" />} group={due90} groupKey="due-90" colorClass="bg-blue-100 dark:bg-blue-900/30" description="Renewal coming up in the next 61 to 90 days" isOpen={!!openGroups["due-90"]} onToggle={(open) => toggleGroup("due-90", open)} {...shared} />
           <RenewalGroupCard title="No Action Needed" icon={<CheckCircle className="h-5 w-5 text-green-600" />} group={ok} groupKey="ok" colorClass="bg-green-100 dark:bg-green-900/30" description="Members renewing in 90+ days or with no renewal date on file" isOpen={!!openGroups["ok"]} onToggle={(open) => toggleGroup("ok", open)} {...shared} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type AdminCommitteeListItem = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  mission: string | null;
+  category: string;
+  chairId: string | null;
+  chairName: string | null;
+  isActive: boolean;
+  memberCount: number;
+};
+
+const COMMITTEE_CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "governance", label: "Governance" },
+  { value: "programs", label: "Programs" },
+  { value: "outreach", label: "Outreach" },
+  { value: "finance", label: "Finance" },
+];
+
+function CommitteesAdmin() {
+  const { toast } = useToast();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [mission, setMission] = useState("");
+  const [category, setCategory] = useState("general");
+  const [chairUserId, setChairUserId] = useState<string>("");
+
+  const { data: committees, isLoading } = useQuery<AdminCommitteeListItem[]>({
+    queryKey: ["/api/admin/committees"],
+  });
+
+  const { data: portalUsers } = useQuery<{ id: string; username: string; displayName: string; companyName: string }[]>({
+    queryKey: ["/api/admin/portal-users"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/admin/committees", {
+        name: name.trim(),
+        slug: slug.trim() || undefined,
+        description: description.trim() || null,
+        mission: mission.trim() || null,
+        category,
+        chairId: chairUserId || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/committees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/committees"] });
+      toast({ title: "Committee created" });
+      setCreateOpen(false);
+      setName(""); setSlug(""); setDescription(""); setMission(""); setCategory("general"); setChairUserId("");
+    },
+    onError: (e: Error) => toast({ title: "Failed to create", description: e.message, variant: "destructive" }),
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      await apiRequest("PATCH", `/api/portal/committees/${id}`, { isActive });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/committees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/committees"] });
+    },
+    onError: (e: Error) => toast({ title: "Update failed", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/admin/committees/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/committees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/committees"] });
+      toast({ title: "Committee deleted" });
+    },
+    onError: (e: Error) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-6" data-testid="admin-committees">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <UsersRound className="h-5 w-5 text-primary" />
+            Committees
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Create working groups, assign chairs, and archive ones that are no longer active. Members join from the Committees page.
+          </p>
+        </div>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-committee">
+              <Plus className="h-4 w-4 mr-2" />
+              New Committee
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Create a committee</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Name</label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Membership Outreach Committee"
+                  data-testid="input-committee-name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">URL slug (optional)</label>
+                <Input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 64))}
+                  placeholder="auto-generated from name if blank"
+                  data-testid="input-committee-slug"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-committee-category"
+                >
+                  {COMMITTEE_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Mission (optional)</label>
+                <Textarea
+                  value={mission}
+                  onChange={(e) => setMission(e.target.value)}
+                  placeholder="One or two sentences about the committee's purpose."
+                  rows={2}
+                  data-testid="input-committee-mission"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Description (optional)</label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this committee do? When does it meet?"
+                  rows={3}
+                  data-testid="input-committee-description"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Chair (optional)</label>
+                <select
+                  value={chairUserId}
+                  onChange={(e) => setChairUserId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-committee-chair"
+                >
+                  <option value="">No chair</option>
+                  {(portalUsers || []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.displayName}{u.companyName ? ` — ${u.companyName}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Selected chair is automatically added as the first member of the committee.
+                </p>
+              </div>
+              <Button
+                onClick={() => createMutation.mutate()}
+                disabled={!name.trim() || createMutation.isPending}
+                className="w-full"
+                data-testid="button-submit-committee"
+              >
+                {createMutation.isPending ? "Creating..." : "Create committee"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : !committees || committees.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground" data-testid="text-no-committees">
+            No committees yet. Create the first one above.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {committees.map((c) => (
+            <Card key={c.id} data-testid={`row-admin-committee-${c.id}`}>
+              <CardContent className="p-4 flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-[240px]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold" data-testid={`text-admin-committee-name-${c.id}`}>{c.name}</span>
+                    <Badge variant="outline" className="text-xs">{c.category}</Badge>
+                    {!c.isActive && <Badge variant="secondary" className="text-xs">Archived</Badge>}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-3">
+                    <span>/{c.slug}</span>
+                    <span className="flex items-center gap-1"><UsersRound className="h-3 w-3" />{c.memberCount} {c.memberCount === 1 ? "member" : "members"}</span>
+                    {c.chairName && <span className="flex items-center gap-1"><Crown className="h-3 w-3" />Chair: {c.chairName}</span>}
+                  </div>
+                  {c.mission && <p className="text-xs text-muted-foreground mt-2 italic">{c.mission}</p>}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleActiveMutation.mutate({ id: c.id, isActive: !c.isActive })}
+                    disabled={toggleActiveMutation.isPending}
+                    data-testid={`button-toggle-active-${c.id}`}
+                  >
+                    {c.isActive ? "Archive" : "Reactivate"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm(`Permanently delete "${c.name}" and all its meetings, tasks, and memberships? This cannot be undone.`)) {
+                        deleteMutation.mutate(c.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-admin-delete-committee-${c.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

@@ -2710,10 +2710,48 @@ export async function registerRoutes(
     }
   });
 
-  // Admin-only create/delete under /api/admin/committees per task spec.
+  // Admin-only list/create/delete under /api/admin/committees per task spec.
   function slugify(s: string): string {
     return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "committee";
   }
+  // List portal users for chair selector (admin-only)
+  app.get("/api/admin/portal-users", requireAdmin, async (_req, res) => {
+    try {
+      const all = await storage.getAllUsers();
+      const list = await Promise.all(
+        all
+          .filter(u => !u.isAdmin) // chair should be a member, not an admin account
+          .map(async u => {
+            const d = await buildMemberDisplay(u.id);
+            return { id: u.id, username: u.username, displayName: d.displayName, companyName: d.companyName };
+          })
+      );
+      list.sort((a, b) => a.displayName.localeCompare(b.displayName));
+      res.json(list);
+    } catch (error) {
+      console.error("Error fetching portal users:", error);
+      res.status(500).json({ message: "Failed to fetch portal users" });
+    }
+  });
+
+  app.get("/api/admin/committees", requireAdmin, async (_req, res) => {
+    try {
+      const all = await storage.getCommittees(false);
+      const enriched = await Promise.all(all.map(async (c) => {
+        const memberships = await storage.getCommitteeMemberships(c.id);
+        let chairName: string | null = null;
+        if (c.chairId) {
+          const d = await buildMemberDisplay(c.chairId);
+          chairName = d.displayName;
+        }
+        return { ...c, memberCount: memberships.length, chairName };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching admin committees:", error);
+      res.status(500).json({ message: "Failed to fetch committees" });
+    }
+  });
   app.post("/api/admin/committees", requireAdmin, async (req, res) => {
     try {
       const { name, slug, description, mission, category, chairId } = req.body;
@@ -2805,6 +2843,11 @@ export async function registerRoutes(
       const updates: Record<string, any> = {};
       for (const k of allowed) {
         if (req.body[k] !== undefined) updates[k] = req.body[k];
+      }
+      // Archive/reactivate is an admin-only action — block chairs from toggling isActive
+      if (updates.isActive !== undefined && !req.user?.isAdmin) {
+        res.status(403).json({ message: "Only admins can archive or reactivate a committee" });
+        return;
       }
       // Validate that chairId, if provided, is an actual member
       if (updates.chairId) {
