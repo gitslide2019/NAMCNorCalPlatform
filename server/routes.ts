@@ -2914,6 +2914,11 @@ export async function registerRoutes(
 
   app.patch("/api/portal/committees/:id/meetings/:meetingId", requireAuth, async (req, res) => {
     try {
+      const meeting = await storage.getCommitteeMeeting(req.params.meetingId);
+      if (!meeting || meeting.committeeId !== req.params.id) {
+        res.status(404).json({ message: "Meeting not found" });
+        return;
+      }
       if (!(await canManageCommittee(req, req.params.id))) {
         res.status(403).json({ message: "Only the chair or an admin can edit meetings" });
         return;
@@ -2933,6 +2938,11 @@ export async function registerRoutes(
 
   app.delete("/api/portal/committees/:id/meetings/:meetingId", requireAuth, async (req, res) => {
     try {
+      const meeting = await storage.getCommitteeMeeting(req.params.meetingId);
+      if (!meeting || meeting.committeeId !== req.params.id) {
+        res.status(404).json({ message: "Meeting not found" });
+        return;
+      }
       if (!(await canManageCommittee(req, req.params.id))) {
         res.status(403).json({ message: "Only the chair or an admin can delete meetings" });
         return;
@@ -2953,6 +2963,13 @@ export async function registerRoutes(
       }
       const { title, description, assignedToId, dueDate, status } = req.body;
       if (!title) { res.status(400).json({ message: "Title is required" }); return; }
+      if (assignedToId) {
+        const m = await storage.getCommitteeMembershipByUser(req.params.id, assignedToId);
+        if (!m) {
+          res.status(400).json({ message: "Assignee must be a current committee member" });
+          return;
+        }
+      }
       const t = await storage.createCommitteeTask({
         committeeId: req.params.id,
         title,
@@ -2989,6 +3006,13 @@ export async function registerRoutes(
       const updates: Record<string, any> = {};
       for (const k of allowed) {
         if (req.body[k] !== undefined) updates[k] = req.body[k];
+      }
+      if (updates.assignedToId) {
+        const m = await storage.getCommitteeMembershipByUser(req.params.id, updates.assignedToId);
+        if (!m) {
+          res.status(400).json({ message: "Assignee must be a current committee member" });
+          return;
+        }
       }
       const updated = await storage.updateCommitteeTask(req.params.taskId, updates);
       res.json(updated);
