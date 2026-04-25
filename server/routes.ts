@@ -2676,15 +2676,17 @@ export async function registerRoutes(
     return !!c && c.chairId === req.user?.id;
   }
 
-  async function buildMemberDisplay(userId: string): Promise<{ username: string; displayName: string; memberApplicationId: string | null }> {
+  async function buildMemberDisplay(userId: string): Promise<{ username: string; displayName: string; companyName: string; memberApplicationId: string | null }> {
     const u = await storage.getUser(userId);
-    if (!u) return { username: "(unknown)", displayName: "(unknown)", memberApplicationId: null };
+    if (!u) return { username: "(unknown)", displayName: "(unknown)", companyName: "", memberApplicationId: null };
     let displayName = u.username;
+    let companyName = "";
     if (u.memberApplicationId) {
       const appRow = await storage.getMembershipApplication(u.memberApplicationId);
       if (appRow?.contactName) displayName = appRow.contactName;
+      if (appRow?.companyName) companyName = appRow.companyName;
     }
-    return { username: u.username, displayName, memberApplicationId: u.memberApplicationId ?? null };
+    return { username: u.username, displayName, companyName, memberApplicationId: u.memberApplicationId ?? null };
   }
 
   app.get("/api/portal/committees", requireAuth, async (req, res) => {
@@ -2768,6 +2770,14 @@ export async function registerRoutes(
         while (taken.has(`${finalSlug}-${i}`)) i++;
         finalSlug = `${finalSlug}-${i}`;
       }
+      // If a chair was selected, validate the user exists before creating either row.
+      if (chairId) {
+        const chairUser = await storage.getUser(chairId);
+        if (!chairUser) {
+          res.status(400).json({ message: "Chair user not found" });
+          return;
+        }
+      }
       const created = await storage.createCommittee({
         name: name.trim(),
         slug: finalSlug,
@@ -2777,6 +2787,22 @@ export async function registerRoutes(
         chairId: chairId || null,
         isActive: true,
       });
+      // Auto-add the chair as the first committee member with role=chair so the
+      // roster, member counts, and "current member" checks are consistent.
+      if (chairId) {
+        try {
+          await storage.addCommitteeMember({
+            committeeId: created.id,
+            userId: chairId,
+            role: "chair",
+          });
+        } catch (err) {
+          console.error("Failed to add chair membership; rolling back committee:", err);
+          await storage.deleteCommittee(created.id);
+          res.status(500).json({ message: "Failed to create chair membership" });
+          return;
+        }
+      }
       res.json(created);
     } catch (error) {
       console.error("Error creating committee:", error);
@@ -3090,10 +3116,10 @@ export async function registerRoutes(
       // Auto-manage completedAt based on status transitions
       if (updates.status !== undefined) {
         if (updates.status === "completed" && task.status !== "completed") {
-          (updates as any).completedAt = new Date();
+          updates.completedAt = new Date();
         } else if (updates.status !== "completed" && task.status === "completed") {
-          (updates as any).completedAt = null;
-          (updates as any).completionNote = null;
+          updates.completedAt = null;
+          updates.completionNote = null;
         }
       }
       const updated = await storage.updateCommitteeTask(req.params.taskId, updates);

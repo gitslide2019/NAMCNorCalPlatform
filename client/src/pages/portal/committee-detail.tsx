@@ -185,11 +185,12 @@ export default function CommitteeDetail() {
                   id: "optimistic",
                   committeeId: committeeId!,
                   userId: user.id,
-                  joinedAt: new Date() as any,
+                  role: "member",
+                  joinedAt: new Date(),
                   username: user.username,
-                  displayName: (user as any).displayName || user.username,
+                  displayName: user.username,
                   memberApplicationId: null,
-                } as any,
+                },
               ],
         });
       }
