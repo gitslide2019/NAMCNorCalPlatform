@@ -3024,6 +3024,11 @@ export async function registerRoutes(
 
   app.delete("/api/portal/committees/:id/tasks/:taskId", requireAuth, async (req, res) => {
     try {
+      const task = await storage.getCommitteeTask(req.params.taskId);
+      if (!task || task.committeeId !== req.params.id) {
+        res.status(404).json({ message: "Task not found" });
+        return;
+      }
       if (!(await canManageCommittee(req, req.params.id))) {
         res.status(403).json({ message: "Only the chair or an admin can delete tasks" });
         return;
