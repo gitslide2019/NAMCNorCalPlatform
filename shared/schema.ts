@@ -677,7 +677,9 @@ export type SavedProject = typeof savedProjectOpportunities.$inferSelect;
 export const committees = pgTable("committees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
   description: text("description"),
+  mission: text("mission"),
   category: text("category").notNull().default("general"),
   chairId: varchar("chair_id"),
   isActive: boolean("is_active").notNull().default(true),
@@ -739,6 +741,8 @@ export const committeeTasks = pgTable("committee_tasks", {
   assignedToId: varchar("assigned_to_id"),
   status: text("status").notNull().default("open"),
   dueDate: text("due_date"),
+  completionNote: text("completion_note"),
+  completedAt: timestamp("completed_at"),
   createdById: varchar("created_by_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

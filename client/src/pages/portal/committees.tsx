@@ -1,31 +1,11 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { UsersRound, Plus, ChevronRight, Crown } from "lucide-react";
+import { UsersRound, ChevronRight, Crown } from "lucide-react";
 import type { Committee } from "@shared/schema";
 
 type CommitteeListItem = Committee & {
@@ -33,14 +13,6 @@ type CommitteeListItem = Committee & {
   chairName: string | null;
   isMember: boolean;
 };
-
-const CATEGORIES = [
-  { value: "general", label: "General" },
-  { value: "governance", label: "Governance" },
-  { value: "programs", label: "Programs" },
-  { value: "outreach", label: "Outreach" },
-  { value: "finance", label: "Finance" },
-];
 
 const CATEGORY_COLORS: Record<string, string> = {
   general: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -52,38 +24,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function CommitteesPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newCategory, setNewCategory] = useState("general");
 
   const { data: committees, isLoading } = useQuery<CommitteeListItem[]>({
     queryKey: ["/api/portal/committees"],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/portal/committees", {
-        name: newName,
-        description: newDescription || null,
-        category: newCategory,
-      });
-      return res.json();
-    },
-    onSuccess: (created: Committee) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/portal/committees"] });
-      toast({ title: "Committee created" });
-      setCreateOpen(false);
-      setNewName("");
-      setNewDescription("");
-      setNewCategory("general");
-      setLocation(`/portal/committees/${created.id}`);
-    },
-    onError: (err: Error) => {
-      toast({ title: "Failed to create committee", description: err.message, variant: "destructive" });
-    },
   });
 
   const isAdmin = !!user?.isAdmin;
@@ -102,63 +45,11 @@ export default function CommitteesPage() {
             </p>
           </div>
           {isAdmin && (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-committee">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Committee
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create a Committee</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Name</label>
-                    <Input
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="e.g. Membership Outreach Committee"
-                      data-testid="input-committee-name"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Category</label>
-                    <Select value={newCategory} onValueChange={setNewCategory}>
-                      <SelectTrigger data-testid="select-committee-category">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Description (optional)</label>
-                    <Textarea
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder="What does this committee do?"
-                      rows={4}
-                      data-testid="input-committee-description"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => createMutation.mutate()}
-                    disabled={!newName.trim() || createMutation.isPending}
-                    className="w-full"
-                    data-testid="button-submit-committee"
-                  >
-                    {createMutation.isPending ? "Creating..." : "Create Committee"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Link href="/portal/admin">
+              <Badge variant="outline" className="text-xs cursor-pointer hover-elevate" data-testid="link-admin-committees">
+                Manage in Admin Panel
+              </Badge>
+            </Link>
           )}
         </div>
 
@@ -171,10 +62,7 @@ export default function CommitteesPage() {
         ) : !committees || committees.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground" data-testid="text-empty-state">
-              No committees yet.{" "}
-              {isAdmin
-                ? "Create the first one above."
-                : "Check back soon — an admin can set them up."}
+              No active committees yet. Check back soon — an admin can set them up.
             </CardContent>
           </Card>
         ) : (

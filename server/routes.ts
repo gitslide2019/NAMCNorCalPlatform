@@ -1720,8 +1720,21 @@ export async function registerRoutes(
       const discussions = (await storage.getTopics()).filter(t => t.title.toLowerCase().includes(q) || t.content.toLowerCase().includes(q)).slice(0, 10).map(t => ({ id: t.id, title: t.title, category: t.category, type: "discussion" }));
       const events = (await storage.getEvents()).filter(e => e.title.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q)).slice(0, 10).map(e => ({ id: e.id, title: e.title, eventDate: e.eventDate, type: "event" }));
       const nls = (await storage.getNewsletters()).filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)).slice(0, 10).map(n => ({ id: n.id, title: n.title, type: "newsletter" }));
-      const committeesList = (await storage.getCommittees()).filter(c => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q)).slice(0, 10).map(c => ({ id: c.id, title: c.name, category: c.category, type: "committee" }));
-      res.json({ members, projects, discussions, events, newsletters: nls, committees: committeesList });
+      const allCommittees = await storage.getCommittees(true);
+      const committeesList = allCommittees.filter(c => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q) || (c.mission || "").toLowerCase().includes(q)).slice(0, 10).map(c => ({ id: c.id, title: c.name, category: c.category, type: "committee" }));
+      // Meetings: search across all active committees and link back to their committee detail page
+      const meetingsList: { id: string; title: string; committeeId: string; committeeName: string; meetingDate: string; type: string }[] = [];
+      for (const c of allCommittees) {
+        const ms = await storage.getCommitteeMeetings(c.id);
+        for (const m of ms) {
+          if (m.title.toLowerCase().includes(q) || (m.agenda || "").toLowerCase().includes(q) || (m.minutes || "").toLowerCase().includes(q) || (m.location || "").toLowerCase().includes(q)) {
+            meetingsList.push({ id: m.id, title: m.title, committeeId: c.id, committeeName: c.name, meetingDate: m.meetingDate, type: "meeting" });
+            if (meetingsList.length >= 10) break;
+          }
+        }
+        if (meetingsList.length >= 10) break;
+      }
+      res.json({ members, projects, discussions, events, newsletters: nls, committees: committeesList, meetings: meetingsList });
     } catch (error) {
       res.status(500).json({ message: "Search failed" });
     }
@@ -2676,7 +2689,9 @@ export async function registerRoutes(
 
   app.get("/api/portal/committees", requireAuth, async (req, res) => {
     try {
-      const all = await storage.getCommittees();
+      // Active-only by default; admins can request all by passing ?includeInactive=1
+      const includeInactive = req.query.includeInactive === "1" && !!req.user?.isAdmin;
+      const all = await storage.getCommittees(!includeInactive);
       const myUserId = req.user!.id;
       const enriched = await Promise.all(all.map(async (c) => {
         const memberships = await storage.getCommitteeMemberships(c.id);
@@ -2695,16 +2710,31 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/portal/committees", requireAdmin, async (req, res) => {
+  // Admin-only create/delete under /api/admin/committees per task spec.
+  function slugify(s: string): string {
+    return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "committee";
+  }
+  app.post("/api/admin/committees", requireAdmin, async (req, res) => {
     try {
-      const { name, description, category, chairId } = req.body;
+      const { name, slug, description, mission, category, chairId } = req.body;
       if (!name || typeof name !== "string" || !name.trim()) {
         res.status(400).json({ message: "Name is required" });
         return;
       }
+      let finalSlug = (typeof slug === "string" && slug.trim()) ? slugify(slug) : slugify(name);
+      // If slug collides, append short suffix
+      const existing = await storage.getCommittees(false);
+      const taken = new Set(existing.map(c => c.slug));
+      if (taken.has(finalSlug)) {
+        let i = 2;
+        while (taken.has(`${finalSlug}-${i}`)) i++;
+        finalSlug = `${finalSlug}-${i}`;
+      }
       const created = await storage.createCommittee({
         name: name.trim(),
+        slug: finalSlug,
         description: description || null,
+        mission: mission || null,
         category: category || "general",
         chairId: chairId || null,
         isActive: true,
@@ -2713,6 +2743,16 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating committee:", error);
       res.status(500).json({ message: "Failed to create committee" });
+    }
+  });
+
+  app.delete("/api/admin/committees/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCommittee(req.params.id);
+      res.json({ message: "Committee deleted" });
+    } catch (error) {
+      console.error("Error deleting committee:", error);
+      res.status(500).json({ message: "Failed to delete committee" });
     }
   });
 
@@ -2761,7 +2801,7 @@ export async function registerRoutes(
         res.status(403).json({ message: "Only the chair or an admin can edit this committee" });
         return;
       }
-      const allowed = ["name", "description", "category", "chairId", "isActive"];
+      const allowed = ["name", "slug", "description", "mission", "category", "chairId", "isActive"];
       const updates: Record<string, any> = {};
       for (const k of allowed) {
         if (req.body[k] !== undefined) updates[k] = req.body[k];
@@ -2779,16 +2819,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating committee:", error);
       res.status(500).json({ message: "Failed to update committee" });
-    }
-  });
-
-  app.delete("/api/portal/committees/:id", requireAdmin, async (req, res) => {
-    try {
-      await storage.deleteCommittee(req.params.id);
-      res.json({ message: "Committee deleted" });
-    } catch (error) {
-      console.error("Error deleting committee:", error);
-      res.status(500).json({ message: "Failed to delete committee" });
     }
   });
 
@@ -2996,8 +3026,8 @@ export async function registerRoutes(
       const isManager = await canManageCommittee(req, req.params.id);
       const isAssignee = task.assignedToId === req.user!.id;
 
-      const allowedForManager = ["title", "description", "assignedToId", "dueDate", "status"];
-      const allowedForAssignee = ["status"];
+      const allowedForManager = ["title", "description", "assignedToId", "dueDate", "status", "completionNote"];
+      const allowedForAssignee = ["status", "completionNote"];
       const allowed = isManager ? allowedForManager : (isAssignee ? allowedForAssignee : []);
       if (allowed.length === 0) {
         res.status(403).json({ message: "Not allowed to edit this task" });
@@ -3012,6 +3042,15 @@ export async function registerRoutes(
         if (!m) {
           res.status(400).json({ message: "Assignee must be a current committee member" });
           return;
+        }
+      }
+      // Auto-manage completedAt based on status transitions
+      if (updates.status !== undefined) {
+        if (updates.status === "completed" && task.status !== "completed") {
+          (updates as any).completedAt = new Date();
+        } else if (updates.status !== "completed" && task.status === "completed") {
+          (updates as any).completedAt = null;
+          (updates as any).completionNote = null;
         }
       }
       const updated = await storage.updateCommitteeTask(req.params.taskId, updates);

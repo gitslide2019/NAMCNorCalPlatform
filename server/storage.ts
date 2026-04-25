@@ -254,7 +254,7 @@ export interface IStorage {
   unsaveProject(userId: string, projectId: string): Promise<void>;
   getSavedProjectIds(userId: string): Promise<string[]>;
 
-  getCommittees(): Promise<Committee[]>;
+  getCommittees(activeOnly?: boolean): Promise<Committee[]>;
   getCommittee(id: string): Promise<Committee | undefined>;
   createCommittee(data: InsertCommittee): Promise<Committee>;
   updateCommittee(id: string, data: Partial<Committee>): Promise<Committee | undefined>;
@@ -1025,7 +1025,10 @@ export class DatabaseStorage implements IStorage {
     return rows.map(r => r.projectId);
   }
 
-  async getCommittees(): Promise<Committee[]> {
+  async getCommittees(activeOnly?: boolean): Promise<Committee[]> {
+    if (activeOnly) {
+      return await db.select().from(committees).where(eq(committees.isActive, true)).orderBy(asc(committees.name));
+    }
     return await db.select().from(committees).orderBy(desc(committees.isActive), asc(committees.name));
   }
 
