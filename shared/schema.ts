@@ -672,3 +672,81 @@ export const insertSavedProjectSchema = createInsertSchema(savedProjectOpportuni
 
 export type InsertSavedProject = z.infer<typeof insertSavedProjectSchema>;
 export type SavedProject = typeof savedProjectOpportunities.$inferSelect;
+
+// === COMMITTEES ===
+export const committees = pgTable("committees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"),
+  chairId: varchar("chair_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCommitteeSchema = createInsertSchema(committees).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommittee = z.infer<typeof insertCommitteeSchema>;
+export type Committee = typeof committees.$inferSelect;
+
+export const committeeMemberships = pgTable("committee_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  committeeId: varchar("committee_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueCommitteeUser: unique().on(table.committeeId, table.userId),
+}));
+
+export const insertCommitteeMembershipSchema = createInsertSchema(committeeMemberships).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export type InsertCommitteeMembership = z.infer<typeof insertCommitteeMembershipSchema>;
+export type CommitteeMembership = typeof committeeMemberships.$inferSelect;
+
+export const committeeMeetings = pgTable("committee_meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  committeeId: varchar("committee_id").notNull(),
+  title: text("title").notNull(),
+  meetingDate: text("meeting_date").notNull(),
+  meetingTime: text("meeting_time"),
+  location: text("location"),
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  createdById: varchar("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCommitteeMeetingSchema = createInsertSchema(committeeMeetings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommitteeMeeting = z.infer<typeof insertCommitteeMeetingSchema>;
+export type CommitteeMeeting = typeof committeeMeetings.$inferSelect;
+
+export const committeeTasks = pgTable("committee_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  committeeId: varchar("committee_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  assignedToId: varchar("assigned_to_id"),
+  status: text("status").notNull().default("open"),
+  dueDate: text("due_date"),
+  createdById: varchar("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCommitteeTaskSchema = createInsertSchema(committeeTasks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommitteeTask = z.infer<typeof insertCommitteeTaskSchema>;
+export type CommitteeTask = typeof committeeTasks.$inferSelect;

@@ -1720,7 +1720,8 @@ export async function registerRoutes(
       const discussions = (await storage.getTopics()).filter(t => t.title.toLowerCase().includes(q) || t.content.toLowerCase().includes(q)).slice(0, 10).map(t => ({ id: t.id, title: t.title, category: t.category, type: "discussion" }));
       const events = (await storage.getEvents()).filter(e => e.title.toLowerCase().includes(q) || (e.description || "").toLowerCase().includes(q)).slice(0, 10).map(e => ({ id: e.id, title: e.title, eventDate: e.eventDate, type: "event" }));
       const nls = (await storage.getNewsletters()).filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)).slice(0, 10).map(n => ({ id: n.id, title: n.title, type: "newsletter" }));
-      res.json({ members, projects, discussions, events, newsletters: nls });
+      const committeesList = (await storage.getCommittees()).filter(c => c.name.toLowerCase().includes(q) || (c.description || "").toLowerCase().includes(q)).slice(0, 10).map(c => ({ id: c.id, title: c.name, category: c.category, type: "committee" }));
+      res.json({ members, projects, discussions, events, newsletters: nls, committees: committeesList });
     } catch (error) {
       res.status(500).json({ message: "Search failed" });
     }
@@ -2652,6 +2653,362 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error sending emails:", error);
       res.status(500).json({ message: "Failed to send emails" });
+    }
+  });
+
+  // === COMMITTEES ===
+  async function canManageCommittee(req: any, committeeId: string): Promise<boolean> {
+    if (req.user?.isAdmin) return true;
+    const c = await storage.getCommittee(committeeId);
+    return !!c && c.chairId === req.user?.id;
+  }
+
+  async function buildMemberDisplay(userId: string): Promise<{ username: string; displayName: string; memberApplicationId: string | null }> {
+    const u = await storage.getUser(userId);
+    if (!u) return { username: "(unknown)", displayName: "(unknown)", memberApplicationId: null };
+    let displayName = u.username;
+    if (u.memberApplicationId) {
+      const appRow = await storage.getMembershipApplication(u.memberApplicationId);
+      if (appRow?.contactName) displayName = appRow.contactName;
+    }
+    return { username: u.username, displayName, memberApplicationId: u.memberApplicationId ?? null };
+  }
+
+  app.get("/api/portal/committees", requireAuth, async (req, res) => {
+    try {
+      const all = await storage.getCommittees();
+      const myUserId = req.user!.id;
+      const enriched = await Promise.all(all.map(async (c) => {
+        const memberships = await storage.getCommitteeMemberships(c.id);
+        const isMember = memberships.some(m => m.userId === myUserId);
+        let chairName: string | null = null;
+        if (c.chairId) {
+          const d = await buildMemberDisplay(c.chairId);
+          chairName = d.displayName;
+        }
+        return { ...c, memberCount: memberships.length, chairName, isMember };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching committees:", error);
+      res.status(500).json({ message: "Failed to fetch committees" });
+    }
+  });
+
+  app.post("/api/portal/committees", requireAdmin, async (req, res) => {
+    try {
+      const { name, description, category, chairId } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        res.status(400).json({ message: "Name is required" });
+        return;
+      }
+      const created = await storage.createCommittee({
+        name: name.trim(),
+        description: description || null,
+        category: category || "general",
+        chairId: chairId || null,
+        isActive: true,
+      });
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating committee:", error);
+      res.status(500).json({ message: "Failed to create committee" });
+    }
+  });
+
+  app.get("/api/portal/committees/:id", requireAuth, async (req, res) => {
+    try {
+      const committee = await storage.getCommittee(req.params.id);
+      if (!committee) { res.status(404).json({ message: "Committee not found" }); return; }
+      const memberships = await storage.getCommitteeMemberships(req.params.id);
+      const meetings = await storage.getCommitteeMeetings(req.params.id);
+      const tasks = await storage.getCommitteeTasks(req.params.id);
+
+      const enrichedMembers = await Promise.all(memberships.map(async (m) => {
+        const d = await buildMemberDisplay(m.userId);
+        return { ...m, ...d };
+      }));
+
+      const enrichedTasks = await Promise.all(tasks.map(async (t) => {
+        let assignedToName: string | null = null;
+        if (t.assignedToId) {
+          const d = await buildMemberDisplay(t.assignedToId);
+          assignedToName = d.displayName;
+        }
+        return { ...t, assignedToName };
+      }));
+
+      const myUserId = req.user!.id;
+      const myMembership = memberships.find(m => m.userId === myUserId);
+      res.json({
+        committee,
+        members: enrichedMembers,
+        meetings,
+        tasks: enrichedTasks,
+        isMember: !!myMembership,
+        isChair: committee.chairId === myUserId,
+        myMembershipId: myMembership?.id || null,
+      });
+    } catch (error) {
+      console.error("Error fetching committee:", error);
+      res.status(500).json({ message: "Failed to fetch committee" });
+    }
+  });
+
+  app.patch("/api/portal/committees/:id", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can edit this committee" });
+        return;
+      }
+      const allowed = ["name", "description", "category", "chairId", "isActive"];
+      const updates: Record<string, any> = {};
+      for (const k of allowed) {
+        if (req.body[k] !== undefined) updates[k] = req.body[k];
+      }
+      // Validate that chairId, if provided, is an actual member
+      if (updates.chairId) {
+        const m = await storage.getCommitteeMembershipByUser(req.params.id, updates.chairId);
+        if (!m) {
+          res.status(400).json({ message: "Chair must be a current committee member" });
+          return;
+        }
+      }
+      const updated = await storage.updateCommittee(req.params.id, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating committee:", error);
+      res.status(500).json({ message: "Failed to update committee" });
+    }
+  });
+
+  app.delete("/api/portal/committees/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCommittee(req.params.id);
+      res.json({ message: "Committee deleted" });
+    } catch (error) {
+      console.error("Error deleting committee:", error);
+      res.status(500).json({ message: "Failed to delete committee" });
+    }
+  });
+
+  app.post("/api/portal/committees/:id/join", requireAuth, async (req, res) => {
+    try {
+      const committee = await storage.getCommittee(req.params.id);
+      if (!committee) { res.status(404).json({ message: "Committee not found" }); return; }
+      const existing = await storage.getCommitteeMembershipByUser(req.params.id, req.user!.id);
+      if (existing) { res.status(400).json({ message: "Already a member" }); return; }
+      const m = await storage.addCommitteeMember({
+        committeeId: req.params.id,
+        userId: req.user!.id,
+        role: "member",
+      });
+      res.json(m);
+    } catch (error) {
+      console.error("Error joining committee:", error);
+      res.status(500).json({ message: "Failed to join" });
+    }
+  });
+
+  app.delete("/api/portal/committees/:id/leave", requireAuth, async (req, res) => {
+    try {
+      const m = await storage.getCommitteeMembershipByUser(req.params.id, req.user!.id);
+      if (!m) { res.status(404).json({ message: "Not a member" }); return; }
+      // If the user is the chair, clear chairId on the committee first
+      const committee = await storage.getCommittee(req.params.id);
+      if (committee?.chairId === req.user!.id) {
+        await storage.updateCommittee(req.params.id, { chairId: null });
+      }
+      await storage.removeCommitteeMember(m.id);
+      res.json({ message: "Left committee" });
+    } catch (error) {
+      console.error("Error leaving committee:", error);
+      res.status(500).json({ message: "Failed to leave" });
+    }
+  });
+
+  app.post("/api/portal/committees/:id/members", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can add members" });
+        return;
+      }
+      const { userId, applicationId } = req.body;
+      // Accept either a userId directly, or a membership_application id (from the directory)
+      let targetUserId: string | undefined = userId;
+      if (!targetUserId && applicationId) {
+        const allUsers = await storage.getAllUsers();
+        const u = allUsers.find(x => x.memberApplicationId === applicationId);
+        targetUserId = u?.id;
+      } else if (userId) {
+        // Check if userId is actually an applicationId (from directory)
+        const allUsers = await storage.getAllUsers();
+        const directMatch = allUsers.find(x => x.id === userId);
+        if (!directMatch) {
+          const byApp = allUsers.find(x => x.memberApplicationId === userId);
+          if (byApp) targetUserId = byApp.id;
+        }
+      }
+      if (!targetUserId) { res.status(400).json({ message: "Could not resolve user" }); return; }
+      const existing = await storage.getCommitteeMembershipByUser(req.params.id, targetUserId);
+      if (existing) { res.status(400).json({ message: "Already a member" }); return; }
+      const m = await storage.addCommitteeMember({
+        committeeId: req.params.id,
+        userId: targetUserId,
+        role: "member",
+      });
+      res.json(m);
+    } catch (error) {
+      console.error("Error adding committee member:", error);
+      res.status(500).json({ message: "Failed to add member" });
+    }
+  });
+
+  app.delete("/api/portal/committees/:id/members/:membershipId", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can remove members" });
+        return;
+      }
+      const m = await storage.getCommitteeMembership(req.params.membershipId);
+      if (!m || m.committeeId !== req.params.id) {
+        res.status(404).json({ message: "Membership not found" });
+        return;
+      }
+      const committee = await storage.getCommittee(req.params.id);
+      if (committee?.chairId === m.userId) {
+        await storage.updateCommittee(req.params.id, { chairId: null });
+      }
+      await storage.removeCommitteeMember(m.id);
+      res.json({ message: "Member removed" });
+    } catch (error) {
+      console.error("Error removing committee member:", error);
+      res.status(500).json({ message: "Failed to remove" });
+    }
+  });
+
+  app.post("/api/portal/committees/:id/meetings", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can add meetings" });
+        return;
+      }
+      const { title, meetingDate, meetingTime, location, agenda, minutes } = req.body;
+      if (!title || !meetingDate) { res.status(400).json({ message: "Title and date are required" }); return; }
+      const m = await storage.createCommitteeMeeting({
+        committeeId: req.params.id,
+        title,
+        meetingDate,
+        meetingTime: meetingTime || null,
+        location: location || null,
+        agenda: agenda || null,
+        minutes: minutes || null,
+        createdById: req.user!.id,
+      });
+      res.json(m);
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      res.status(500).json({ message: "Failed to create meeting" });
+    }
+  });
+
+  app.patch("/api/portal/committees/:id/meetings/:meetingId", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can edit meetings" });
+        return;
+      }
+      const allowed = ["title", "meetingDate", "meetingTime", "location", "agenda", "minutes"];
+      const updates: Record<string, any> = {};
+      for (const k of allowed) {
+        if (req.body[k] !== undefined) updates[k] = req.body[k];
+      }
+      const updated = await storage.updateCommitteeMeeting(req.params.meetingId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating meeting:", error);
+      res.status(500).json({ message: "Failed to update meeting" });
+    }
+  });
+
+  app.delete("/api/portal/committees/:id/meetings/:meetingId", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can delete meetings" });
+        return;
+      }
+      await storage.deleteCommitteeMeeting(req.params.meetingId);
+      res.json({ message: "Meeting deleted" });
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      res.status(500).json({ message: "Failed to delete meeting" });
+    }
+  });
+
+  app.post("/api/portal/committees/:id/tasks", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can add tasks" });
+        return;
+      }
+      const { title, description, assignedToId, dueDate, status } = req.body;
+      if (!title) { res.status(400).json({ message: "Title is required" }); return; }
+      const t = await storage.createCommitteeTask({
+        committeeId: req.params.id,
+        title,
+        description: description || null,
+        assignedToId: assignedToId || null,
+        dueDate: dueDate || null,
+        status: status || "open",
+        createdById: req.user!.id,
+      });
+      res.json(t);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/portal/committees/:id/tasks/:taskId", requireAuth, async (req, res) => {
+    try {
+      const task = await storage.getCommitteeTask(req.params.taskId);
+      if (!task || task.committeeId !== req.params.id) {
+        res.status(404).json({ message: "Task not found" });
+        return;
+      }
+      const isManager = await canManageCommittee(req, req.params.id);
+      const isAssignee = task.assignedToId === req.user!.id;
+
+      const allowedForManager = ["title", "description", "assignedToId", "dueDate", "status"];
+      const allowedForAssignee = ["status"];
+      const allowed = isManager ? allowedForManager : (isAssignee ? allowedForAssignee : []);
+      if (allowed.length === 0) {
+        res.status(403).json({ message: "Not allowed to edit this task" });
+        return;
+      }
+      const updates: Record<string, any> = {};
+      for (const k of allowed) {
+        if (req.body[k] !== undefined) updates[k] = req.body[k];
+      }
+      const updated = await storage.updateCommitteeTask(req.params.taskId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/portal/committees/:id/tasks/:taskId", requireAuth, async (req, res) => {
+    try {
+      if (!(await canManageCommittee(req, req.params.id))) {
+        res.status(403).json({ message: "Only the chair or an admin can delete tasks" });
+        return;
+      }
+      await storage.deleteCommitteeTask(req.params.taskId);
+      res.json({ message: "Task deleted" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
     }
   });
 

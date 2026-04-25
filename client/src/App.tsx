@@ -28,6 +28,8 @@ import Documents from "@/pages/portal/documents";
 import Campaigns from "@/pages/portal/campaigns";
 import Notifications from "@/pages/portal/notifications";
 import Store from "@/pages/portal/store";
+import Committees from "@/pages/portal/committees";
+import CommitteeDetail from "@/pages/portal/committee-detail";
 
 function Router() {
   return (
@@ -86,6 +88,12 @@ function Router() {
       </Route>
       <Route path="/portal/notifications">
         <ProtectedRoute><Notifications /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/committees/:id">
+        <ProtectedRoute><CommitteeDetail /></ProtectedRoute>
+      </Route>
+      <Route path="/portal/committees">
+        <ProtectedRoute><Committees /></ProtectedRoute>
       </Route>
       <Route component={NotFound} />
     </Switch>

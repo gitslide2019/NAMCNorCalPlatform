@@ -80,6 +80,18 @@ import {
   smsInvitations,
   smsContacts,
   savedProjectOpportunities,
+  committees,
+  committeeMemberships,
+  committeeMeetings,
+  committeeTasks,
+  type Committee,
+  type InsertCommittee,
+  type CommitteeMembership,
+  type InsertCommitteeMembership,
+  type CommitteeMeeting,
+  type InsertCommitteeMeeting,
+  type CommitteeTask,
+  type InsertCommitteeTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, ilike, count } from "drizzle-orm";
@@ -241,6 +253,28 @@ export interface IStorage {
   saveProject(userId: string, projectId: string): Promise<void>;
   unsaveProject(userId: string, projectId: string): Promise<void>;
   getSavedProjectIds(userId: string): Promise<string[]>;
+
+  getCommittees(): Promise<Committee[]>;
+  getCommittee(id: string): Promise<Committee | undefined>;
+  createCommittee(data: InsertCommittee): Promise<Committee>;
+  updateCommittee(id: string, data: Partial<Committee>): Promise<Committee | undefined>;
+  deleteCommittee(id: string): Promise<void>;
+  getCommitteeMemberships(committeeId: string): Promise<CommitteeMembership[]>;
+  getCommitteeMembershipsByUser(userId: string): Promise<CommitteeMembership[]>;
+  getCommitteeMembership(id: string): Promise<CommitteeMembership | undefined>;
+  getCommitteeMembershipByUser(committeeId: string, userId: string): Promise<CommitteeMembership | undefined>;
+  addCommitteeMember(data: InsertCommitteeMembership): Promise<CommitteeMembership>;
+  removeCommitteeMember(id: string): Promise<void>;
+  getCommitteeMeetings(committeeId: string): Promise<CommitteeMeeting[]>;
+  getCommitteeMeeting(id: string): Promise<CommitteeMeeting | undefined>;
+  createCommitteeMeeting(data: InsertCommitteeMeeting): Promise<CommitteeMeeting>;
+  updateCommitteeMeeting(id: string, data: Partial<CommitteeMeeting>): Promise<CommitteeMeeting | undefined>;
+  deleteCommitteeMeeting(id: string): Promise<void>;
+  getCommitteeTasks(committeeId: string): Promise<CommitteeTask[]>;
+  getCommitteeTask(id: string): Promise<CommitteeTask | undefined>;
+  createCommitteeTask(data: InsertCommitteeTask): Promise<CommitteeTask>;
+  updateCommitteeTask(id: string, data: Partial<CommitteeTask>): Promise<CommitteeTask | undefined>;
+  deleteCommitteeTask(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -989,6 +1023,110 @@ export class DatabaseStorage implements IStorage {
       .from(savedProjectOpportunities)
       .where(eq(savedProjectOpportunities.userId, userId));
     return rows.map(r => r.projectId);
+  }
+
+  async getCommittees(): Promise<Committee[]> {
+    return await db.select().from(committees).orderBy(desc(committees.isActive), asc(committees.name));
+  }
+
+  async getCommittee(id: string): Promise<Committee | undefined> {
+    const [c] = await db.select().from(committees).where(eq(committees.id, id));
+    return c;
+  }
+
+  async createCommittee(data: InsertCommittee): Promise<Committee> {
+    const [c] = await db.insert(committees).values(data).returning();
+    return c;
+  }
+
+  async updateCommittee(id: string, data: Partial<Committee>): Promise<Committee | undefined> {
+    const [c] = await db.update(committees).set(data).where(eq(committees.id, id)).returning();
+    return c;
+  }
+
+  async deleteCommittee(id: string): Promise<void> {
+    await db.delete(committeeTasks).where(eq(committeeTasks.committeeId, id));
+    await db.delete(committeeMeetings).where(eq(committeeMeetings.committeeId, id));
+    await db.delete(committeeMemberships).where(eq(committeeMemberships.committeeId, id));
+    await db.delete(committees).where(eq(committees.id, id));
+  }
+
+  async getCommitteeMemberships(committeeId: string): Promise<CommitteeMembership[]> {
+    return await db.select().from(committeeMemberships).where(eq(committeeMemberships.committeeId, committeeId)).orderBy(asc(committeeMemberships.joinedAt));
+  }
+
+  async getCommitteeMembershipsByUser(userId: string): Promise<CommitteeMembership[]> {
+    return await db.select().from(committeeMemberships).where(eq(committeeMemberships.userId, userId));
+  }
+
+  async getCommitteeMembership(id: string): Promise<CommitteeMembership | undefined> {
+    const [m] = await db.select().from(committeeMemberships).where(eq(committeeMemberships.id, id));
+    return m;
+  }
+
+  async getCommitteeMembershipByUser(committeeId: string, userId: string): Promise<CommitteeMembership | undefined> {
+    const [m] = await db.select().from(committeeMemberships)
+      .where(and(eq(committeeMemberships.committeeId, committeeId), eq(committeeMemberships.userId, userId)));
+    return m;
+  }
+
+  async addCommitteeMember(data: InsertCommitteeMembership): Promise<CommitteeMembership> {
+    const [m] = await db.insert(committeeMemberships).values(data).returning();
+    return m;
+  }
+
+  async removeCommitteeMember(id: string): Promise<void> {
+    await db.delete(committeeMemberships).where(eq(committeeMemberships.id, id));
+  }
+
+  async getCommitteeMeetings(committeeId: string): Promise<CommitteeMeeting[]> {
+    return await db.select().from(committeeMeetings)
+      .where(eq(committeeMeetings.committeeId, committeeId))
+      .orderBy(desc(committeeMeetings.meetingDate));
+  }
+
+  async getCommitteeMeeting(id: string): Promise<CommitteeMeeting | undefined> {
+    const [m] = await db.select().from(committeeMeetings).where(eq(committeeMeetings.id, id));
+    return m;
+  }
+
+  async createCommitteeMeeting(data: InsertCommitteeMeeting): Promise<CommitteeMeeting> {
+    const [m] = await db.insert(committeeMeetings).values(data).returning();
+    return m;
+  }
+
+  async updateCommitteeMeeting(id: string, data: Partial<CommitteeMeeting>): Promise<CommitteeMeeting | undefined> {
+    const [m] = await db.update(committeeMeetings).set(data).where(eq(committeeMeetings.id, id)).returning();
+    return m;
+  }
+
+  async deleteCommitteeMeeting(id: string): Promise<void> {
+    await db.delete(committeeMeetings).where(eq(committeeMeetings.id, id));
+  }
+
+  async getCommitteeTasks(committeeId: string): Promise<CommitteeTask[]> {
+    return await db.select().from(committeeTasks)
+      .where(eq(committeeTasks.committeeId, committeeId))
+      .orderBy(asc(committeeTasks.status), desc(committeeTasks.createdAt));
+  }
+
+  async getCommitteeTask(id: string): Promise<CommitteeTask | undefined> {
+    const [t] = await db.select().from(committeeTasks).where(eq(committeeTasks.id, id));
+    return t;
+  }
+
+  async createCommitteeTask(data: InsertCommitteeTask): Promise<CommitteeTask> {
+    const [t] = await db.insert(committeeTasks).values(data).returning();
+    return t;
+  }
+
+  async updateCommitteeTask(id: string, data: Partial<CommitteeTask>): Promise<CommitteeTask | undefined> {
+    const [t] = await db.update(committeeTasks).set(data).where(eq(committeeTasks.id, id)).returning();
+    return t;
+  }
+
+  async deleteCommitteeTask(id: string): Promise<void> {
+    await db.delete(committeeTasks).where(eq(committeeTasks.id, id));
   }
 }
 
