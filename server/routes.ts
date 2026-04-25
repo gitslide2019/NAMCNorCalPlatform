@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import { storage } from "./storage";
@@ -2670,7 +2670,7 @@ export async function registerRoutes(
   });
 
   // === COMMITTEES ===
-  async function canManageCommittee(req: any, committeeId: string): Promise<boolean> {
+  async function canManageCommittee(req: Request, committeeId: string): Promise<boolean> {
     if (req.user?.isAdmin) return true;
     const c = await storage.getCommittee(committeeId);
     return !!c && c.chairId === req.user?.id;
@@ -2937,28 +2937,25 @@ export async function registerRoutes(
         res.status(403).json({ message: "Only the chair or an admin can add members" });
         return;
       }
-      const { userId, applicationId } = req.body;
-      // Accept either a userId directly, or a membership_application id (from the directory)
-      let targetUserId: string | undefined = userId;
-      if (!targetUserId && applicationId) {
-        const allUsers = await storage.getAllUsers();
-        const u = allUsers.find(x => x.memberApplicationId === applicationId);
-        targetUserId = u?.id;
-      } else if (userId) {
-        // Check if userId is actually an applicationId (from directory)
-        const allUsers = await storage.getAllUsers();
-        const directMatch = allUsers.find(x => x.id === userId);
-        if (!directMatch) {
-          const byApp = allUsers.find(x => x.memberApplicationId === userId);
-          if (byApp) targetUserId = byApp.id;
-        }
+      // Endpoint accepts a single explicit identifier: a membership_application id
+      // (which is what the portal directory exposes). The server resolves it to
+      // the corresponding user account.
+      const applicationId = typeof req.body.applicationId === "string" ? req.body.applicationId : null;
+      if (!applicationId) {
+        res.status(400).json({ message: "applicationId is required" });
+        return;
       }
-      if (!targetUserId) { res.status(400).json({ message: "Could not resolve user" }); return; }
-      const existing = await storage.getCommitteeMembershipByUser(req.params.id, targetUserId);
+      const allUsers = await storage.getAllUsers();
+      const targetUser = allUsers.find((x) => x.memberApplicationId === applicationId);
+      if (!targetUser) {
+        res.status(404).json({ message: "No user account exists for that membership application" });
+        return;
+      }
+      const existing = await storage.getCommitteeMembershipByUser(req.params.id, targetUser.id);
       if (existing) { res.status(400).json({ message: "Already a member" }); return; }
       const m = await storage.addCommitteeMember({
         committeeId: req.params.id,
-        userId: targetUserId,
+        userId: targetUser.id,
         role: "member",
       });
       res.json(m);
