@@ -709,7 +709,7 @@ export const committeeMemberships = pgTable("committee_memberships", {
   uniqueCommitteeUser: unique().on(table.committeeId, table.userId),
 }));
 
-export const COMMITTEE_ROLE_VALUES = ["member", "chair"] as const;
+export const COMMITTEE_ROLE_VALUES = ["member", "chair", "co-chair"] as const;
 export const committeeRoleSchema = z.enum(COMMITTEE_ROLE_VALUES);
 
 export const insertCommitteeMembershipSchema = createInsertSchema(committeeMemberships).omit({
