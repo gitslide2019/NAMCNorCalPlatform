@@ -231,7 +231,7 @@ export default function CommitteeDetail() {
 
   const addMemberMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", `/api/portal/committees/${committeeId}/members`, { userId: memberToAddId });
+      await apiRequest("POST", `/api/portal/committees/${committeeId}/members`, { applicationId: memberToAddId });
     },
     onSuccess: () => {
       invalidate();
