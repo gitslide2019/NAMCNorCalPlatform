@@ -24,6 +24,11 @@ const CHILD_PORT   = MAIN_PORT + 1;
 const MAX_RESTARTS = 10;
 const RESTART_DELAY_MS = 2000;
 
+// Re-use the server that preload.cjs already opened on MAIN_PORT (if any).
+// This avoids any gap where the port is closed between Node interpreter
+// startup and `server.listen()` here.
+const preloadServer = global.__PRELOAD_SERVER || null;
+
 // Hop-by-hop headers must not be forwarded by a proxy
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'transfer-encoding', 'te',
@@ -35,6 +40,7 @@ let appReady      = false;
 let currentChild  = null;
 let restartCount  = 0;
 let shuttingDown  = false;
+let restartTimer  = null;
 
 /* ------------------------------------------------------------------ */
 /* Strip hop-by-hop headers from a headers object                      */
@@ -138,27 +144,42 @@ function handleUpgrade(req, socket, head) {
 /* ------------------------------------------------------------------ */
 /* Open public port IMMEDIATELY — event loop never blocked             */
 /* ------------------------------------------------------------------ */
-const server = http.createServer(handleRequest);
-server.on('upgrade', handleUpgrade);
-
-// Suppress unhandled errors on the server itself
-server.on('error', function(err) {
-  console.error('[start] server error:', err.message);
-});
-
-server.listen(MAIN_PORT, '0.0.0.0', function() {
-  console.log('[start] placeholder ready on port ' + MAIN_PORT);
-});
+let server;
+if (preloadServer) {
+  // Take over the server that preload.cjs already opened — port stays open continuously
+  preloadServer.removeAllListeners('request');
+  preloadServer.on('request', handleRequest);
+  preloadServer.removeAllListeners('upgrade');
+  preloadServer.on('upgrade', handleUpgrade);
+  preloadServer.on('error', function(err) {
+    console.error('[start] server error:', err.message);
+  });
+  server = preloadServer;
+  console.log('[start] took over preload server on port ' + MAIN_PORT);
+} else {
+  server = http.createServer(handleRequest);
+  server.on('upgrade', handleUpgrade);
+  server.on('error', function(err) {
+    console.error('[start] server error:', err.message);
+  });
+  server.listen(MAIN_PORT, '0.0.0.0', function() {
+    console.log('[start] placeholder ready on port ' + MAIN_PORT);
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* Fork / restart the real Express app                                  */
 /* ------------------------------------------------------------------ */
 function startChild() {
+  if (shuttingDown) return;
   appReady = false;
 
   const child = fork(join(__dirname, 'index-server.cjs'), [], {
-    env: Object.assign({}, process.env, { PORT: String(CHILD_PORT) }),
+    env: Object.assign({}, process.env, { PORT: String(CHILD_PORT), NAMC_IS_CHILD: '1' }),
     stdio: 'inherit',
+    // Drop parent's --require ./preload.cjs so the child does NOT try to
+    // re-open the placeholder port (which would EADDRINUSE on CHILD_PORT).
+    execArgv: [],
   });
 
   currentChild = child;
@@ -190,7 +211,8 @@ function startChild() {
 
     restartCount++;
     console.log('[start] restarting child in ' + RESTART_DELAY_MS + 'ms (attempt ' + restartCount + '/' + MAX_RESTARTS + ')');
-    setTimeout(startChild, RESTART_DELAY_MS);
+    if (restartTimer) clearTimeout(restartTimer);
+    restartTimer = setTimeout(function() { restartTimer = null; startChild(); }, RESTART_DELAY_MS);
   });
 }
 
@@ -199,13 +221,11 @@ startChild();
 /* ------------------------------------------------------------------ */
 /* Graceful shutdown                                                    */
 /* ------------------------------------------------------------------ */
-process.on('SIGTERM', function() {
+function shutdown(signal) {
   shuttingDown = true;
-  if (currentChild) currentChild.kill('SIGTERM');
-  server.close();
-});
-process.on('SIGINT', function() {
-  shuttingDown = true;
-  if (currentChild) currentChild.kill('SIGINT');
-  server.close();
-});
+  if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
+  if (currentChild) currentChild.kill(signal);
+  if (server) server.close();
+}
+process.on('SIGTERM', function() { shutdown('SIGTERM'); });
+process.on('SIGINT',  function() { shutdown('SIGINT');  });

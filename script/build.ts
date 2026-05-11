@@ -59,12 +59,18 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("copying fast-boot proxy (dist/start.cjs)...");
+  console.log("copying fast-boot proxy (dist/start.cjs) + preload (dist/preload.cjs)...");
   await copyFile("server/start.cjs", "dist/start.cjs");
+  await copyFile("server/preload.cjs", "dist/preload.cjs");
 
-  // dist/index.cjs exists so "npm start" (node dist/index.cjs) still works
-  await writeFile("dist/index.cjs", "'use strict';\nrequire('./start.cjs');\n");
-  console.log("done — run command: node ./dist/start.cjs  (or npm start)");
+  // dist/index.cjs exists so "npm start" (node dist/index.cjs) still works.
+  // It loads preload first to open port 5000 within ~20ms of process start,
+  // then start.cjs takes over the same server and proxies to the forked child.
+  await writeFile(
+    "dist/index.cjs",
+    "'use strict';\nrequire('./preload.cjs');\nrequire('./start.cjs');\n",
+  );
+  console.log("done — run command: node --require ./dist/preload.cjs ./dist/start.cjs  (or npm start)");
 }
 
 buildAll().catch((err) => {

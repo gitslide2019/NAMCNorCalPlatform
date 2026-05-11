@@ -20,6 +20,8 @@ Preferred communication style: Simple, everyday language.
 
 **GitHub sync rhythm**: The Replit codebase is mirrored at `github.com/gitslide2019/NAMCNorCalPlatform`. After significant work or before/after every published deploy, push local main to GitHub (`git push origin main`) to keep the two in sync. If GitHub gets ahead (someone edits there directly), fetch and reconcile before pushing. The Resend From address is sourced from the Resend connector (`from_email`), not hardcoded — keep it that way so local edits to `server/email.ts` don't fight the connector setting.
 
+**Production deployment architecture (fast-boot proxy)**: The deploy run command is `node ./dist/start.cjs`. `server/start.cjs` opens port 5000 in <50ms with a tiny placeholder HTTP server (returns 200 to health checks, a friendly "Waking up" splash to browsers), then `child_process.fork()`s the real Express bundle (`dist/index-server.cjs`) on `PORT+1` (5001). When the child sends IPC `'ready'`, the placeholder begins proxying all HTTP + WebSocket traffic to the child. This works around Replit's deploy health checker, which polls within ~10ms of process launch — too fast for the 1.2 MB CJS bundle to load. The placeholder also auto-restarts the child up to 10× if it crashes. Dev (`npm run dev`) runs `server/index.ts` directly via tsx and is unaffected.
+
 ## System Architecture
 
 ### Frontend Architecture

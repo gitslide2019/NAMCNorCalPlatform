@@ -1,7 +1,13 @@
 'use strict';
-// This file runs via --require BEFORE dist/index.cjs is parsed.
+// This file runs via --require BEFORE dist/start.cjs is parsed.
 // Opening the port here means it is ready within ~20ms of process start,
 // well before Replit's health checker fires its first probe.
+//
+// Defense-in-depth: skip if running inside a forked child (start.cjs sets
+// NAMC_IS_CHILD=1 and clears execArgv on fork, but if --require leaks
+// through some other path, this guard prevents an EADDRINUSE on the
+// child's own port).
+if (process.env.NAMC_IS_CHILD === '1') return;
 const http = require('http');
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
