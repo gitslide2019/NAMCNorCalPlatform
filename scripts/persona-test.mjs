@@ -129,6 +129,66 @@ async function getUserAndAppId(username) {
   return r.rows[0] ? { userId: r.rows[0].user_id, appId: r.rows[0].app_id } : null;
 }
 
+// Always-run cleanup. Idempotent — safe to call even if test aborted early.
+async function safeCleanup(adminS, memberS, memberIds) {
+  console.log('\n--- CLEANUP (failure-safe) ---');
+  try {
+    for (const r of created.rsvps) {
+      try { const res = await memberS.req('DELETE', `/api/portal/events/${r.eventId}/rsvp`);
+        console.log(`cleanup rsvp ${r.eventId}: ${res.status}`); } catch(e) { console.log('rsvp cleanup err', e.message); }
+    }
+    for (const id of created.messages) {
+      try { await pool.query('DELETE FROM messages WHERE id = $1', [id]);
+        console.log(`cleanup message ${id}: db-delete`); } catch(e) {}
+    }
+    for (const id of created.discussions) {
+      try { const res = await adminS.req('DELETE', `/api/portal/discussions/${id}`);
+        console.log(`cleanup discussion ${id}: ${res.status}`); } catch(e) {}
+    }
+    for (const id of created.endorsements) {
+      try { const res = await memberS.req('DELETE', `/api/portal/endorsements/${id}`);
+        console.log(`cleanup endorsement ${id}: ${res.status}`); } catch(e) {}
+    }
+    for (const p of created.pledges) {
+      try { const res = await adminS.req('DELETE', `/api/portal/campaigns/${p.campaignId}/pledges/${p.id}`);
+        console.log(`cleanup pledge ${p.id}: ${res.status}`); } catch(e) {}
+    }
+    for (const id of created.campaigns) {
+      try { const res = await adminS.req('DELETE', `/api/portal/campaigns/${id}`);
+        console.log(`cleanup campaign ${id}: ${res.status}`); } catch(e) {}
+    }
+    for (const id of created.events) {
+      try { const res = await adminS.req('DELETE', `/api/portal/events/${id}`);
+        console.log(`cleanup event ${id}: ${res.status}`); } catch(e) {}
+    }
+    for (const id of created.committees) {
+      try { const res = await adminS.req('DELETE', `/api/admin/committees/${id}`);
+        console.log(`cleanup committee ${id}: ${res.status}`); } catch(e) {}
+    }
+    for (const id of created.applications) {
+      try { await pool.query('DELETE FROM membership_applications WHERE id = $1', [id]);
+        console.log(`cleanup application ${id}: db-delete`); } catch(e) {}
+    }
+    if (created.memberProfileRevert) {
+      try { const res = await memberS.req('PATCH', '/api/portal/profile',
+        { tagline: created.memberProfileRevert.tagline });
+        console.log(`cleanup profile tagline revert: ${res.status}`); } catch(e) {}
+    }
+    // ALWAYS lock back test member passwords — credentials safety
+    for (const u of [MEMBER_USER, CHAIR_USER, ASSIGNEE_USER, BOARD_USER]) {
+      try { await lockUserPassword(u); console.log(`lock password ${u}`); } catch(e) {
+        console.error(`FAILED to lock ${u}:`, e.message);
+      }
+    }
+    if (memberIds?.userId) {
+      try { await pool.query("DELETE FROM login_tokens WHERE user_id = $1", [memberIds.userId]); } catch(e) {}
+      try { await pool.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [memberIds.userId]); } catch(e) {}
+    }
+  } catch (e) {
+    console.error('safeCleanup outer error:', e.message);
+  }
+}
+
 async function run() {
   console.log(`\n=== Persona test pass — env=${ENV_LABEL} base=${BASE} ===\n`);
 
@@ -180,19 +240,18 @@ async function run() {
     record(s.persona, 'POST application missing fields expect 400', r2.status === 400, r2.status);
   }
 
-  // ============ AUTH FLOWS (magic-link, forgot-password, throttle) =========
+  // ============ AUTH FLOWS (magic-link verify, reset, throttle) ============
+  // SAFETY: Never POST to /api/auth/request-login-link or /api/auth/forgot-password
+  // with a known member email — those send real Resend emails. We exercise the
+  // verify-login and reset-password endpoints by injecting tokens directly into
+  // the DB (these endpoints do not send any outbound message themselves).
+  // For unknown emails both endpoints early-return 404 BEFORE any send call —
+  // verified by reading server/auth.ts (lines 250, 453). So the throttle test
+  // using unknown emails is safe.
   {
     const s = new Session('Auth-Flows');
 
-    // Magic link: request a link for the member, then look up the most-recent
-    // login token row for that user, generate a fresh known token ourselves
-    // and inject it (since the raw token is hashed in the DB).
-    const reqLink = await s.req('POST', '/api/auth/request-login-link', {
-      email: (await pool.query('SELECT email FROM membership_applications WHERE id = $1', [memberIds.appId])).rows[0].email,
-    });
-    record(s.persona, 'POST request-login-link', reqLink.status === 200, reqLink.status);
-
-    // Inject a known token for the member, then exercise GET verify-login
+    // Inject a known login token for the member, then exercise GET verify-login
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const expires = new Date(Date.now() + 15 * 60 * 1000);
@@ -211,12 +270,8 @@ async function run() {
     record(s.persona, 'GET verify-login reused token (expect 302→/auth?expired=1)',
       v2.status === 302 && v2.location?.includes('expired=1'), v2.status, v2.location);
 
-    // Forgot password
-    const memberEmail = (await pool.query('SELECT email FROM membership_applications WHERE id = $1', [memberIds.appId])).rows[0].email;
-    const fp = await s.req('POST', '/api/auth/forgot-password', { email: memberEmail });
-    record(s.persona, 'POST forgot-password', fp.status === 200, fp.status);
-
     // Inject a known reset token, then call /api/auth/reset-password
+    // (reset-password endpoint sends NO email — only updates DB)
     const resetRaw = crypto.randomBytes(32).toString('hex');
     const resetHash = crypto.createHash('sha256').update(resetRaw).digest('hex');
     await pool.query(
@@ -225,33 +280,34 @@ async function run() {
     );
     const newPass = `Reset-${Date.now()}`;
     const reset = await s.req('POST', '/api/auth/reset-password', { token: resetRaw, password: newPass });
-    record(s.persona, 'POST reset-password', reset.status === 200, reset.status);
+    record(s.persona, 'POST reset-password (no email triggered)', reset.status === 200, reset.status);
 
-    // New password works for login-with-email
+    // Login-with-email endpoint does NOT send email — just authenticates
+    const memberEmail = (await pool.query(
+      'SELECT email FROM membership_applications WHERE id = $1', [memberIds.appId])).rows[0].email;
     const loginEmail = await s.req('POST', '/api/auth/login-with-email',
       { email: memberEmail, password: newPass });
     record(s.persona, 'POST login-with-email after reset', loginEmail.status === 200, loginEmail.status);
-
-    // Restore TEST_PASS so the rest of the suite can use it
     await setUserPassword(MEMBER_USER, TEST_PASS);
 
-    // No-account email returns 404 (UX choice — explicit feedback)
-    const noAcct = await s.req('POST', '/api/auth/request-login-link',
-      { email: 'no-such-account@example.invalid' });
-    record(s.persona, 'POST request-login-link unknown email expect 404',
-      noAcct.status === 404, noAcct.status);
+    record(s.persona, 'SAFETY: skipped POST request-login-link with known email (sends Resend email)',
+      true, 0, 'verified via DB token injection instead', false);
+    record(s.persona, 'SAFETY: skipped POST forgot-password with known email (sends Resend email)',
+      true, 0, 'verified via DB token injection instead', false);
 
-    // IP throttle: 10 successful + 11th should 429.
-    // Use the forgot-password endpoint for unknown email so we don't burn real tokens.
+    // IP throttle: spam the request-login-link endpoint with UNKNOWN emails
+    // (early returns 404 before any send call — verified in server/auth.ts:250).
+    // Use a unique prefix so even on retry we don't collide with real accounts.
     let throttleHit = 0;
     let lastStatus = 0;
+    const prefix = `throttle-${Date.now()}-`;
     for (let i = 0; i < 12; i++) {
-      const r = await s.req('POST', '/api/auth/forgot-password',
-        { email: `throttle-${i}@example.invalid` });
+      const r = await s.req('POST', '/api/auth/request-login-link',
+        { email: `${prefix}${i}@example.invalid` });
       lastStatus = r.status;
-      if (r.status === 429) throttleHit = i;
+      if (r.status === 429) { throttleHit = i; break; }
     }
-    record(s.persona, 'IP throttle hits 429 within 12 attempts',
+    record(s.persona, 'IP throttle hits 429 within 12 attempts (unknown emails — no send)',
       throttleHit > 0 && lastStatus === 429, lastStatus, `429 at attempt ${throttleHit}`);
   }
 
@@ -498,8 +554,10 @@ async function run() {
       (await s.req('GET', '/api/membership-applications')).status === 403, 403);
     record(s.persona, 'FORBID POST admin/committees expect 403',
       (await s.req('POST', '/api/admin/committees', { name: 'x', category: 'governance', chairId: 'x' })).status === 403, 403);
-    record(s.persona, 'FORBID POST admin/sms/send expect 403',
-      (await s.req('POST', '/api/portal/admin/sms/send', { contactIds: [], message: '' })).status === 403, 403);
+    record(s.persona, 'FORBID GET admin/sms/history expect 403 (read-only check)',
+      (await s.req('GET', '/api/portal/admin/sms/history')).status === 403, 403);
+    record(s.persona, 'SAFETY: skipped POST admin/sms/send forbidden test (avoid touching send endpoint)',
+      true, 0, '', false);
     record(s.persona, 'FORBID GET admin/financial-summary expect 403',
       (await s.req('GET', '/api/portal/admin/financial-summary')).status === 403, 403);
   }
@@ -607,73 +665,12 @@ async function run() {
         (await s.req('GET', '/api/membership-applications')).status === 403, 403);
       record(s.persona, 'FORBID GET admin/analytics as board expect 403',
         (await s.req('GET', '/api/portal/admin/analytics')).status === 403, 403);
-      record(s.persona, 'FORBID POST admin/sms/send as board expect 403',
-        (await s.req('POST', '/api/portal/admin/sms/send',
-          { contactIds: [], message: '' })).status === 403, 403);
+      record(s.persona, 'FORBID GET admin/sms/contacts as board expect 403 (read-only check)',
+        (await s.req('GET', '/api/portal/admin/sms/contacts?limit=1')).status === 403, 403);
+      record(s.persona, 'SAFETY: skipped POST admin/sms/send forbidden test for board',
+        true, 0, '', false);
     }
   }
-
-  // ============ CLEANUP ===================================================
-  console.log('\n--- CLEANUP ---');
-  // Cancel RSVPs (member session)
-  for (const r of created.rsvps) {
-    const res = await memberS.req('DELETE', `/api/portal/events/${r.eventId}/rsvp`);
-    console.log(`cleanup rsvp ${r.eventId}: ${res.status}`);
-  }
-  // Delete messages (sender can't via API; clean via DB)
-  for (const id of created.messages) {
-    await pool.query('DELETE FROM messages WHERE id = $1', [id]);
-    console.log(`cleanup message ${id}: db-delete`);
-  }
-  // Discussions
-  for (const id of created.discussions) {
-    const res = await adminS.req('DELETE', `/api/portal/discussions/${id}`);
-    console.log(`cleanup discussion ${id}: ${res.status}`);
-  }
-  // Endorsements
-  for (const id of created.endorsements) {
-    const res = await memberS.req('DELETE', `/api/portal/endorsements/${id}`);
-    console.log(`cleanup endorsement ${id}: ${res.status}`);
-  }
-  // Pledges
-  for (const p of created.pledges) {
-    const res = await adminS.req('DELETE', `/api/portal/campaigns/${p.campaignId}/pledges/${p.id}`);
-    console.log(`cleanup pledge ${p.id}: ${res.status}`);
-  }
-  // Campaigns
-  for (const id of created.campaigns) {
-    const res = await adminS.req('DELETE', `/api/portal/campaigns/${id}`);
-    console.log(`cleanup campaign ${id}: ${res.status}`);
-  }
-  // Events
-  for (const id of created.events) {
-    const res = await adminS.req('DELETE', `/api/portal/events/${id}`);
-    console.log(`cleanup event ${id}: ${res.status}`);
-  }
-  // Committees
-  for (const id of created.committees) {
-    const res = await adminS.req('DELETE', `/api/admin/committees/${id}`);
-    console.log(`cleanup committee ${id}: ${res.status}`);
-  }
-  // Test applications
-  for (const id of created.applications) {
-    await pool.query('DELETE FROM membership_applications WHERE id = $1', [id]);
-    console.log(`cleanup application ${id}: db-delete`);
-  }
-  // Revert profile tagline
-  if (created.memberProfileRevert) {
-    const res = await memberS.req('PATCH', '/api/portal/profile',
-      { tagline: created.memberProfileRevert.tagline });
-    console.log(`cleanup profile tagline revert: ${res.status}`);
-  }
-  // Lock back test member passwords (so only magic-link / reset works)
-  for (const u of [MEMBER_USER, CHAIR_USER, ASSIGNEE_USER, BOARD_USER]) {
-    await lockUserPassword(u);
-    console.log(`lock password ${u}`);
-  }
-  // Clear injected magic/reset tokens
-  await pool.query("DELETE FROM login_tokens WHERE user_id = $1", [memberIds.userId]);
-  await pool.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [memberIds.userId]);
 
   // ============ REPORT ====================================================
   const total = results.length;
@@ -745,8 +742,39 @@ async function run() {
   writeFileSync(filename, lines.join('\n'));
   console.log(`\nReport written to ${filename}`);
 
-  await pool.end();
-  process.exit(failed.length ? 1 : 0);
+  return { failed: failed.length, filename };
 }
 
-run().catch(async e => { console.error(e); await pool.end(); process.exit(2); });
+// Top-level: try/finally guarantees cleanup runs even on assertion failure.
+let exitCode = 2;
+let _adminS, _memberS, _memberIds;
+try {
+  // Inject hooks so safeCleanup gets references regardless of where run() throws
+  const origRun = run;
+  // Stash sessions on globals so finally can reach them
+  global.__cleanupRefs = {};
+  const result = await origRun().catch(async (e) => {
+    console.error('Test run error:', e);
+    return { failed: 1 };
+  });
+  exitCode = (result?.failed ?? 1) ? 1 : 0;
+} finally {
+  // Re-derive safe sessions for cleanup if missing
+  try {
+    if (!_adminS) {
+      _adminS = new Session('cleanup-admin');
+      await _adminS.login(ADMIN_USER, ADMIN_PASS);
+    }
+    if (!_memberS) {
+      _memberS = new Session('cleanup-member');
+      // Don't fail if member can't log in; cleanup uses admin where possible
+      try { await _memberS.login(MEMBER_USER, TEST_PASS); } catch {}
+    }
+    if (!_memberIds) _memberIds = await getUserAndAppId(MEMBER_USER);
+  } catch (e) {
+    console.error('cleanup session bootstrap error:', e.message);
+  }
+  await safeCleanup(_adminS, _memberS, _memberIds);
+  await pool.end();
+  process.exit(exitCode);
+}
