@@ -49,6 +49,22 @@ if (!ADMIN_USER || !ADMIN_PASS || !TEST_PASS) {
   process.exit(2);
 }
 
+// Production guard: this script directly mutates seeded user passwords and
+// deletes test rows. It MUST NEVER run against the production deployment.
+// To run against any non-localhost host, the operator must set
+// ALLOW_NON_LOCAL=1 explicitly. Production hostnames are blocked unconditionally.
+const HOST = new URL(BASE).hostname;
+const isLocal = HOST === 'localhost' || HOST === '127.0.0.1' || HOST.startsWith('0.0.0.0');
+const isProd = HOST.includes('replit.app') || HOST === 'namcnorcal.org' || HOST.endsWith('.namcnorcal.org');
+if (isProd) {
+  console.error(`REFUSING to run: BASE=${BASE} looks like production. This script mutates seeded users and is dev-only.`);
+  process.exit(2);
+}
+if (!isLocal && process.env.ALLOW_NON_LOCAL !== '1') {
+  console.error(`REFUSING to run against non-local host ${HOST}. Set ALLOW_NON_LOCAL=1 to override.`);
+  process.exit(2);
+}
+
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 // --- DB helpers used by tests (not by the app) -----------------------------
@@ -337,10 +353,10 @@ async function run() {
     record(s.persona, 'GET applications CSV export', csv.status === 200, csv.status);
 
     // Member admin
-    record(s.persona, 'GET admin/members', (await s.req('GET', '/api/portal/admin/members')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/admin/members'); record(s.persona, 'GET admin/members', _r.status === 200, _r.status); })();
 
     // Renewals
-    record(s.persona, 'GET admin/renewals', (await s.req('GET', '/api/portal/admin/renewals')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/admin/renewals'); record(s.persona, 'GET admin/renewals', _r.status === 200, _r.status); })();
 
     // Finance (admin-or-board)
     for (const path of ['/api/portal/admin/financial-summary', '/api/portal/admin/budget',
@@ -360,10 +376,8 @@ async function run() {
     record('G-Admin', 'NEVER call newsletters/:id/send-email (safety)', true, 0, 'skipped intentionally');
 
     // Portal users + admin committee list
-    record(s.persona, 'GET admin/portal-users',
-      (await s.req('GET', '/api/admin/portal-users')).status === 200, 200);
-    record(s.persona, 'GET admin/committees',
-      (await s.req('GET', '/api/admin/committees')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/admin/portal-users'); record(s.persona, 'GET admin/portal-users', _r.status === 200, _r.status); })();
+    (async () => { const _r = await s.req('GET', '/api/admin/committees'); record(s.persona, 'GET admin/committees', _r.status === 200, _r.status); })();
 
     // Create test committee with a REAL non-admin chair so D-Chair persona has authority
     const cc = await s.req('POST', '/api/admin/committees', {
@@ -417,26 +431,21 @@ async function run() {
     const dir = await s.req('GET', '/api/portal/directory');
     record(s.persona, 'GET directory', dir.status === 200, dir.status, `${dir.data?.length} members`);
 
-    record(s.persona, 'GET my-application',
-      (await s.req('GET', '/api/portal/my-application')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/my-application'); record(s.persona, 'GET my-application', _r.status === 200, _r.status); })();
 
     const otherMember = (dir.data || []).find(m => m.id !== memberIds.appId);
-    record(s.persona, 'GET directory/:id (other)',
-      (await s.req('GET', `/api/portal/directory/${otherMember.id}`)).status === 200, 200);
+    (async () => { const _r = await s.req('GET', `/api/portal/directory/${otherMember.id}`); record(s.persona, 'GET directory/:id (other)', _r.status === 200, _r.status); })();
 
     // PATCH profile — capture original tagline so we can revert
     const before = (await s.req('GET', '/api/portal/my-application')).data;
     const originalTagline = before?.tagline ?? null;
-    record(s.persona, 'PATCH profile tagline',
-      (await s.req('PATCH', '/api/portal/profile', { tagline: 'persona test tagline' })).status === 200, 200);
+    (async () => { const _r = await s.req('PATCH', '/api/portal/profile', { tagline: 'persona test tagline' }); record(s.persona, 'PATCH profile tagline', _r.status === 200, _r.status); })();
     // revert in cleanup using stored value
     created.memberProfileRevert = { tagline: originalTagline };
 
     // Messages — track for cleanup
-    record(s.persona, 'GET messages inbox',
-      (await s.req('GET', '/api/portal/messages')).status === 200, 200);
-    record(s.persona, 'GET messages sent',
-      (await s.req('GET', '/api/portal/messages/sent')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/messages'); record(s.persona, 'GET messages inbox', _r.status === 200, _r.status); })();
+    (async () => { const _r = await s.req('GET', '/api/portal/messages/sent'); record(s.persona, 'GET messages sent', _r.status === 200, _r.status); })();
 
     const users = await s.req('GET', '/api/portal/users');
     const recipient = users.data.find(u => u.id !== me.data.id);
@@ -447,12 +456,10 @@ async function run() {
     if (msg.data?.id) { created.messages.push(msg.data.id); memberCreatedMessageId = msg.data.id; }
 
     // Read message marks as read (other side will see)
-    record(s.persona, 'GET messages/:id own sent',
-      (await s.req('GET', `/api/portal/messages/${msg.data.id}`)).status === 200, 200);
+    (async () => { const _r = await s.req('GET', `/api/portal/messages/${msg.data.id}`); record(s.persona, 'GET messages/:id own sent', _r.status === 200, _r.status); })();
 
     // Discussions
-    record(s.persona, 'GET discussions',
-      (await s.req('GET', '/api/portal/discussions')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/discussions'); record(s.persona, 'GET discussions', _r.status === 200, _r.status); })();
     const newTopic = await s.req('POST', '/api/portal/discussions',
       { title: `Persona Topic ${Date.now()}`, content: 'test', category: 'general' });
     record(s.persona, 'POST discussions', newTopic.status === 201, newTopic.status);
@@ -469,17 +476,16 @@ async function run() {
     }
 
     // Projects
-    record(s.persona, 'GET projects', (await s.req('GET', '/api/portal/projects')).status === 200, 200);
-    record(s.persona, 'GET projects/saved', (await s.req('GET', '/api/portal/projects/saved')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/projects'); record(s.persona, 'GET projects', _r.status === 200, _r.status); })();
+    (async () => { const _r = await s.req('GET', '/api/portal/projects/saved'); record(s.persona, 'GET projects/saved', _r.status === 200, _r.status); })();
 
     // Calendar / RSVP
-    record(s.persona, 'GET events', (await s.req('GET', '/api/portal/events')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/events'); record(s.persona, 'GET events', _r.status === 200, _r.status); })();
     if (testEventId) {
       const rsvp = await s.req('POST', `/api/portal/events/${testEventId}/rsvp`, { status: 'attending' });
       record(s.persona, 'POST event RSVP', rsvp.status === 201, rsvp.status);
       if (rsvp.status === 201) created.rsvps.push({ eventId: testEventId, session: 'member' });
-      record(s.persona, 'GET event rsvps',
-        (await s.req('GET', `/api/portal/events/${testEventId}/rsvps`)).status === 200, 200);
+      (async () => { const _r = await s.req('GET', `/api/portal/events/${testEventId}/rsvps`); record(s.persona, 'GET event rsvps', _r.status === 200, _r.status); })();
     }
 
     // Newsletters / docs / tools / courses / announcements / notifications
@@ -520,8 +526,7 @@ async function run() {
     });
     record(s.persona, 'POST endorsement', endorse.status === 201, endorse.status);
     if (endorse.data?.id) created.endorsements.push(endorse.data.id);
-    record(s.persona, 'GET endorsements list',
-      (await s.req('GET', `/api/portal/endorsements/${otherMember.id}`)).status === 200, 200);
+    (async () => { const _r = await s.req('GET', `/api/portal/endorsements/${otherMember.id}`); record(s.persona, 'GET endorsements list', _r.status === 200, _r.status); })();
 
     // Search (covers members/projects/discussions/events/newsletters/committees/meetings)
     const search = await s.req('GET', '/api/portal/search?q=persona');
@@ -529,11 +534,9 @@ async function run() {
     record(s.persona, 'GET search returns all categories', hasAllKeys, search.status);
 
     // Committees: list, view, join (chair test committee), meetings, tasks
-    record(s.persona, 'GET committees',
-      (await s.req('GET', '/api/portal/committees')).status === 200, 200);
+    (async () => { const _r = await s.req('GET', '/api/portal/committees'); record(s.persona, 'GET committees', _r.status === 200, _r.status); })();
     if (testCommitteeId) {
-      record(s.persona, 'GET committee detail',
-        (await s.req('GET', `/api/portal/committees/${testCommitteeId}`)).status === 200, 200);
+      (async () => { const _r = await s.req('GET', `/api/portal/committees/${testCommitteeId}`); record(s.persona, 'GET committee detail', _r.status === 200, _r.status); })();
       const join = await s.req('POST', `/api/portal/committees/${testCommitteeId}/join`);
       record(s.persona, 'POST committee join',
         join.status === 201 || join.status === 200 || join.status === 409, join.status);
@@ -550,16 +553,12 @@ async function run() {
     }
 
     // Forbidden cross-checks
-    record(s.persona, 'FORBID GET applications expect 403',
-      (await s.req('GET', '/api/membership-applications')).status === 403, 403);
-    record(s.persona, 'FORBID POST admin/committees expect 403',
-      (await s.req('POST', '/api/admin/committees', { name: 'x', category: 'governance', chairId: 'x' })).status === 403, 403);
-    record(s.persona, 'FORBID GET admin/sms/history expect 403 (read-only check)',
-      (await s.req('GET', '/api/portal/admin/sms/history')).status === 403, 403);
+    (async () => { const _r = await s.req('GET', '/api/membership-applications'); record(s.persona, 'FORBID GET applications expect 403', _r.status === 403, _r.status); })();
+    (async () => { const _r = await s.req('POST', '/api/admin/committees', { name: 'x', category: 'governance', chairId: 'x' }); record(s.persona, 'FORBID POST admin/committees expect 403', _r.status === 403, _r.status); })();
+    (async () => { const _r = await s.req('GET', '/api/portal/admin/sms/history'); record(s.persona, 'FORBID GET admin/sms/history expect 403 (read-only check)', _r.status === 403, _r.status); })();
     record(s.persona, 'SAFETY: skipped POST admin/sms/send forbidden test (avoid touching send endpoint)',
       true, 0, '', false);
-    record(s.persona, 'FORBID GET admin/financial-summary expect 403',
-      (await s.req('GET', '/api/portal/admin/financial-summary')).status === 403, 403);
+    (async () => { const _r = await s.req('GET', '/api/portal/admin/financial-summary'); record(s.persona, 'FORBID GET admin/financial-summary expect 403', _r.status === 403, _r.status); })();
   }
 
   // ============ D. CHAIR ==================================================
@@ -591,11 +590,9 @@ async function run() {
       record(s.persona, 'POST meeting as chair', newMeeting.status === 201 || newMeeting.status === 200, newMeeting.status);
       const meetingId = newMeeting.data?.id;
       if (meetingId) {
-        record(s.persona, 'PATCH meeting agenda as chair',
-          (await s.req('PATCH', `/api/portal/committees/${testCommitteeId}/meetings/${meetingId}`,
-            { agenda: 'updated agenda' })).status === 200, 200);
-        record(s.persona, 'DELETE meeting as chair',
-          (await s.req('DELETE', `/api/portal/committees/${testCommitteeId}/meetings/${meetingId}`)).status === 200, 200);
+        (async () => { const _r = await s.req('PATCH', `/api/portal/committees/${testCommitteeId}/meetings/${meetingId}`,
+            { agenda: 'updated agenda' }); record(s.persona, 'PATCH meeting agenda as chair', _r.status === 200, _r.status); })();
+        (async () => { const _r = await s.req('DELETE', `/api/portal/committees/${testCommitteeId}/meetings/${meetingId}`); record(s.persona, 'DELETE meeting as chair', _r.status === 200, _r.status); })();
       }
 
       // Chair creates task assigned to assignee
@@ -614,8 +611,7 @@ async function run() {
     const r = await s.login(ASSIGNEE_USER, TEST_PASS);
     record(s.persona, 'login assignee', r.status === 200, r.status);
     if (r.status === 200 && testCommitteeId && chairTaskId) {
-      record(s.persona, 'GET committee tasks',
-        (await s.req('GET', `/api/portal/committees/${testCommitteeId}/tasks`)).status === 200, 200);
+      (async () => { const _r = await s.req('GET', `/api/portal/committees/${testCommitteeId}/tasks`); record(s.persona, 'GET committee tasks', _r.status === 200, _r.status); })();
 
       // Assignee can update own task status
       const updMine = await s.req('PATCH',
@@ -630,9 +626,8 @@ async function run() {
         delMine.status === 403, delMine.status);
 
       // Assignee cannot edit committee
-      record(s.persona, 'FORBID PATCH committee as assignee (expect 403)',
-        (await s.req('PATCH', `/api/portal/committees/${testCommitteeId}`,
-          { description: 'no' })).status === 403, 403);
+      (async () => { const _r = await s.req('PATCH', `/api/portal/committees/${testCommitteeId}`,
+          { description: 'no' }); record(s.persona, 'FORBID PATCH committee as assignee (expect 403)', _r.status === 403, _r.status); })();
     }
   }
 
@@ -661,12 +656,9 @@ async function run() {
         updBudget.status === 403, updBudget.status);
 
       // Board does NOT have applications/SMS/admin-analytics access
-      record(s.persona, 'FORBID GET applications as board expect 403',
-        (await s.req('GET', '/api/membership-applications')).status === 403, 403);
-      record(s.persona, 'FORBID GET admin/analytics as board expect 403',
-        (await s.req('GET', '/api/portal/admin/analytics')).status === 403, 403);
-      record(s.persona, 'FORBID GET admin/sms/contacts as board expect 403 (read-only check)',
-        (await s.req('GET', '/api/portal/admin/sms/contacts?limit=1')).status === 403, 403);
+      (async () => { const _r = await s.req('GET', '/api/membership-applications'); record(s.persona, 'FORBID GET applications as board expect 403', _r.status === 403, _r.status); })();
+      (async () => { const _r = await s.req('GET', '/api/portal/admin/analytics'); record(s.persona, 'FORBID GET admin/analytics as board expect 403', _r.status === 403, _r.status); })();
+      (async () => { const _r = await s.req('GET', '/api/portal/admin/sms/contacts?limit=1'); record(s.persona, 'FORBID GET admin/sms/contacts as board expect 403 (read-only check)', _r.status === 403, _r.status); })();
       record(s.persona, 'SAFETY: skipped POST admin/sms/send forbidden test for board',
         true, 0, '', false);
     }
