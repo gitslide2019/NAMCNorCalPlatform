@@ -2910,6 +2910,7 @@ export async function registerRoutes(
     try {
       const committee = await storage.getCommittee(req.params.id);
       if (!committee) { res.status(404).json({ message: "Committee not found" }); return; }
+      if (!committee.isActive) { res.status(400).json({ message: "This committee is archived and not accepting new members" }); return; }
       const existing = await storage.getCommitteeMembershipByUser(req.params.id, req.user!.id);
       if (existing) { res.status(400).json({ message: "Already a member" }); return; }
       const m = await storage.addCommitteeMember({
