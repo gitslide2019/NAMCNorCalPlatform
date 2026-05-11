@@ -686,9 +686,14 @@ export const committees = pgTable("committees", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const COMMITTEE_CATEGORY_VALUES = ["general", "governance", "programs", "outreach", "finance"] as const;
+export const committeeCategorySchema = z.enum(COMMITTEE_CATEGORY_VALUES);
+
 export const insertCommitteeSchema = createInsertSchema(committees).omit({
   id: true,
   createdAt: true,
+}).extend({
+  category: committeeCategorySchema.optional().default("general"),
 });
 
 export type InsertCommittee = z.infer<typeof insertCommitteeSchema>;
@@ -704,9 +709,14 @@ export const committeeMemberships = pgTable("committee_memberships", {
   uniqueCommitteeUser: unique().on(table.committeeId, table.userId),
 }));
 
+export const COMMITTEE_ROLE_VALUES = ["member", "chair"] as const;
+export const committeeRoleSchema = z.enum(COMMITTEE_ROLE_VALUES);
+
 export const insertCommitteeMembershipSchema = createInsertSchema(committeeMemberships).omit({
   id: true,
   joinedAt: true,
+}).extend({
+  role: committeeRoleSchema.optional().default("member"),
 });
 
 export type InsertCommitteeMembership = z.infer<typeof insertCommitteeMembershipSchema>;
@@ -747,9 +757,14 @@ export const committeeTasks = pgTable("committee_tasks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const COMMITTEE_TASK_STATUS_VALUES = ["open", "in_progress", "completed"] as const;
+export const committeeTaskStatusSchema = z.enum(COMMITTEE_TASK_STATUS_VALUES);
+
 export const insertCommitteeTaskSchema = createInsertSchema(committeeTasks).omit({
   id: true,
   createdAt: true,
+}).extend({
+  status: committeeTaskStatusSchema.optional().default("open"),
 });
 
 export type InsertCommitteeTask = z.infer<typeof insertCommitteeTaskSchema>;

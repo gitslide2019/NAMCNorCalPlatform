@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users, committees, committeeMeetings, committeeTasks } from "@shared/schema";
+import { users, committees, committeeMeetings, committeeTasks, committeeCategorySchema, committeeTaskStatusSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { insertMembershipApplicationSchema, insertMessageSchema, insertDiscussionTopicSchema, insertDiscussionReplySchema, insertProjectOpportunitySchema, insertProjectBidSchema, insertCalendarEventSchema, insertNewsletterSchema, insertToolSchema, insertCourseSchema, insertLessonSchema, insertAnnouncementSchema, insertEndorsementSchema, insertCampaignSchema, insertCampaignPledgeSchema, insertMemberProjectSchema, insertMemberDocumentSchema, insertSmsInvitationSchema } from "@shared/schema";
 import { sendSms } from "./twilio";
@@ -2761,6 +2761,12 @@ export async function registerRoutes(
         res.status(400).json({ message: "Name is required" });
         return;
       }
+      const categoryParsed = category === undefined ? "general" : committeeCategorySchema.safeParse(category);
+      if (typeof categoryParsed !== "string" && !categoryParsed.success) {
+        res.status(400).json({ message: "Invalid category" });
+        return;
+      }
+      const categoryValue = typeof categoryParsed === "string" ? categoryParsed : categoryParsed.data;
       let finalSlug = (typeof slug === "string" && slug.trim()) ? slugify(slug) : slugify(name);
       // If slug collides, append short suffix
       const existing = await storage.getCommittees(false);
@@ -2783,7 +2789,7 @@ export async function registerRoutes(
         slug: finalSlug,
         description: description || null,
         mission: mission || null,
-        category: category || "general",
+        category: categoryValue,
         chairId: chairId || null,
         isActive: true,
       });
@@ -2872,7 +2878,11 @@ export async function registerRoutes(
       if (typeof b.slug === "string") updates.slug = b.slug;
       if (b.description === null || typeof b.description === "string") updates.description = b.description;
       if (b.mission === null || typeof b.mission === "string") updates.mission = b.mission;
-      if (typeof b.category === "string") updates.category = b.category;
+      if (b.category !== undefined) {
+        const parsedCategory = committeeCategorySchema.safeParse(b.category);
+        if (!parsedCategory.success) { res.status(400).json({ message: "Invalid category" }); return; }
+        updates.category = parsedCategory.data;
+      }
       if (b.chairId === null || typeof b.chairId === "string") updates.chairId = b.chairId;
       if (typeof b.isActive === "boolean") updates.isActive = b.isActive;
       // Archive/reactivate is an admin-only action — block chairs from toggling isActive
@@ -3092,6 +3102,12 @@ export async function registerRoutes(
       }
       const { title, description, assignedToId, dueDate, status } = req.body;
       if (!title) { res.status(400).json({ message: "Title is required" }); return; }
+      let statusValue: "open" | "in_progress" | "completed" = "open";
+      if (status !== undefined) {
+        const parsed = committeeTaskStatusSchema.safeParse(status);
+        if (!parsed.success) { res.status(400).json({ message: "Invalid status" }); return; }
+        statusValue = parsed.data;
+      }
       if (assignedToId) {
         const m = await storage.getCommitteeMembershipByUser(req.params.id, assignedToId);
         if (!m) {
@@ -3105,7 +3121,7 @@ export async function registerRoutes(
         description: description || null,
         assignedToId: assignedToId || null,
         dueDate: dueDate || null,
-        status: status || "open",
+        status: statusValue,
         createdById: req.user!.id,
       });
       res.json(t);
@@ -3140,7 +3156,11 @@ export async function registerRoutes(
         if (b.dueDate === null || typeof b.dueDate === "string") updates.dueDate = b.dueDate;
       }
       // Fields any manager OR assignee may update
-      if (typeof b.status === "string") updates.status = b.status;
+      if (b.status !== undefined) {
+        const parsedStatus = committeeTaskStatusSchema.safeParse(b.status);
+        if (!parsedStatus.success) { res.status(400).json({ message: "Invalid status" }); return; }
+        updates.status = parsedStatus.data;
+      }
       if (b.completionNote === null || typeof b.completionNote === "string") updates.completionNote = b.completionNote;
       if (updates.assignedToId) {
         const m = await storage.getCommitteeMembershipByUser(req.params.id, updates.assignedToId);
