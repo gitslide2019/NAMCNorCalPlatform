@@ -102,14 +102,23 @@ export default function Dashboard() {
     queryKey: ["/api/portal/messages"],
   });
 
-  const { data: feed } = useQuery<FeedItem[]>({
-    queryKey: ["/api/portal/calendar-feed", { scope: "all" }],
+  const { data: events_ } = useQuery<FeedItem[]>({
+    queryKey: ["/api/portal/calendar-feed", { scope: "events" }],
     queryFn: async () => {
-      const res = await fetch("/api/portal/calendar-feed?scope=all", { credentials: "include" });
+      const res = await fetch("/api/portal/calendar-feed?scope=events", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load calendar feed");
       return res.json();
     },
   });
+  const { data: myMeetings_ } = useQuery<FeedItem[]>({
+    queryKey: ["/api/portal/calendar-feed", { scope: "my-committees" }],
+    queryFn: async () => {
+      const res = await fetch("/api/portal/calendar-feed?scope=my-committees", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load calendar feed");
+      return res.json();
+    },
+  });
+  const feed = [...(events_ ?? []), ...(myMeetings_ ?? [])];
 
   const { data: projects } = useQuery<DashboardProject[]>({
     queryKey: ["/api/portal/projects"],
@@ -131,8 +140,8 @@ export default function Dashboard() {
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const upcomingEvents = (feed ?? [])
     .filter((it) => it.date >= todayStr)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3);
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""))
+    .slice(0, 5);
 
   const recentTopics = (discussions ?? [])
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -300,7 +309,7 @@ export default function Dashboard() {
                   {upcomingEvents.map((item) => {
                     const isMeeting = item.kind === "meeting";
                     const href = isMeeting && item.committeeId
-                      ? `/portal/committees/${item.committeeId}`
+                      ? `/portal/committees/${item.committeeId}?tab=meetings`
                       : "/portal/calendar";
                     const [y, m, d] = item.date.split("-").map(Number);
                     const dateLabel = new Date(y, (m || 1) - 1, d || 1).toLocaleDateString("en-US", {

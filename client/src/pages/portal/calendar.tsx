@@ -10,6 +10,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -215,13 +220,13 @@ export default function CalendarPage() {
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
 
-  const itemsByDate: Record<string, { events: number; meetings: number }> = {};
+  const itemsByDate: Record<string, FeedItem[]> = {};
   if (feed) {
     for (const it of feed) {
-      const cell = itemsByDate[it.date] || { events: 0, meetings: 0 };
-      if (it.kind === "event") cell.events += 1;
-      else cell.meetings += 1;
-      itemsByDate[it.date] = cell;
+      (itemsByDate[it.date] ||= []).push(it);
+    }
+    for (const k of Object.keys(itemsByDate)) {
+      itemsByDate[k].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
     }
   }
 
@@ -359,36 +364,32 @@ export default function CalendarPage() {
               ))}
               {calendarCells.map((day, idx) => {
                 if (day === null) {
-                  return <div key={`empty-${idx}`} className="p-2" />;
+                  return <div key={`empty-${idx}`} className="p-1" />;
                 }
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const cell = itemsByDate[dateStr];
+                const items = itemsByDate[dateStr] || [];
                 const isToday = dateStr === todayStr;
+                const visible = items.slice(0, 2);
+                const overflow = items.length - visible.length;
                 return (
                   <div
                     key={dateStr}
-                    className={`relative p-1 sm:p-2 text-center text-xs sm:text-sm rounded-md min-h-[36px] sm:min-h-[40px] flex flex-col items-center justify-center ${
-                      isToday ? "bg-primary/10 font-bold" : ""
+                    className={`p-1 text-xs rounded-md min-h-[64px] sm:min-h-[80px] flex flex-col gap-1 border border-transparent ${
+                      isToday ? "bg-primary/10 border-primary/30 font-bold" : "hover:bg-muted/40"
                     }`}
                     data-testid={`calendar-day-${dateStr}`}
                   >
-                    {day}
-                    {cell && (cell.events > 0 || cell.meetings > 0) && (
-                      <div className="absolute bottom-0.5 sm:bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-                        {cell.events > 0 && (
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-primary"
-                            data-testid={`event-dot-${dateStr}`}
-                          />
-                        )}
-                        {cell.meetings > 0 && (
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-                            data-testid={`meeting-dot-${dateStr}`}
-                          />
-                        )}
-                      </div>
-                    )}
+                    <div className="text-right text-[10px] sm:text-xs px-1">{day}</div>
+                    <div className="flex flex-col gap-0.5 overflow-hidden">
+                      {visible.map((it) => (
+                        <DayChip key={`${it.kind}-${it.id}`} item={it} />
+                      ))}
+                      {overflow > 0 && (
+                        <span className="text-[9px] text-muted-foreground px-1" data-testid={`overflow-${dateStr}`}>
+                          +{overflow} more
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -677,6 +678,75 @@ function EventCard({
   );
 }
 
+function DayChip({ item }: { item: FeedItem }) {
+  const isMeeting = item.kind === "meeting";
+  const chipClass = isMeeting
+    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900/60"
+    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60";
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={`flex items-center gap-1 px-1 py-0.5 rounded text-[9px] sm:text-[10px] font-medium truncate text-left transition-colors ${chipClass}`}
+          data-testid={`chip-${item.kind}-${item.id}`}
+        >
+          {isMeeting ? <UsersRound className="h-2.5 w-2.5 shrink-0" /> : <CalendarIcon className="h-2.5 w-2.5 shrink-0" />}
+          <span className="truncate">{item.title}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 text-sm" align="start" data-testid={`popover-${item.kind}-${item.id}`}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge
+              className={`text-[10px] ${
+                isMeeting
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 hover:bg-emerald-100"
+                  : ""
+              }`}
+              variant={isMeeting ? "default" : "outline"}
+            >
+              {isMeeting ? "Meeting" : "Event"}
+            </Badge>
+            <span className="font-semibold leading-tight">{item.title}</span>
+          </div>
+          {isMeeting && item.committeeName && (
+            <p className="text-xs text-muted-foreground">{item.committeeName}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <CalendarIcon className="h-3 w-3" />
+              {formatDisplayDate(item.date)}
+            </span>
+            {item.time && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatTime(item.time)}
+              </span>
+            )}
+            {item.location && (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {item.location}
+              </span>
+            )}
+          </div>
+          {item.description && (
+            <p className="text-xs whitespace-pre-wrap text-muted-foreground line-clamp-4">{item.description}</p>
+          )}
+          {isMeeting && item.committeeId && (
+            <Link href={`/portal/committees/${item.committeeId}?tab=meetings`}>
+              <Button size="sm" variant="outline" className="w-full mt-1" data-testid={`popover-open-committee-${item.committeeId}`}>
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                Open committee
+              </Button>
+            </Link>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function MeetingCard({ item }: { item: FeedItem }) {
   return (
     <Card
@@ -697,7 +767,7 @@ function MeetingCard({ item }: { item: FeedItem }) {
             </div>
             {item.committeeName && item.committeeId && (
               <p className="text-sm text-muted-foreground mt-1">
-                <Link href={`/portal/committees/${item.committeeId}`}>
+                <Link href={`/portal/committees/${item.committeeId}?tab=meetings`}>
                   <span className="hover:underline cursor-pointer" data-testid={`link-committee-${item.committeeId}`}>
                     {item.committeeName}
                   </span>
@@ -729,7 +799,7 @@ function MeetingCard({ item }: { item: FeedItem }) {
             )}
           </div>
           {item.committeeId && (
-            <Link href={`/portal/committees/${item.committeeId}`}>
+            <Link href={`/portal/committees/${item.committeeId}?tab=meetings`}>
               <Button variant="outline" size="sm" data-testid={`button-open-committee-${item.committeeId}`}>
                 <ExternalLink className="h-4 w-4 mr-1" />
                 Open committee

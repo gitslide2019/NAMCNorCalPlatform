@@ -471,7 +471,7 @@ export default function CommitteeDetail() {
           </div>
         </div>
 
-        <Tabs defaultValue="about" className="w-full">
+        <Tabs defaultValue={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "meetings" ? "meetings" : "about"} className="w-full">
           <TabsList className="grid grid-cols-4 w-full max-w-xl">
             <TabsTrigger value="about" data-testid="tab-about"><Info className="h-4 w-4 mr-1" />About</TabsTrigger>
             <TabsTrigger value="members" data-testid="tab-members"><UsersRound className="h-4 w-4 mr-1" />Members</TabsTrigger>
