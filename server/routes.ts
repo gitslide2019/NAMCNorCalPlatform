@@ -656,6 +656,87 @@ export async function registerRoutes(
     }
   });
 
+  // Unified calendar feed: events + committee meetings.
+  // Query params:
+  //   scope = "all" | "events" | "my-committees" (default: "all")
+  //   from, to = optional YYYY-MM-DD bounds (inclusive)
+  app.get("/api/portal/calendar-feed", requireAuth, async (req, res) => {
+    try {
+      const scope = (typeof req.query.scope === "string" ? req.query.scope : "all") as "all" | "events" | "my-committees";
+      const from = typeof req.query.from === "string" ? req.query.from : null;
+      const to = typeof req.query.to === "string" ? req.query.to : null;
+      const inRange = (d: string) => (!from || d >= from) && (!to || d <= to);
+
+      type FeedItem = {
+        kind: "event" | "meeting";
+        id: string;
+        title: string;
+        date: string;
+        time: string | null;
+        location: string | null;
+        description: string | null;
+        committeeId?: string;
+        committeeName?: string;
+        rsvpEnabled: boolean;
+      };
+      const items: FeedItem[] = [];
+
+      if (scope !== "my-committees") {
+        const events = await storage.getEvents();
+        for (const e of events) {
+          if (!inRange(e.eventDate)) continue;
+          items.push({
+            kind: "event",
+            id: e.id,
+            title: e.title,
+            date: e.eventDate,
+            time: e.eventTime || null,
+            location: e.location || null,
+            description: e.description || null,
+            rsvpEnabled: true,
+          });
+        }
+      }
+
+      if (scope !== "events") {
+        const allCommittees = await storage.getCommittees(true);
+        let committeesToInclude = allCommittees;
+        if (scope === "my-committees") {
+          const myMemberships = await storage.getCommitteeMembershipsByUser(req.user!.id);
+          const myCommitteeIds = new Set(myMemberships.map((m) => m.committeeId));
+          committeesToInclude = allCommittees.filter((c) => myCommitteeIds.has(c.id));
+        }
+        for (const c of committeesToInclude) {
+          const meetings = await storage.getCommitteeMeetings(c.id);
+          for (const m of meetings) {
+            if (!inRange(m.meetingDate)) continue;
+            items.push({
+              kind: "meeting",
+              id: m.id,
+              title: m.title,
+              date: m.meetingDate,
+              time: m.meetingTime || null,
+              location: m.location || null,
+              description: m.agenda || null,
+              committeeId: c.id,
+              committeeName: c.name,
+              rsvpEnabled: false,
+            });
+          }
+        }
+      }
+
+      items.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return (a.time || "").localeCompare(b.time || "");
+      });
+      res.json(items);
+    } catch (error) {
+      console.error("Error building calendar feed:", error);
+      res.status(500).json({ message: "Failed to build calendar feed" });
+    }
+  });
+
   app.post("/api/portal/events", requireAdmin, async (req, res) => {
     try {
       const user = req.user!;

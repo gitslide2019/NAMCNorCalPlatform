@@ -48,6 +48,17 @@ interface DashboardEvent {
   location: string | null;
 }
 
+interface FeedItem {
+  kind: "event" | "meeting";
+  id: string;
+  title: string;
+  date: string;
+  time: string | null;
+  location: string | null;
+  committeeId?: string;
+  committeeName?: string;
+}
+
 interface DashboardProject {
   id: number;
   title: string;
@@ -91,8 +102,13 @@ export default function Dashboard() {
     queryKey: ["/api/portal/messages"],
   });
 
-  const { data: events } = useQuery<DashboardEvent[]>({
-    queryKey: ["/api/portal/events"],
+  const { data: feed } = useQuery<FeedItem[]>({
+    queryKey: ["/api/portal/calendar-feed", { scope: "all" }],
+    queryFn: async () => {
+      const res = await fetch("/api/portal/calendar-feed?scope=all", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load calendar feed");
+      return res.json();
+    },
   });
 
   const { data: projects } = useQuery<DashboardProject[]>({
@@ -112,9 +128,10 @@ export default function Dashboard() {
   const recentAnnouncements = (announcements ?? []).slice(0, 3);
 
   const now = new Date();
-  const upcomingEvents = (events ?? [])
-    .filter((e) => new Date(e.eventDate) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
-    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const upcomingEvents = (feed ?? [])
+    .filter((it) => it.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 3);
 
   const recentTopics = (discussions ?? [])
@@ -280,33 +297,64 @@ export default function Dashboard() {
               </div>
               {upcomingEvents.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {upcomingEvents.map((event) => (
-                    <Link key={event.id} href="/portal/calendar">
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer" data-testid={`card-event-${event.id}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 shrink-0">
-                              <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  {upcomingEvents.map((item) => {
+                    const isMeeting = item.kind === "meeting";
+                    const href = isMeeting && item.committeeId
+                      ? `/portal/committees/${item.committeeId}`
+                      : "/portal/calendar";
+                    const [y, m, d] = item.date.split("-").map(Number);
+                    const dateLabel = new Date(y, (m || 1) - 1, d || 1).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                    return (
+                      <Link key={`${item.kind}-${item.id}`} href={href}>
+                        <Card className="hover:shadow-md transition-shadow cursor-pointer h-full" data-testid={`card-feed-${item.kind}-${item.id}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 ${
+                                isMeeting
+                                  ? "bg-emerald-100 dark:bg-emerald-900/30"
+                                  : "bg-amber-100 dark:bg-amber-900/30"
+                              }`}>
+                                {isMeeting ? (
+                                  <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                ) : (
+                                  <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 ${
+                                      isMeeting
+                                        ? "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300"
+                                        : ""
+                                    }`}
+                                  >
+                                    {isMeeting ? "Meeting" : "Event"}
+                                  </Badge>
+                                </div>
+                                <p className="font-medium text-sm truncate">{item.title}</p>
+                                {isMeeting && item.committeeName && (
+                                  <p className="text-xs text-muted-foreground truncate">{item.committeeName}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  {dateLabel}
+                                  {item.time && ` · ${item.time}`}
+                                </p>
+                                {item.location && (
+                                  <p className="text-xs text-muted-foreground truncate">{item.location}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm truncate">{event.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(event.eventDate).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                                {event.eventTime && ` · ${event.eventTime}`}
-                              </p>
-                              {event.location && (
-                                <p className="text-xs text-muted-foreground truncate">{event.location}</p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card data-testid="card-no-events">
