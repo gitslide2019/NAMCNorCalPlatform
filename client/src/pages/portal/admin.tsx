@@ -384,6 +384,7 @@ type AdminMember = {
   email: string;
   contactName: string;
   isActive: boolean;
+  isAdmin: boolean;
   isBoardMember: boolean;
   memberApplicationId: string | null;
   companyName: string;
@@ -399,10 +400,11 @@ function MembersManagement() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, field, value }: { id: string; field: "isActive" | "isBoardMember"; value: boolean }) => {
-      const endpoint = field === "isBoardMember"
-        ? `/api/portal/admin/members/${id}/board`
-        : `/api/portal/admin/members/${id}/active`;
+    mutationFn: async ({ id, field, value }: { id: string; field: "isActive" | "isBoardMember" | "isAdmin"; value: boolean }) => {
+      const endpoint =
+        field === "isBoardMember" ? `/api/portal/admin/members/${id}/board` :
+        field === "isAdmin" ? `/api/portal/admin/members/${id}/admin` :
+        `/api/portal/admin/members/${id}/active`;
       const res = await apiRequest("PATCH", endpoint, { [field]: value });
       return await res.json();
     },
@@ -414,6 +416,14 @@ function MembersManagement() {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
     },
   });
+
+  function handleAdminToggle(member: AdminMember) {
+    const next = !member.isAdmin;
+    const verb = next ? "promote" : "remove admin access from";
+    const name = member.contactName || member.companyName || member.username;
+    if (!window.confirm(`Are you sure you want to ${verb} ${name}? Admins have full access to applications, members, finance, renewals, email, SMS and committees.`)) return;
+    toggleMutation.mutate({ id: member.id, field: "isAdmin", value: next });
+  }
 
   const filtered = (members || []).filter(m =>
     !search ||
@@ -427,7 +437,7 @@ function MembersManagement() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold">Member Accounts</h2>
-          <p className="text-sm text-muted-foreground">Toggle access and board status for member accounts.</p>
+          <p className="text-sm text-muted-foreground">Toggle access, board status, and admin privileges for accounts.</p>
         </div>
         <Input
           placeholder="Search members..."
@@ -459,6 +469,7 @@ function MembersManagement() {
                     <th className="text-left p-3 font-medium hidden md:table-cell">Category</th>
                     <th className="text-center p-3 font-medium">Active</th>
                     <th className="text-center p-3 font-medium">Board</th>
+                    <th className="text-center p-3 font-medium">Admin</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -499,6 +510,19 @@ function MembersManagement() {
                           title={member.isBoardMember ? "Remove from board" : "Add to board"}
                         >
                           <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isBoardMember ? "translate-x-2" : "-translate-x-2"}`} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => handleAdminToggle(member)}
+                          disabled={toggleMutation.isPending}
+                          className={`inline-flex items-center justify-center w-10 h-6 rounded-full transition-colors ${
+                            member.isAdmin ? "bg-red-500" : "bg-gray-300 dark:bg-gray-600"
+                          }`}
+                          data-testid={`toggle-admin-${member.id}`}
+                          title={member.isAdmin ? "Remove admin access" : "Promote to admin"}
+                        >
+                          <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isAdmin ? "translate-x-2" : "-translate-x-2"}`} />
                         </button>
                       </td>
                     </tr>

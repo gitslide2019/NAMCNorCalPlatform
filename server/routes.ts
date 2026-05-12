@@ -1894,17 +1894,18 @@ export async function registerRoutes(
       const apps = await storage.getApprovedMembershipApplications();
       const appMap = new Map(apps.map(a => [a.id, a]));
       const result = allUsers
-        .filter(u => !u.isAdmin && u.memberApplicationId)
+        .filter(u => u.memberApplicationId || u.isAdmin)
         .map(u => ({
           id: u.id,
           username: u.username,
-          email: appMap.get(u.memberApplicationId!)?.email || "",
-          contactName: appMap.get(u.memberApplicationId!)?.contactName || "",
+          email: u.memberApplicationId ? (appMap.get(u.memberApplicationId)?.email || "") : "",
+          contactName: u.memberApplicationId ? (appMap.get(u.memberApplicationId)?.contactName || "") : "",
           isActive: u.isActive,
+          isAdmin: u.isAdmin,
           isBoardMember: u.isBoardMember,
           memberApplicationId: u.memberApplicationId,
-          companyName: appMap.get(u.memberApplicationId!)?.companyName || u.username,
-          membershipCategory: appMap.get(u.memberApplicationId!)?.membershipCategory || "",
+          companyName: u.memberApplicationId ? (appMap.get(u.memberApplicationId)?.companyName || u.username) : u.username,
+          membershipCategory: u.memberApplicationId ? (appMap.get(u.memberApplicationId)?.membershipCategory || "") : "",
         }));
       res.json(result);
     } catch {
@@ -1927,6 +1928,38 @@ export async function registerRoutes(
       res.json(updated);
     } catch {
       res.status(500).json({ message: "Failed to update member active status" });
+    }
+  });
+
+  app.patch("/api/portal/admin/members/:id/admin", requireAdmin, async (req, res) => {
+    try {
+      const { isAdmin } = req.body;
+      if (typeof isAdmin !== "boolean") {
+        res.status(400).json({ message: "isAdmin must be a boolean" });
+        return;
+      }
+      // Safeguard: prevent demoting yourself
+      if (req.user!.id === req.params.id && !isAdmin) {
+        res.status(400).json({ message: "You cannot remove your own admin access." });
+        return;
+      }
+      // Safeguard: prevent removing the last admin
+      if (!isAdmin) {
+        const all = await storage.getAllUsers();
+        const otherAdmins = all.filter(u => u.isAdmin && u.id !== req.params.id);
+        if (otherAdmins.length === 0) {
+          res.status(400).json({ message: "Cannot remove the last admin." });
+          return;
+        }
+      }
+      const updated = await storage.updateUser(req.params.id, { isAdmin });
+      if (!updated) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Failed to update admin status" });
     }
   });
 
