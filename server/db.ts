@@ -24,6 +24,7 @@ export async function ensureAdminUser() {
     const adminAccounts = [
       { username: "testadmin", password: "test1234" },
       { username: "shannon.hickman", password: "5108308294" },
+      { username: "mark.hall", password: "NamcAdmin!c9d4d8" },
     ];
 
     for (const admin of adminAccounts) {
