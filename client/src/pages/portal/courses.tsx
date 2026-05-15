@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -706,17 +707,17 @@ export default function Courses() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-          <div>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex items-end justify-between gap-4 flex-wrap">
+          <div className="space-y-2">
+            <Eyebrow>The trade school</Eyebrow>
             <h1
-              className="text-2xl sm:text-3xl font-bold flex items-center gap-2"
+              className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]"
               data-testid="text-courses-title"
             >
-              <GraduationCap className="h-7 w-7" />
               Training
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Explore training and development courses
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
+              Explore training and development courses.
             </p>
           </div>
           {user?.isAdmin && (
@@ -759,7 +760,7 @@ export default function Courses() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
+        </header>
 
         {coursesLoading || enrollmentsLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

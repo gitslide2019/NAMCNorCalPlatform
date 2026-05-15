@@ -155,19 +155,19 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
 
   return (
     <div className="space-y-6" data-testid="corporate-profile">
-      <Card className="border-t-4 border-t-[#E5A830] overflow-hidden">
+      <Card className="border-t-4 border-t-primary overflow-hidden">
         <CardContent className="p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
             {member.profileImageUrl ? (
               <img
                 src={member.profileImageUrl}
                 alt={member.companyName}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-[#E5A830]/30 flex-shrink-0"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-primary/30 flex-shrink-0"
                 data-testid="img-corporate-photo"
               />
             ) : (
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#E5A830]/10 flex items-center justify-center flex-shrink-0 border-4 border-[#E5A830]/30">
-                <span className="text-3xl sm:text-4xl font-bold text-[#E5A830]">{member.companyName.charAt(0)}</span>
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border-4 border-primary/30">
+                <span className="text-3xl sm:text-4xl font-bold text-primary">{member.companyName.charAt(0)}</span>
               </div>
             )}
             <div className="flex-1">
@@ -175,7 +175,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
                 <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-corporate-company">{member.companyName}</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Badge className="bg-[#E5A830] hover:bg-[#d4982a] text-white" data-testid="badge-corporate-partner">
+                <Badge className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="badge-corporate-partner">
                   <Crown className="h-3 w-3 mr-1" />Corporate Partner
                 </Badge>
                 {member.membershipTier && (
@@ -223,8 +223,8 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
           {stats.map((stat, idx) => (
             <Card key={idx}>
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E5A830]/10 flex-shrink-0">
-                  <stat.icon className="h-5 w-5 text-[#E5A830]" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+                  <stat.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
@@ -240,7 +240,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         <Card data-testid="card-corporate-services">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Wrench className="h-5 w-5 text-[#E5A830]" />
+              <Wrench className="h-5 w-5 text-primary" />
               Our Services
             </CardTitle>
           </CardHeader>
@@ -259,7 +259,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         <Card data-testid="card-corporate-certifications">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Award className="h-5 w-5 text-[#E5A830]" />
+              <Award className="h-5 w-5 text-primary" />
               Certifications & Licenses
             </CardTitle>
           </CardHeader>
@@ -276,7 +276,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
       <Card data-testid="card-corporate-contact">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Building2 className="h-5 w-5 text-[#E5A830]" />
+            <Building2 className="h-5 w-5 text-primary" />
             Contact Information
           </CardTitle>
         </CardHeader>
@@ -324,7 +324,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         <Card data-testid="card-corporate-portfolio">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Briefcase className="h-5 w-5 text-[#E5A830]" />
+              <Briefcase className="h-5 w-5 text-primary" />
               Project Portfolio
             </CardTitle>
             <CardDescription>Completed projects showcasing our capabilities</CardDescription>
@@ -344,7 +344,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="font-semibold text-sm">{project.title}</h4>
                       {project.isFeatured && (
-                        <Badge className="bg-[#E5A830] text-white text-[10px] flex-shrink-0">Featured</Badge>
+                        <Badge className="bg-primary text-primary-foreground text-[10px] flex-shrink-0">Featured</Badge>
                       )}
                     </div>
                     {project.description && (
@@ -370,7 +370,7 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
         <Card data-testid="card-corporate-documents">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-5 w-5 text-[#E5A830]" />
+              <FileText className="h-5 w-5 text-primary" />
               Company Documents
             </CardTitle>
             <CardDescription>Capability statements, certifications, and other company documents</CardDescription>
@@ -698,7 +698,7 @@ function EndorsementsSection({ applicationId, isCorporate }: { applicationId: st
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className={`flex items-center gap-2 text-lg`}>
-            <ThumbsUp className={`h-5 w-5 ${isCorporate ? "text-[#E5A830]" : ""}`} />
+            <ThumbsUp className={`h-5 w-5 ${isCorporate ? "text-primary" : ""}`} />
             Endorsements
             {endorsements && endorsements.length > 0 && (
               <Badge variant="secondary" className="ml-1">{endorsements.length}</Badge>

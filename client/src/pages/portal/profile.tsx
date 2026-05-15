@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,30 +104,30 @@ function ProfilePreviewDialog({ application }: { application: MembershipApplicat
           <DialogTitle>How Other Members See You</DialogTitle>
         </DialogHeader>
         {/* Exact MemberCard layout from directory.tsx — same structure and anchors */}
-        <div className={`rounded-lg border p-6 ${isCorporate ? "border-l-4 border-l-[#E5A830]" : ""}`} data-testid="preview-card">
+        <div className={`rounded-lg border p-6 ${isCorporate ? "border-l-4 border-l-primary" : ""}`} data-testid="preview-card">
           <div className="flex items-start gap-3 mb-3">
             {application.profileImageUrl ? (
               <img
                 src={application.profileImageUrl}
                 alt={application.companyName}
-                className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-[#E5A830]" : "border-muted"}`}
+                className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-primary" : "border-muted"}`}
                 data-testid="preview-img"
               />
             ) : (
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-[#E5A830]/10 text-[#E5A830] border border-[#E5A830]/30" : "bg-muted text-muted-foreground"}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-primary/10 text-primary border border-primary/30" : "bg-muted text-muted-foreground"}`}>
                 {application.companyName.charAt(0)}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg leading-tight">{application.companyName}</h3>
               {application.tagline && (
-                <p className="text-xs text-[#E5A830] font-medium truncate" data-testid="preview-tagline">{application.tagline}</p>
+                <p className="text-xs text-primary font-medium truncate" data-testid="preview-tagline">{application.tagline}</p>
               )}
               <p className="text-sm text-muted-foreground">{application.contactName} - {application.title}</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
               {isCorporate && (
-                <Badge className="text-xs bg-[#E5A830] hover:bg-[#d4982a] text-white">
+                <Badge className="text-xs bg-primary text-primary-foreground hover:bg-primary/90">
                   <Crown className="h-3 w-3 mr-1" />Corporate Partner
                 </Badge>
               )}
@@ -251,17 +252,18 @@ export default function Profile() {
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
 
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-profile-title">My Company Profile</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+        <header className="border-b-2 border-foreground/80 pb-6 mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div className="space-y-2">
+            <Eyebrow>The shingle</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-profile-title">My company profile</h1>
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
               Build a complete profile to get found for projects, partnerships, and opportunities.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <ProfilePreviewDialog application={application} />
           </div>
-        </div>
+        </header>
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge variant="secondary" className="capitalize" data-testid="text-membership-category">{application.membershipCategory} Member</Badge>
@@ -337,7 +339,7 @@ export default function Profile() {
           <Card className="mb-6" data-testid="card-membership-info">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-[#E5A830]" />Membership Information
+                <Briefcase className="h-4 w-4 text-primary" />Membership Information
               </CardTitle>
               <CardDescription>Your membership details on file with NAMC NorCal</CardDescription>
             </CardHeader>

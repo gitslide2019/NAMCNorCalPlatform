@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -147,15 +148,13 @@ export default function Admin() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-admin-title">
-              <ShieldCheck className="h-7 w-7 text-primary" />
-              Admin Panel
-            </h1>
-            <p className="text-muted-foreground mt-1">{user?.isAdmin ? "Manage membership applications and organizational finances." : "View organizational financial dashboard."}</p>
-          </div>
-        </div>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8">
+          <Eyebrow>The desk</Eyebrow>
+          <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95] mt-2" data-testid="text-admin-title">
+            Admin panel
+          </h1>
+          <p className="text-muted-foreground max-w-lg text-sm sm:text-base mt-2">{user?.isAdmin ? "Manage membership applications and organizational finances." : "View the organizational financial dashboard."}</p>
+        </header>
 
         <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
           <div className="overflow-x-auto">

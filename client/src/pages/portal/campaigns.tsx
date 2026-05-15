@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow, SectionNumeral } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,25 +156,26 @@ export default function Campaigns() {
           <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)} className="mb-4" data-testid="button-back-campaigns">
             <ArrowLeft className="h-4 w-4 mr-2" />Back to Campaigns
           </Button>
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-campaign-title">{campaign.title}</h1>
-              <p className="text-muted-foreground mt-1">{campaign.description}</p>
+          <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div className="space-y-2">
+              <Eyebrow>Campaign</Eyebrow>
+              <h1 className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95]" data-testid="text-campaign-title">{campaign.title}</h1>
+              <p className="text-muted-foreground max-w-lg text-sm sm:text-base">{campaign.description}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={campaign.status === "active" ? "default" : "secondary"}>{campaign.status}</Badge>
+              <Badge className={`text-[10px] uppercase tracking-[0.16em] font-semibold border ${campaign.status === "active" ? "bg-emerald-600/10 text-emerald-700 border-emerald-600/30 dark:text-emerald-400" : "bg-muted text-muted-foreground border-foreground/15"}`}>{campaign.status}</Badge>
               {isAdmin && (
                 <Button variant="outline" size="sm" onClick={() => deleteCampaignMutation.mutate(campaign.id)} data-testid="button-delete-campaign">
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               )}
             </div>
-          </div>
+          </header>
 
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-editorial paper-surface">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-2xl font-bold text-primary">{fmt(campaign.currentAmount)}</span>
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <span className="font-display font-display-tnum text-4xl text-primary leading-none">{fmt(campaign.currentAmount)}</span>
                 <span className="text-muted-foreground">of {fmt(campaign.goalAmount)} goal</span>
               </div>
               <Progress value={progress} className="h-3 mb-2" />
@@ -189,7 +191,7 @@ export default function Campaigns() {
           </Card>
 
           <div className="flex items-center justify-between gap-4 mb-4">
-            <h2 className="text-xl font-semibold">Pledges</h2>
+            <SectionNumeral number="01" label="Pledges" className="mb-0" />
             {campaign.status === "active" && (
               <Dialog open={pledgeOpen} onOpenChange={setPledgeOpen}>
                 <DialogTrigger asChild>
@@ -248,10 +250,11 @@ export default function Campaigns() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-campaigns-title">Fundraising Campaigns</h1>
-            <p className="text-muted-foreground mt-1">Capital campaigns and fundraising initiatives.</p>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div className="space-y-2">
+            <Eyebrow>The capital stack</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-campaigns-title">Fundraising campaigns</h1>
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">Capital campaigns and fundraising initiatives.</p>
           </div>
           {isBoardOrAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -281,7 +284,7 @@ export default function Campaigns() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
+        </header>
 
         {isLoading ? (
           <div className="space-y-4">{[1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)}</div>

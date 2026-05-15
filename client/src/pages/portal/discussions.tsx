@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2, Users } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
-import discussionBanner from "@assets/generated_images/discussion_banner.png";
+import { Eyebrow } from "@/components/editorial";
 import ReactMarkdown from "react-markdown";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
@@ -478,27 +478,20 @@ export default function Discussions() {
           Back to Dashboard
         </Button>
 
-        <div className="relative overflow-hidden rounded-xl mb-6" data-testid="banner-discussions">
-          <img
-            src={discussionBanner}
-            alt="Discussion Board"
-            className="w-full h-32 sm:h-44 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-          <div className="absolute inset-0 flex items-center justify-between p-6 sm:p-8">
-            <div className="text-white">
-              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-discussions-title">
-                <MessageSquare className="h-7 w-7" />
-                Discussion Board
-              </h1>
-              <p className="text-white/80 mt-1 text-sm sm:text-base max-w-md">
-                Connect and share ideas with fellow NAMC members.
-              </p>
-            </div>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4" data-testid="banner-discussions">
+          <div className="space-y-2">
+            <Eyebrow>Around the table</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-discussions-title">
+              Discussion board
+            </h1>
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
+              Connect and share ideas with fellow NAMC members.
+            </p>
+          </div>
             <div className="shrink-0">
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="bg-white/90 text-black hover:bg-white" data-testid="button-new-topic">
+                  <Button size="sm" data-testid="button-new-topic">
                     <Plus className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">New Topic</span>
                     <span className="sm:hidden">New</span>
@@ -552,8 +545,7 @@ export default function Discussions() {
                 </DialogContent>
               </Dialog>
             </div>
-          </div>
-        </div>
+        </header>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />

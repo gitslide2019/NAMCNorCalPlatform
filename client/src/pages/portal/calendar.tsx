@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -253,13 +254,14 @@ export default function CalendarPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-calendar-title">
-              Calendar & Events
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Eyebrow>The schedule</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-calendar-title">
+              Calendar &amp; events
             </h1>
-            <p className="text-muted-foreground mt-1">
-              View upcoming NAMC NorCal events and committee meetings.
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
+              Upcoming NAMC NorCal events and committee meetings.
             </p>
           </div>
           {user?.isAdmin && (
@@ -317,9 +319,9 @@ export default function CalendarPage() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
+        </header>
 
-        <div className="inline-flex rounded-lg border bg-muted/30 p-1 mb-6" data-testid="scope-toggle">
+        <div className="inline-flex rounded-lg border border-foreground/15 paper-surface p-1 mb-6" data-testid="scope-toggle">
           {([
             { value: "all", label: "All" },
             { value: "events", label: "Events" },

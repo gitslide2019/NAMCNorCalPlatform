@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
+import { Eyebrow, SectionNumeral } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -193,14 +194,15 @@ function PastOpportunitiesMetrics({ projects }: { projects: ProjectOpportunity[]
   return (
     <div className="mt-10 border-t pt-8">
       <button
-        className="flex items-center gap-2 w-full text-left group"
+        className="flex items-baseline gap-3 w-full text-left group mb-2"
         onClick={() => setExpanded(!expanded)}
         data-testid="button-toggle-past"
       >
-        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
-          Past & Unconfirmed Opportunities ({projects.length})
-        </h2>
+        <SectionNumeral
+          number="02"
+          label={`Past & unconfirmed (${projects.length})`}
+          className="mb-0"
+        />
         {expanded ? <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" /> : <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />}
       </button>
       <p className="text-sm text-muted-foreground mt-1 mb-2">
@@ -340,13 +342,13 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
         Back to Dashboard
       </Button>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-projects-title">
-            <Briefcase className="h-7 w-7" />
-            Project Opportunities
+      <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <Eyebrow>The pipeline</Eyebrow>
+          <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-projects-title">
+            Project opportunities
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
             Real opportunities sourced from the NAMC NorCal email feed.
           </p>
         </div>
@@ -453,7 +455,7 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
             </Dialog>
           )}
         </div>
-      </div>
+      </header>
 
       {isLoading ? (
         <div className="space-y-4">
@@ -471,11 +473,13 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
           )}
 
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold flex items-center gap-2" data-testid="text-current-heading">
-                {viewSaved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <List className="h-4 w-4" />}
+            <SectionNumeral
+              number="01"
+              label={`${viewSaved ? "Saved" : "Current"} opportunities (${filteredOpen.length})`}
+            />
+            <div className="flex items-center justify-between mb-4 sr-only">
+              <h2 data-testid="text-current-heading">
                 {viewSaved ? "Saved Opportunities" : "Current Opportunities"}
-                <span className="text-muted-foreground font-normal text-sm">({filteredOpen.length})</span>
               </h2>
             </div>
 

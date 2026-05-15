@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Eyebrow } from "@/components/editorial";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,14 +104,15 @@ const categoryLabels: Record<string, string> = {
   measurement: "Measurement",
 };
 
+const PILL_BASE = "text-[10px] uppercase tracking-[0.16em] font-semibold border";
 function getStatusBadge(status: string) {
   switch (status) {
     case "available":
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Available</Badge>;
+      return <Badge className={`${PILL_BASE} bg-emerald-600/10 text-emerald-700 border-emerald-600/30 dark:text-emerald-400`}>Available</Badge>;
     case "borrowed":
-      return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Borrowed</Badge>;
+      return <Badge className={`${PILL_BASE} bg-primary/10 text-foreground border-primary/40`}>Borrowed</Badge>;
     case "maintenance":
-      return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Maintenance</Badge>;
+      return <Badge className={`${PILL_BASE} bg-destructive/10 text-destructive border-destructive/30`}>Maintenance</Badge>;
     default:
       return <Badge>{status}</Badge>;
   }
@@ -119,15 +121,15 @@ function getStatusBadge(status: string) {
 function getRequestStatusBadge(status: string) {
   switch (status) {
     case "pending":
-      return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      return <Badge className={`${PILL_BASE} bg-primary/10 text-foreground border-primary/40`}><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
     case "approved":
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+      return <Badge className={`${PILL_BASE} bg-emerald-600/10 text-emerald-700 border-emerald-600/30 dark:text-emerald-400`}><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
     case "denied":
-      return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Denied</Badge>;
+      return <Badge className={`${PILL_BASE} bg-destructive/10 text-destructive border-destructive/30`}><XCircle className="h-3 w-3 mr-1" />Denied</Badge>;
     case "cancelled":
       return <Badge variant="secondary"><Ban className="h-3 w-3 mr-1" />Cancelled</Badge>;
     case "completed":
-      return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><Check className="h-3 w-3 mr-1" />Completed</Badge>;
+      return <Badge className={`${PILL_BASE} bg-emerald-600/10 text-emerald-700 border-emerald-600/30 dark:text-emerald-400`}><Check className="h-3 w-3 mr-1" />Completed</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -413,10 +415,11 @@ export default function ToolLibrary() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-tools-title">Equipment Sharing</h1>
-            <p className="text-muted-foreground mt-1">Browse, request, and share equipment with fellow members.</p>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Eyebrow>The yard</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-tools-title">Equipment sharing</h1>
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">Browse, request, and share equipment with fellow members.</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -464,7 +467,7 @@ export default function ToolLibrary() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        </header>
 
         <Tabs defaultValue="catalog" data-testid="tabs-tools">
           <TabsList className="flex-wrap h-auto gap-1">

@@ -32,10 +32,10 @@ import {
 import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2, BookOpen, Mail } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { Newsletter } from "@shared/schema";
-import newsletterBanner from "@assets/generated_images/newsletter_banner.png";
+import { Eyebrow } from "@/components/editorial";
 
 const ACCENT_BG_COLORS = [
-  "bg-[#E5A830]/10",
+  "bg-primary/10",
   "bg-blue-500/10",
   "bg-green-500/10",
   "bg-purple-500/10",
@@ -44,7 +44,7 @@ const ACCENT_BG_COLORS = [
 ];
 
 const ACCENT_ICON_COLORS = [
-  "text-[#E5A830]",
+  "text-primary",
   "text-blue-500",
   "text-green-500",
   "text-purple-500",
@@ -192,7 +192,7 @@ export default function Newsletters() {
                             <Button
                               variant="default"
                               size="sm"
-                              className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                              className="bg-primary text-primary-foreground hover:bg-primary/90"
                               disabled={sendEmailMutation.isPending}
                               data-testid="button-send-newsletter-email"
                             >
@@ -212,7 +212,7 @@ export default function Newsletters() {
                               <AlertDialogAction
                                 onClick={() => sendEmailMutation.mutate(selectedNewsletter.id)}
                                 data-testid="button-confirm-send-email"
-                                className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                                className="bg-primary text-primary-foreground hover:bg-primary/90"
                               >
                                 Send Emails
                               </AlertDialogAction>
@@ -328,29 +328,21 @@ export default function Newsletters() {
           Back to Dashboard
         </Button>
 
-        <div className="relative overflow-hidden rounded-xl mb-8" data-testid="banner-newsletters">
-          <img
-            src={newsletterBanner}
-            alt="Newsletters"
-            className="w-full h-32 sm:h-44 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-          <div className="absolute inset-0 flex items-center p-6 sm:p-8">
-            <div className="text-white">
-              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2" data-testid="text-newsletters-heading">
-                <Newspaper className="h-7 w-7" />
-                Newsletters
-              </h1>
-              <p className="text-white/80 mt-1 text-sm sm:text-base max-w-md">
-                Stay up to date with NAMC NorCal news and updates.
-              </p>
-            </div>
+        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4" data-testid="banner-newsletters">
+          <div className="space-y-2">
+            <Eyebrow>The press</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-newsletters-heading">
+              Newsletters
+            </h1>
+            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
+              Stay up to date with NAMC NorCal news and updates.
+            </p>
           </div>
           {user?.isAdmin && (
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+            <div>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="bg-white/90 text-black hover:bg-white" data-testid="button-create-newsletter">
+                  <Button size="sm" data-testid="button-create-newsletter">
                     <Plus className="h-4 w-4 mr-1" />
                     Create
                   </Button>
@@ -394,7 +386,7 @@ export default function Newsletters() {
               </Dialog>
             </div>
           )}
-        </div>
+        </header>
 
         {listLoading ? (
           <div className="space-y-4">
