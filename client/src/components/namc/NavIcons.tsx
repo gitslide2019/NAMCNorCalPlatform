@@ -75,11 +75,11 @@ export function NamcMonogram({ className }: { className?: string }) {
         x="16"
         y="22"
         textAnchor="middle"
-        fontFamily="Fraunces, Georgia, serif"
-        fontWeight="700"
-        fontSize="18"
+        fontFamily="'Plus Jakarta Sans', 'Inter', sans-serif"
+        fontWeight="800"
+        fontSize="20"
         fill="currentColor"
-        style={{ letterSpacing: "-0.04em" }}
+        style={{ letterSpacing: "-0.06em" }}
       >
         N
       </text>

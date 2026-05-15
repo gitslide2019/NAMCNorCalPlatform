@@ -48,10 +48,10 @@
   --chart-4: 262 83% 58%;
   --chart-5: 340 75% 55%;
 
-  /* Brand: editorial typography pairing */
+  /* Brand: modern mobile-app sans (single family, varied by weight + tracking + size) */
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-serif: 'Fraunces', Georgia, serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-serif: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-mono: ui-monospace, Menlo, monospace;
 
   /* Editorial gold rule color (semi-opaque, used for hairlines/dividers) */
@@ -166,20 +166,38 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
+    /* Safety net: a single overflowing element can never push the document
+       horizontally on mobile. `clip` is the modern equivalent of `hidden`
+       and doesn't break sticky positioning. */
+    overflow-x: clip;
   }
 
-  /* Editorial display family for hero/section titles. Optical-size 96 by default. */
+  /* Display tier: same family as body, but heavier weight + tighter tracking
+     so headlines still read with editorial impact rather than as body text. */
   h1, h2, h3 {
     font-family: var(--font-display);
-    font-optical-sizing: auto;
-    font-variation-settings: "opsz" 96, "SOFT" 50;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.025em;
   }
-  h4, h5, h6 { font-family: var(--font-sans); letter-spacing: -0.005em; }
+  h4, h5, h6 { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.01em; }
 
-  /* Tabular figures on stats by default */
-  .font-display { font-family: var(--font-display); font-optical-sizing: auto; }
-  .font-display-tnum { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .font-display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.025em; }
+  .font-display-tnum {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  /* Numerals (stats, section markers): heaviest weight + tightest tracking
+     so big numbers anchor a layout without needing a serif. */
+  .font-numeral {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
 }
 
 @layer utilities {

@@ -40,7 +40,7 @@ export function HeroSection() {
                 >
                   Build the Bay,
                   <br />
-                  <span className="italic font-light text-white/95">together.</span>
+                  <span className="font-extrabold text-white/95">together.</span>
                 </h1>
               </RevealOnScroll>
 

@@ -96,7 +96,7 @@ export function MemberSpotlightSection() {
                   {member.narrative.map((p, i) => (
                     <p
                       key={i}
-                      className={`text-foreground/80 leading-relaxed ${i === 0 ? "first-letter:font-display first-letter:text-6xl first-letter:font-medium first-letter:float-left first-letter:mr-3 first-letter:leading-[0.85] first-letter:text-primary" : ""}`}
+                      className={`text-foreground/80 leading-relaxed ${i === 0 ? "first-letter:font-display first-letter:text-6xl first-letter:font-extrabold first-letter:float-left first-letter:mr-3 first-letter:leading-[0.85] first-letter:text-primary" : ""}`}
                       data-testid={`text-spotlight-narrative-${member.id}-${i}`}
                     >
                       {p}
