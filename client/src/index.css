@@ -295,8 +295,11 @@
   .mb-safe { margin-bottom: max(env(safe-area-inset-bottom, 0px), 12px); }
   .h-bottom-bar { height: 72px; }
 
-  /* When the bottom bar is mounted on mobile, leave room at the bottom of every page */
-  .pb-bottom-bar { padding-bottom: calc(72px + max(env(safe-area-inset-bottom, 0px), 16px) + 16px); }
+  /* When the bottom bar is mounted on mobile, leave room at the bottom of every page.
+     The pill is 68px + 8px margin + safe-area, and the center FAB extends another
+     ~28px above the pill, so reserve ~120px + safe-area to avoid content sitting
+     behind the FAB at scroll. */
+  .pb-bottom-bar { padding-bottom: calc(72px + max(env(safe-area-inset-bottom, 0px), 16px) + 40px); }
 
   /* Gold tab-rail indicator under active tab */
   .gold-rail { position: relative; }

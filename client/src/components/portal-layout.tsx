@@ -381,7 +381,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           <Link href="/portal/notifications">
             <button
               type="button"
-              className="pressable relative grid place-items-center h-10 w-10 rounded-full hover:bg-muted/50"
+              className="pressable relative grid place-items-center h-11 w-11 rounded-full hover:bg-muted/50"
               data-testid="link-mobile-notifications"
               aria-label="Notifications"
             >
