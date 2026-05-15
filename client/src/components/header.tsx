@@ -1,85 +1,107 @@
-import { Menu, X, LogIn, User } from "lucide-react";
+import { Menu, X, LogIn, User, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import namcLogo from "@assets/NAMC-Logo_Small-BlackYellow__1769738977811.jpg";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "#why-join", label: "Why Join" },
   { href: "#membership", label: "Membership" },
+  { href: "#member-spotlight", label: "Members" },
   { href: "#get-involved", label: "Get Involved" },
-  { href: "#apply", label: "Apply Now" },
 ];
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+    if (element) element.scrollIntoView({ behavior: "smooth" });
     setMobileMenuOpen(false);
   };
 
   return (
-    <header className="sticky top-0 z-[9999] w-full border-b bg-white dark:bg-neutral-900">
+    <header
+      className={cn(
+        "sticky top-0 z-[9999] w-full transition-all duration-300",
+        scrolled
+          ? "bg-background/85 backdrop-blur-md border-b border-border/60"
+          : "bg-transparent border-b border-transparent",
+      )}
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white p-1">
-              <img 
-                src={namcLogo} 
-                alt="NAMC NorCal Logo" 
-                className="h-full w-full object-contain"
-                data-testid="img-logo"
-              />
+          <Link href="/">
+            <div className="flex items-center gap-2.5 cursor-pointer" data-testid="link-header-logo">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-foreground p-1">
+                <img src={namcLogo} alt="NAMC NorCal" className="h-full w-full object-contain" data-testid="img-logo" />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-display text-lg font-semibold tracking-tight" data-testid="text-org-name">NAMC NorCal</span>
+                <span className="text-[10px] text-muted-foreground tracking-[0.2em] uppercase mt-0.5 hidden sm:block">Est. 1969</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-white" data-testid="text-org-name">NAMC NorCal</span>
-              <span className="text-xs text-neutral-600 dark:text-neutral-400 leading-tight hidden sm:block">General Membership</span>
-            </div>
-          </div>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <Button
+              <button
                 key={link.href}
-                variant="ghost"
-                size="sm"
-                className="text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 onClick={() => scrollToSection(link.href)}
-                data-testid={`link-nav-${link.label.toLowerCase().replace(" ", "-")}`}
+                className="relative px-3 py-2 text-sm font-medium text-foreground/70 hover:text-foreground transition-colors group press"
+                data-testid={`link-nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {link.label}
-              </Button>
+                <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 origin-left transition-transform" />
+              </button>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
             {user ? (
               <Link href="/portal">
-                <Button variant="default" size="sm" className="hidden sm:inline-flex" data-testid="link-my-portal">
+                <Button size="sm" className="hidden sm:inline-flex rounded-full bg-foreground text-background hover:bg-foreground/90 press" data-testid="link-my-portal">
                   <User className="h-4 w-4 mr-1.5" />
                   My Portal
                 </Button>
               </Link>
             ) : (
-              <Link href="/auth">
-                <Button variant="outline" size="sm" className="hidden sm:inline-flex" data-testid="link-member-login">
-                  <LogIn className="h-4 w-4 mr-1.5" />
-                  Member Login
-                </Button>
-              </Link>
+              <>
+                <Link href="/auth">
+                  <button
+                    className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-colors press"
+                    data-testid="link-member-login"
+                  >
+                    <LogIn className="h-3.5 w-3.5" />
+                    Sign in
+                  </button>
+                </Link>
+                <button
+                  onClick={() => scrollToSection("#apply")}
+                  className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold press hover:bg-primary/90"
+                  data-testid="button-header-apply"
+                >
+                  Apply
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </button>
+              </>
             )}
-            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
             >
@@ -89,34 +111,46 @@ export function Header() {
         </div>
 
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-neutral-200 dark:border-neutral-700">
-            <div className="flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <Button
+          <nav className="md:hidden py-4 border-t border-border/60 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-col gap-0.5">
+              {navLinks.map((link, i) => (
+                <button
                   key={link.href}
-                  variant="ghost"
-                  className="justify-start text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="flex items-center justify-between px-2 py-3 text-base font-medium text-foreground hover:bg-muted rounded-lg press text-left"
                   onClick={() => scrollToSection(link.href)}
-                  data-testid={`link-mobile-${link.label.toLowerCase().replace(" ", "-")}`}
+                  data-testid={`link-mobile-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
-                  {link.label}
-                </Button>
+                  <span className="flex items-center gap-3">
+                    <span className="font-numeral text-primary text-sm w-5">{String(i + 1).padStart(2, "0")}</span>
+                    {link.label}
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                </button>
               ))}
-              {user ? (
-                <Link href="/portal">
-                  <Button variant="default" className="justify-start w-full mt-2" data-testid="link-mobile-portal">
-                    <User className="h-4 w-4 mr-1.5" />
-                    My Portal
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/auth">
-                  <Button variant="outline" className="justify-start w-full mt-2" data-testid="link-mobile-login">
-                    <LogIn className="h-4 w-4 mr-1.5" />
-                    Member Login
-                  </Button>
-                </Link>
-              )}
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border/60">
+                {user ? (
+                  <Link href="/portal">
+                    <Button className="w-full rounded-full bg-foreground text-background" data-testid="link-mobile-portal">
+                      <User className="h-4 w-4 mr-1.5" /> My Portal
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/auth">
+                      <Button variant="outline" className="w-full rounded-full" data-testid="link-mobile-login">
+                        <LogIn className="h-4 w-4 mr-1.5" /> Sign in
+                      </Button>
+                    </Link>
+                    <Button
+                      onClick={() => scrollToSection("#apply")}
+                      className="w-full rounded-full bg-primary text-primary-foreground"
+                      data-testid="button-mobile-apply"
+                    >
+                      Apply
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </nav>
         )}

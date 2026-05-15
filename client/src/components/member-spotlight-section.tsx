@@ -1,5 +1,7 @@
-import { ExternalLink, MapPin, Award, Quote } from "lucide-react";
+import { ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SectionNumeral } from "@/components/namc/SectionNumeral";
+import { RevealOnScroll } from "@/components/namc/RevealOnScroll";
 import amirPhoto from "@assets/Amir_-_Construction_Containment_Services_-_NAMC_Member_Spotlig_1772032281757.png";
 
 interface SpotlightMember {
@@ -25,9 +27,9 @@ const spotlightMembers: SpotlightMember[] = [
     location: "San Jose, CA",
     trade: "Modular Wall Systems & Construction Containment",
     narrative: [
-      "When military veteran Amir Jenkins launched 5D Construction Containment Services, he brought more than technical expertise to the table — he brought a mission. His company specializes in modular wall systems that keep construction sites clean, quiet, and compliant, reducing dust, noise, and disruption so projects can move forward without compromise.",
-      "Just one year into building 5DCCS, Amir has already secured a $1 million bonding capacity and earned DBE, SBE, and DVBE certifications through agencies including VTA, BART, and DGS. He's actively bidding on projects alongside other small businesses as a subcontractor, building relationships with certified firms like Talion Construction, Spectrum Construction, and Patriot Construction.",
-      "For Amir, partnering with fellow diverse small businesses isn't just a strategy — it's in the DNA of his company. Though he hasn't yet landed a public project, he's laying the groundwork by networking, bidding, and showing up. Joining NAMC NorCal was a natural next step: a chance to connect with other minority contractors, find new opportunities, and grow alongside a community that shares his values.",
+      "When military veteran Amir Jenkins launched 5D Construction Containment Services, he brought more than technical expertise to the table — he brought a mission. His company specializes in modular wall systems that keep construction sites clean, quiet, and compliant.",
+      "Just one year in, Amir has secured $1M bonding capacity and earned DBE, SBE, and DVBE certifications through VTA, BART, and DGS. He's actively bidding alongside small businesses as a subcontractor — building relationships with Talion, Spectrum, and Patriot Construction.",
+      "For Amir, partnering with fellow diverse small businesses isn't just a strategy — it's in the DNA of his company. Joining NAMC NorCal was a natural next step: connecting with other minority contractors and growing alongside a community that shares his values.",
     ],
     website: "https://5dccs.com",
     certifications: ["DBE", "SBE", "DVBE", "Veteran-Owned"],
@@ -36,121 +38,102 @@ const spotlightMembers: SpotlightMember[] = [
 
 export function MemberSpotlightSection() {
   return (
-    <section id="member-spotlight" className="py-24 sm:py-32 bg-muted/30">
+    <section id="member-spotlight" className="py-16 sm:py-24 lg:py-28 bg-background">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-5 py-2 mb-6">
-            <Award className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold uppercase tracking-wide text-primary" data-testid="text-spotlight-badge">
-              Member Spotlight
-            </span>
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 mb-10 lg:mb-14 items-end">
+          <div className="lg:col-span-7">
+            <SectionNumeral number="04" label="Member Spotlight" />
+            <h2 className="font-display text-display-sm sm:text-display font-semibold leading-[1.05]" data-testid="text-spotlight-title">
+              The contractors{" "}
+              <span className="italic font-light">building the future.</span>
+            </h2>
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6" data-testid="text-spotlight-title">
-            Meet Our Members
-          </h2>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            NAMC NorCal is proud to highlight the outstanding minority contractors and businesses
-            that make our chapter strong. These are the people building the future of construction.
-          </p>
+          <div className="lg:col-span-5">
+            <p className="text-base sm:text-lead text-foreground/70 leading-relaxed">
+              Each month we put a member on the front page. Real businesses, real wins, real backstories from across NorCal.
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-16">
+        <div className="space-y-16 sm:space-y-20">
           {spotlightMembers.map((member) => (
-            <div
-              key={member.id}
-              className="rounded-2xl overflow-hidden border bg-card shadow-sm"
-              data-testid={`card-spotlight-${member.id}`}
-            >
-              <div className="flex flex-col lg:flex-row">
-                <div className="lg:w-5/12">
-                  <div className="relative h-64 sm:h-80 lg:h-full lg:min-h-[560px]">
+            <RevealOnScroll key={member.id}>
+              <article
+                className="grid lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12"
+                data-testid={`card-spotlight-${member.id}`}
+              >
+                {/* Full-bleed photo column */}
+                <div className="lg:col-span-7 relative">
+                  <div className="relative aspect-[4/5] sm:aspect-[16/10] lg:aspect-auto lg:h-full lg:min-h-[640px] rounded-2xl overflow-hidden edge-card group">
                     <img
                       src={member.photo}
                       alt={`${member.name}, ${member.title} of ${member.company}`}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.03]"
                       data-testid={`img-spotlight-${member.id}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-black/10" />
-                    <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 lg:hidden">
-                      {member.certifications.map((cert) => (
-                        <Badge
-                          key={cert}
-                          className="bg-white/90 text-foreground text-xs font-medium backdrop-blur-sm"
-                          data-testid={`badge-cert-${cert.toLowerCase().replace(/\s+/g, "-")}`}
-                        >
-                          {cert}
-                        </Badge>
-                      ))}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute top-5 left-5 rounded-full bg-primary text-primary-foreground px-3 py-1 text-[10px] font-semibold uppercase tracking-wider">
+                      Featured · 2026
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8 text-white">
+                      <span className="eyebrow text-primary">{member.title} · {member.company.split(" ").slice(0, 2).join(" ")}</span>
+                      <h3 className="font-display text-3xl sm:text-5xl font-semibold leading-[1] mt-3" data-testid={`text-spotlight-name-${member.id}`}>
+                        {member.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-white/80 mt-3">
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {member.location}
+                        </span>
+                        <span className="text-white/40">·</span>
+                        <span>{member.trade}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:w-7/12 p-5 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-center">
-                  <div className="hidden lg:flex flex-wrap gap-2 mb-6">
+                {/* Narrative column */}
+                <div className="lg:col-span-5 flex flex-col justify-center">
+                  <div className="flex flex-wrap gap-1.5 mb-5">
                     {member.certifications.map((cert) => (
                       <Badge
                         key={cert}
-                        variant="secondary"
-                        className="text-xs font-medium"
-                        data-testid={`badge-cert-lg-${cert.toLowerCase().replace(/\s+/g, "-")}`}
+                        variant="outline"
+                        className="rounded-full border-foreground/15 bg-background text-xs px-2.5"
+                        data-testid={`badge-cert-${cert.toLowerCase().replace(/\s+/g, "-")}`}
                       >
                         {cert}
                       </Badge>
                     ))}
                   </div>
 
-                  <h3
-                    className="text-3xl sm:text-4xl font-bold mb-2"
-                    data-testid={`text-spotlight-name-${member.id}`}
-                  >
-                    {member.name}
-                  </h3>
-                  <p className="text-primary text-lg font-semibold mb-1" data-testid={`text-spotlight-title-${member.id}`}>
-                    {member.title}
-                  </p>
-                  <p className="text-xl font-semibold mb-4" data-testid={`text-spotlight-company-${member.id}`}>
-                    {member.company}
+                  <p className="font-display text-xl sm:text-2xl leading-snug font-light italic text-foreground/85 border-l-2 border-primary pl-5 mb-6" data-testid={`text-spotlight-pull-${member.id}`}>
+                    "Partnering with fellow diverse small businesses isn't just a strategy — it's in the DNA of my company."
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6 pb-6 border-b">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      {member.location}
-                    </span>
-                    <span className="text-muted-foreground/40">|</span>
-                    <span>{member.trade}</span>
+                  <div className="space-y-4">
+                    {member.narrative.map((paragraph, i) => (
+                      <p key={i} className="text-sm sm:text-base text-foreground/70 leading-relaxed" data-testid={`text-spotlight-narrative-${member.id}-${i}`}>
+                        {paragraph}
+                      </p>
+                    ))}
                   </div>
 
-                  <div className="relative mb-8">
-                    <Quote className="absolute -top-2 -left-1 h-8 w-8 text-primary/15 rotate-180" />
-                    <div className="space-y-4 pl-4 sm:pl-6">
-                      {member.narrative.map((paragraph, i) => (
-                        <p
-                          key={i}
-                          className="text-muted-foreground leading-relaxed"
-                          data-testid={`text-spotlight-narrative-${member.id}-${i}`}
-                        >
-                          {paragraph}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="pl-4 sm:pl-6">
+                  <div className="mt-8 pt-6 border-t border-border">
                     <a
                       href={member.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-medium px-5 py-3 rounded-lg hover:bg-primary/90 transition-colors text-sm sm:text-base"
+                      className="group/lnk inline-flex items-center gap-2 text-sm font-semibold press"
                       data-testid={`link-spotlight-website-${member.id}`}
                     >
-                      Visit {member.company.split(" ")[0]} {member.company.split(" ")[1]}
-                      <ExternalLink className="h-4 w-4" />
+                      <span className="border-b-2 border-primary pb-0.5">Visit {member.website.replace("https://", "")}</span>
+                      <ExternalLink className="h-4 w-4 text-primary transition-transform group-hover/lnk:translate-x-0.5 group-hover/lnk:-translate-y-0.5" />
                     </a>
                   </div>
                 </div>
-              </div>
-            </div>
+              </article>
+            </RevealOnScroll>
           ))}
         </div>
       </div>

@@ -1,152 +1,139 @@
-import { Check, Building, Building2, Landmark, LayoutGrid } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Check, Building, Building2, Landmark, LayoutGrid, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SectionNumeral } from "@/components/namc/SectionNumeral";
+import { cn } from "@/lib/utils";
 
 const tiers = [
   {
     id: "small",
     icon: Building,
-    name: "Small Business",
-    revenue: "Under $1M",
+    name: "Small",
+    sub: "Under $1M revenue",
     price: "$400",
-    description: "Perfect for emerging minority-owned construction businesses",
-    features: [
-      "Full member access to Chapter services",
-      "Networking opportunities",
-      "Member directory listing",
-      "Event attendance",
-      "Industry updates & newsletters"
-    ],
-    popular: false
+    description: "For emerging minority-owned construction businesses",
+    features: ["Full Chapter access", "Networking events", "Member directory", "Industry updates"],
+    popular: false,
   },
   {
     id: "medium",
     icon: Building2,
-    name: "Medium Business",
-    revenue: "$1M - $7M",
+    name: "Medium",
+    sub: "$1M – $7M revenue",
     price: "$800",
-    description: "Ideal for growing contractors expanding their capacity",
-    features: [
-      "All Small Business benefits",
-      "Enhanced networking access",
-      "Sponsorship opportunities",
-      "Committee participation",
-      "Priority event registration"
-    ],
-    popular: true
+    description: "For growing contractors expanding capacity",
+    features: ["All Small benefits", "Enhanced networking", "Sponsorship access", "Committee participation", "Priority registration"],
+    popular: true,
   },
   {
     id: "large",
     icon: LayoutGrid,
-    name: "Large Business",
-    revenue: "Over $7M",
+    name: "Large",
+    sub: "Over $7M revenue",
     price: "$1,200",
     description: "For established contractors leading the industry",
-    features: [
-      "All Medium Business benefits",
-      "Premium visibility & recognition",
-      "Leadership opportunities",
-      "Mentorship program access",
-      "Executive networking events"
-    ],
-    popular: false
+    features: ["All Medium benefits", "Premium visibility", "Leadership tracks", "Mentorship", "Executive events"],
+    popular: false,
   },
   {
     id: "government",
     icon: Landmark,
-    name: "Government Agency",
-    revenue: "Public Sector",
+    name: "Government",
+    sub: "Public sector",
     price: "$1,800",
-    description: "For government agencies supporting minority contractors",
-    features: [
-      "All member benefits",
-      "Agency representation",
-      "Policy input opportunities",
-      "Public-private partnerships",
-      "Workforce development access"
-    ],
-    popular: false
-  }
+    description: "Agencies supporting minority contractors",
+    features: ["All member benefits", "Agency representation", "Policy input", "Public-private partnerships", "Workforce development"],
+    popular: false,
+  },
 ];
 
 export function MembershipTiersSection() {
-  const scrollToApply = () => {
-    const element = document.querySelector("#apply");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  const scrollToApply = () => document.querySelector("#apply")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <section id="membership" className="py-20 sm:py-28">
+    <section id="membership" className="py-16 sm:py-24 lg:py-28 paper border-y border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" data-testid="text-membership-title">
-            Membership Categories & Annual Dues
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Choose the membership tier that fits your business. Annual membership period runs from January 1 to December 31.
-          </p>
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 mb-10 lg:mb-14 items-end">
+          <div className="lg:col-span-7">
+            <SectionNumeral number="03" label="Membership · Annual Dues" />
+            <h2 className="font-display text-display-sm sm:text-display font-semibold leading-[1.05]" data-testid="text-membership-title">
+              Pick the tier that{" "}
+              <span className="italic font-light">fits your shop.</span>
+            </h2>
+          </div>
+          <div className="lg:col-span-5">
+            <p className="text-base sm:text-lead text-foreground/70 leading-relaxed">
+              Annual membership runs January 1 – December 31. Pay by check, money order, or credit card.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {tiers.map((tier) => (
-            <Card 
-              key={tier.id} 
-              className={`relative flex flex-col ${tier.popular ? "border-primary shadow-lg" : ""}`}
-              data-testid={`card-tier-${tier.id}`}
-            >
-              {tier.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  Most Popular
-                </Badge>
-              )}
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                  <tier.icon className="h-7 w-7 text-primary" />
+        {/* Mobile: horizontal scroll snap; Desktop: 4-col grid */}
+        <div className="-mx-4 sm:mx-0">
+          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory gap-4 px-4 sm:px-0 pb-2 sm:pb-0 scrollbar-thin">
+            {tiers.map((tier) => (
+              <article
+                key={tier.id}
+                className={cn(
+                  "group relative shrink-0 w-[80%] sm:w-auto snap-start rounded-2xl bg-card edge-card flex flex-col p-6 press",
+                  tier.popular && "ring-2 ring-primary",
+                )}
+                data-testid={`card-tier-${tier.id}`}
+              >
+                {tier.popular && (
+                  <Badge className="absolute -top-3 left-6 bg-primary text-primary-foreground rounded-full px-3 shadow-md">
+                    Most popular
+                  </Badge>
+                )}
+                <div className="flex items-start justify-between mb-5">
+                  <div>
+                    <span className="eyebrow text-muted-foreground">Tier</span>
+                    <h3 className="font-display text-2xl font-semibold mt-1">{tier.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tier.sub}</p>
+                  </div>
+                  <span className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <tier.icon className="h-5 w-5 text-primary" />
+                  </span>
                 </div>
-                <CardTitle className="text-xl">{tier.name}</CardTitle>
-                <CardDescription>{tier.revenue}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="text-center mb-6">
-                  <span className="text-4xl font-bold">{tier.price}</span>
-                  <span className="text-muted-foreground">/year</span>
+                <div className="flex items-baseline gap-1 mb-4 pb-4 border-b border-border">
+                  <span className="font-numeral text-5xl text-foreground">{tier.price}</span>
+                  <span className="text-sm text-muted-foreground">/yr</span>
                 </div>
-                <p className="text-sm text-muted-foreground text-center mb-6">{tier.description}</p>
-                <ul className="space-y-3">
-                  {tier.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span>{feature}</span>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{tier.description}</p>
+                <ul className="space-y-2.5 text-sm flex-1">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                        <Check className="h-2.5 w-2.5 text-primary" strokeWidth={3} />
+                      </span>
+                      <span className="text-foreground/80">{f}</span>
                     </li>
                   ))}
                 </ul>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full" 
-                  variant={tier.popular ? "default" : "outline"}
+                <button
                   onClick={scrollToApply}
+                  className={cn(
+                    "mt-6 group/btn w-full flex items-center justify-between rounded-full px-5 py-3 text-sm font-semibold press",
+                    tier.popular
+                      ? "bg-foreground text-background hover:bg-foreground/90"
+                      : "bg-muted text-foreground hover:bg-muted/70",
+                  )}
                   data-testid={`button-select-${tier.id}`}
                 >
-                  <span className="hidden sm:inline">Select </span>{tier.name}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                  Choose {tier.name}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" />
+                </button>
+              </article>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-muted-foreground">
-            Payment options: Check, Money Order, or Credit Card. Contact us at{" "}
-            <a href="mailto:info@namcnorcal.org" className="text-primary hover:underline">
-              info@namcnorcal.org
-            </a>{" "}
-            for invoicing.
-          </p>
-        </div>
+        <p className="text-center text-sm text-muted-foreground mt-10">
+          Need invoicing or have questions? Email{" "}
+          <a href="mailto:info@namcnorcal.org" className="text-foreground underline underline-offset-4 decoration-primary decoration-2 hover:text-primary">
+            info@namcnorcal.org
+          </a>
+          .
+        </p>
       </div>
     </section>
   );
