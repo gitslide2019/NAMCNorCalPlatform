@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft, Crown, List, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Eyebrow, Stat } from "@/components/editorial";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -186,16 +187,30 @@ export default function Directory() {
           variant="ghost"
           size="sm"
           onClick={() => setLocation("/portal")}
-          className="mb-4"
+          className="mb-6 -ml-2"
           data-testid="button-back-to-dashboard"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
+          Back
         </Button>
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-directory-title">Member Directory</h1>
-          <p className="text-muted-foreground mt-1">Browse and connect with NAMC NorCal member companies.</p>
-        </div>
+        <header className="border-b border-foreground/10 pb-8 mb-8">
+          <div className="space-y-3">
+            <Eyebrow>The roster</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-6xl tracking-tight leading-[0.92]" data-testid="text-directory-title">
+              Member<br/><span className="italic text-primary">directory.</span>
+            </h1>
+            <p className="text-muted-foreground max-w-xl">
+              Every NAMC NorCal company — corporate partners, small shops, government, all under one roof. Search, filter, or pin to the map.
+            </p>
+          </div>
+          {(allMembers?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-x-10 gap-y-2 mt-6">
+              <Stat value={allMembers?.length ?? 0} label="Members on file" data-testid="stat-directory-total" />
+              <Stat value={(allMembers || []).filter(m => m.membershipCategory === "large").length} label="Corporate partners" data-testid="stat-directory-corp" />
+              <Stat value={availableCounties.length} label="Counties served" data-testid="stat-directory-counties" />
+            </div>
+          )}
+        </header>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
@@ -290,10 +305,13 @@ export default function Directory() {
             </p>
 
             {corporateMembers.length > 0 && categoryFilter !== "all" ? null : corporateMembers.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <Crown className="h-5 w-5 text-[#E5A830]" />
-                  <h2 className="text-lg font-semibold" data-testid="text-corporate-section">Corporate Partners</h2>
+              <div className="mb-10">
+                <div className="flex items-baseline justify-between border-b border-primary/40 pb-2 mb-5">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-primary" />
+                    <h2 className="font-display text-2xl tracking-tight" data-testid="text-corporate-section">Corporate Partners</h2>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{corporateMembers.length}</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {corporateMembers.map((member) => (
@@ -304,9 +322,12 @@ export default function Directory() {
             )}
 
             {categoryFilter === "all" && corporateMembers.length > 0 && otherMembers.length > 0 && (
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <h2 className="text-lg font-semibold">All Members</h2>
+              <div className="flex items-baseline justify-between border-b border-foreground/15 pb-2 mb-5">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="font-display text-2xl tracking-tight">All Members</h2>
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{otherMembers.length}</span>
               </div>
             )}
 
@@ -438,7 +459,7 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
 
   return (
     <Card
-      className={`hover-elevate cursor-pointer transition-all ${isCorporate ? "border-l-4 border-l-[#E5A830]" : ""}`}
+      className={`shadow-editorial cursor-pointer transition-all pressable ${isCorporate ? "border-l-[3px] border-l-primary" : ""}`}
       data-testid={`card-directory-${member.id}`}
       onClick={() => setLocation(`/portal/directory/${member.id}`)}
     >
@@ -457,11 +478,11 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg leading-tight">{member.companyName}</h3>
+            <h3 className="font-display text-xl leading-tight tracking-tight">{member.companyName}</h3>
             {member.tagline && (
-              <p className="text-xs text-[#E5A830] font-medium truncate" data-testid={`text-tagline-${member.id}`}>{member.tagline}</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-primary font-semibold truncate mt-0.5" data-testid={`text-tagline-${member.id}`}>{member.tagline}</p>
             )}
-            <p className="text-sm text-muted-foreground">{member.contactName} - {member.title}</p>
+            <p className="text-sm text-muted-foreground mt-1">{member.contactName} · {member.title}</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
             {isCorporate && (

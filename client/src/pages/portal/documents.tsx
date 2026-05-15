@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ArrowLeft, FileText, Upload, Download, Trash2, File, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { Eyebrow, Stat } from "@/components/editorial";
 
 interface DocumentItem {
   id: string;
@@ -96,86 +97,101 @@ export default function Documents() {
   return (
     <PortalLayout>
       <div className="p-6 sm:p-8 lg:p-10 max-w-5xl">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
-          <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-6 -ml-2" data-testid="button-back-to-dashboard">
+          <ArrowLeft className="h-4 w-4 mr-2" />Back
         </Button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-documents-title">Documents</h1>
-            <p className="text-muted-foreground mt-1">Shared files, forms, and resources for members.</p>
+        <header className="border-b border-foreground/10 pb-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div className="space-y-2">
+              <Eyebrow>The library</Eyebrow>
+              <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-documents-title">Documents</h1>
+              <p className="text-muted-foreground max-w-lg">Shared files, forms, bylaws, and resources — pulled from the chapter's filing cabinet.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={filterCat} onValueChange={setFilterCat}>
+                <SelectTrigger className="w-[160px] rounded-full" data-testid="select-document-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map(c => <SelectItem key={c} value={c}>{c.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {user?.isAdmin && (
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="rounded-full pressable" data-testid="button-upload-document"><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Upload Document</DialogTitle></DialogHeader>
+                    <div className="space-y-4">
+                      <Input placeholder="Document title" value={title} onChange={e => setTitle(e.target.value)} data-testid="input-doc-title" />
+                      <Textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} data-testid="input-doc-description" />
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger data-testid="select-doc-category"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map(c => <SelectItem key={c} value={c}>{c.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input type="file" onChange={e => setFile(e.target.files?.[0] || null)} data-testid="input-doc-file" />
+                      <Button onClick={() => uploadMutation.mutate()} disabled={!title || !file || uploadMutation.isPending} className="w-full rounded-full" data-testid="button-submit-document">
+                        {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}Upload Document
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Select value={filterCat} onValueChange={setFilterCat}>
-              <SelectTrigger className="w-[160px]" data-testid="select-document-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(c => <SelectItem key={c} value={c}>{c.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {user?.isAdmin && (
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-upload-document"><Upload className="h-4 w-4 mr-2" />Upload</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Upload Document</DialogTitle></DialogHeader>
-                  <div className="space-y-4">
-                    <Input placeholder="Document title" value={title} onChange={e => setTitle(e.target.value)} data-testid="input-doc-title" />
-                    <Textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} data-testid="input-doc-description" />
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger data-testid="select-doc-category"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => <SelectItem key={c} value={c}>{c.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Input type="file" onChange={e => setFile(e.target.files?.[0] || null)} data-testid="input-doc-file" />
-                    <Button onClick={() => uploadMutation.mutate()} disabled={!title || !file || uploadMutation.isPending} className="w-full" data-testid="button-submit-document">
-                      {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}Upload Document
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </div>
+          {!isLoading && (docs?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-x-10 gap-y-2 mt-6">
+              <Stat value={docs?.length ?? 0} label="On file" data-testid="stat-docs-total" />
+              <Stat value={filtered.length} label="In view" data-testid="stat-docs-view" />
+            </div>
+          )}
+        </header>
 
         {isLoading ? (
           <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
         ) : filtered.length === 0 ? (
-          <Card data-testid="card-empty-documents"><CardContent className="p-8 text-center"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">No documents found</h3><p className="text-muted-foreground">
-            {filterCat !== "all" ? "No documents in this category. Try selecting a different category." : "No documents have been uploaded yet."}
-          </p></CardContent></Card>
+          <Card className="shadow-editorial" data-testid="card-empty-documents">
+            <CardContent className="p-12 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" strokeWidth={1.4} />
+              <h3 className="font-display text-2xl mb-2">No documents found</h3>
+              <p className="text-muted-foreground text-sm">
+                {filterCat !== "all" ? "Nothing in this category yet." : "The cabinet's empty for now."}
+              </p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-foreground/10 border-y border-foreground/10 paper-surface">
             {filtered.map(doc => (
-              <Card key={doc.id} data-testid={`card-document-${doc.id}`}>
-                <CardContent className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <File className="h-8 w-8 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{doc.title}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{doc.fileName}</span>
-                        {doc.fileSize && <span>• {formatSize(doc.fileSize)}</span>}
-                        <Badge variant="secondary" className="text-xs">{doc.category.replace(/-/g, " ")}</Badge>
-                      </div>
-                      {doc.description && <p className="text-sm text-muted-foreground mt-1">{doc.description}</p>}
+              <div key={doc.id} className="group flex items-center justify-between gap-4 px-2 sm:px-4 py-4 hover:bg-primary/5 transition-colors" data-testid={`card-document-${doc.id}`}>
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="grid place-items-center h-10 w-10 shrink-0 border border-foreground/15 rounded-md">
+                    <File className="h-5 w-5 text-primary" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-display text-base leading-tight truncate">{doc.title}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      <span className="truncate max-w-[200px]">{doc.fileName}</span>
+                      {doc.fileSize && <span className="tabular-nums">· {formatSize(doc.fileSize)}</span>}
+                      <span className="uppercase tracking-wider text-[10px] border-l border-foreground/15 pl-2">{doc.category.replace(/-/g, " ")}</span>
                     </div>
+                    {doc.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{doc.description}</p>}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="outline" size="sm" asChild data-testid={`button-download-${doc.id}`}>
-                      <a href={`/api/portal/documents/${doc.id}/download`} download><Download className="h-4 w-4" /></a>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" size="sm" className="rounded-full pressable" asChild data-testid={`button-download-${doc.id}`}>
+                    <a href={`/api/portal/documents/${doc.id}/download`} download><Download className="h-4 w-4" /></a>
+                  </Button>
+                  {user?.isAdmin && (
+                    <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(doc.id)} data-testid={`button-delete-doc-${doc.id}`}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                    {user?.isAdmin && (
-                      <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(doc.id)} data-testid={`button-delete-doc-${doc.id}`}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         )}

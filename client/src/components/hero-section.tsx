@@ -1,101 +1,118 @@
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BlueprintSurface, Eyebrow, Stat, Ticker, RevealOnScroll } from "@/components/editorial";
+import { MemberSpotlightCard } from "@/components/member-spotlight-card";
 import amirPhoto from "@assets/Amir_-_Construction_Containment_Services_-_NAMC_Member_Spotlig_1772032281757.png";
-import { Stat } from "@/components/namc/Stat";
-import { RevealOnScroll } from "@/components/namc/RevealOnScroll";
+
+const tickerItems = [
+  "Est. 1969 — Oakland, CA",
+  "55+ years of advocacy",
+  "$1B+ project capacity",
+  "DBE · SBE · DVBE pathways",
+  "Member spotlight: Amir Jenkins, 5DCCS",
+  "Hard Hat Awards · Fall 2026",
+];
 
 export function HeroSection() {
-  const scrollTo = (sel: string) => {
-    document.querySelector(sel)?.scrollIntoView({ behavior: "smooth" });
+  const scrollToApply = () => {
+    document.querySelector("#apply")?.scrollIntoView({ behavior: "smooth" });
+  };
+  const scrollToWhy = () => {
+    document.querySelector("#why-join")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <section className="relative overflow-hidden paper border-b border-border">
-      {/* Subtle blueprint grid in the background */}
-      <div className="absolute inset-0 blueprint opacity-30 pointer-events-none" aria-hidden />
+    <section className="relative">
+      <BlueprintSurface as="div" className="overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 pb-20 sm:pt-20 sm:pb-28 lg:pt-28 lg:pb-36">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            <div className="lg:col-span-7">
+              <RevealOnScroll>
+                <Eyebrow className="text-primary/90 mb-5">
+                  Issue 01 · The Construction Journal
+                </Eyebrow>
+              </RevealOnScroll>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-12 sm:pt-16 sm:pb-20 lg:pt-24 lg:pb-28">
-        {/* Eyebrow row */}
-        <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <span className="font-numeral text-primary text-2xl sm:text-3xl leading-none">№01</span>
-          <span className="h-px flex-1 max-w-24 bg-foreground/20" aria-hidden />
-          <span className="eyebrow text-foreground/60">Northern California Chapter · Est. 1969</span>
-        </div>
+              <RevealOnScroll delay={80}>
+                <h1
+                  className="font-display text-[clamp(2.5rem,8vw,5.75rem)] leading-[0.96] tracking-[-0.03em] text-white"
+                  data-testid="text-hero-title"
+                >
+                  Build the Bay,
+                  <br />
+                  <span className="italic font-light text-white/95">together.</span>
+                </h1>
+              </RevealOnScroll>
 
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
-          {/* Headline column */}
-          <div className="lg:col-span-7 stagger" style={{ ["--i" as never]: 0 }}>
-            <h1
-              className="font-display text-display lg:text-mega font-semibold leading-[0.95] mb-6 sm:mb-8"
-              data-testid="text-hero-title"
-              style={{ ["--i" as never]: 0 }}
-            >
-              Building a stronger{" "}
-              <span className="italic font-light">Bay&nbsp;Area</span>,{" "}
-              <span className="gold-mark">one minority contractor</span> at a time.
-            </h1>
-            <p
-              className="text-base sm:text-lg text-foreground/70 max-w-xl mb-7 leading-relaxed"
-              data-testid="text-hero-subtitle"
-              style={{ ["--i" as never]: 1 }}
-            >
-              The oldest minority construction trade association in the United States — opening project pipelines,
-              advocacy, training, and community for contractors across Northern California.
-            </p>
-            <div className="flex flex-wrap items-center gap-3" style={{ ["--i" as never]: 2 }}>
-              <button
-                onClick={() => scrollTo("#apply")}
-                className="group inline-flex items-center gap-2 rounded-full bg-foreground text-background px-6 py-3.5 text-sm font-semibold press hover:bg-foreground/90"
-                data-testid="button-hero-apply"
-              >
-                Apply for membership
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </button>
-              <button
-                onClick={() => scrollTo("#why-join")}
-                className="group inline-flex items-center gap-1.5 px-3 py-3 text-sm font-medium text-foreground/80 hover:text-foreground press"
-                data-testid="button-hero-learn-more"
-              >
-                Why join
-                <ArrowUpRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </button>
+              <RevealOnScroll delay={160}>
+                <p
+                  className="mt-6 max-w-xl text-base sm:text-lg text-white/75 leading-relaxed"
+                  data-testid="text-hero-subtitle"
+                >
+                  The National Association of Minority Contractors, Northern California
+                  Chapter — opportunity, advocacy, and contractor development for
+                  minority-owned construction businesses since 1969.
+                </p>
+              </RevealOnScroll>
+
+              <RevealOnScroll delay={240}>
+                <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <Button
+                    size="lg"
+                    onClick={scrollToApply}
+                    data-testid="button-hero-apply"
+                    className="rounded-full px-7 h-12"
+                  >
+                    Apply for Membership
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={scrollToWhy}
+                    data-testid="button-hero-learn-more"
+                    className="text-white/80 hover:text-white text-sm font-medium underline-offset-4 hover:underline px-2 py-2 text-left sm:text-center"
+                  >
+                    Read the case for joining ↓
+                  </button>
+                </div>
+              </RevealOnScroll>
+
+              <RevealOnScroll delay={320}>
+                <div className="mt-12 grid grid-cols-3 gap-6 sm:gap-10 max-w-md">
+                  <Stat value="55+" label="Years" />
+                  <Stat value="$1B+" label="Capacity" />
+                  <Stat value="DBE" label="Pathways" />
+                </div>
+              </RevealOnScroll>
+            </div>
+
+            <div className="lg:col-span-5">
+              <RevealOnScroll delay={120}>
+                <div className="relative">
+                  <div className="absolute -top-3 -left-3 hidden sm:flex items-center gap-2 rounded-full bg-primary px-3 py-1 z-10 shadow-lg">
+                    <span className="font-display text-xs uppercase tracking-widest font-semibold">
+                      Spotlight
+                    </span>
+                  </div>
+                  <MemberSpotlightCard
+                    name="Amir Jenkins"
+                    role="CEO"
+                    company="5D Construction Containment"
+                    photo={amirPhoto}
+                    caption="Member · San Jose, CA"
+                    data-testid="card-hero-spotlight"
+                  />
+                  <p className="mt-4 text-sm text-white/65 max-w-xs">
+                    Veteran-owned. DBE / SBE / DVBE certified. One year in,
+                    $1M bonded — and just getting started.
+                  </p>
+                </div>
+              </RevealOnScroll>
             </div>
           </div>
-
-          {/* Photo + stat column */}
-          <div className="lg:col-span-5">
-            <RevealOnScroll>
-              <figure className="relative aspect-[4/5] sm:aspect-[3/4] rounded-2xl overflow-hidden edge-card">
-                <img
-                  src={amirPhoto}
-                  alt="Amir Jenkins, NAMC member, on a Bay Area jobsite"
-                  className="absolute inset-0 h-full w-full object-cover object-top"
-                  loading="eager"
-                  data-testid="img-hero-member"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-                <figcaption className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <span className="eyebrow text-primary">Member · 5DCCS</span>
-                  <p className="font-display text-2xl mt-2 leading-tight">Amir Jenkins</p>
-                  <p className="text-xs text-white/70 mt-1">San Jose · Modular containment</p>
-                </figcaption>
-                <div className="absolute top-4 right-4 rounded-full bg-primary text-primary-foreground px-3 py-1 text-[10px] font-semibold uppercase tracking-wider">
-                  Member spotlight
-                </div>
-              </figure>
-            </RevealOnScroll>
-          </div>
         </div>
-
-        {/* Stats strip — editorial */}
-        <div className="mt-12 sm:mt-16 pt-8 border-t-2 border-foreground/10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-8">
-            <Stat value="$1B+" label="Annual project capacity" data-testid="stat-project-capacity" />
-            <Stat value="55" label="Years of excellence" hint="Founded Oakland, 1969" data-testid="stat-years" />
-            <Stat value="50+" label="Hall-of-Fame members" data-testid="stat-hall-of-fame" />
-            <Stat value="25M+" label="Workers represented" data-testid="stat-workers" />
-          </div>
-        </div>
-      </div>
+      </BlueprintSurface>
+      <Ticker items={tickerItems} data-testid="ticker-hero" />
     </section>
   );
 }

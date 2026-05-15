@@ -27,6 +27,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Send, Plus, Reply, Clock, ArrowLeft } from "lucide-react";
+import { Eyebrow } from "@/components/editorial";
 import type { Message } from "@shared/schema";
 
 interface MessageWithSender extends Message {
@@ -141,26 +142,28 @@ export default function Messages() {
           variant="ghost"
           size="sm"
           onClick={() => setLocation("/portal")}
-          className="mb-4"
+          className="mb-6 -ml-2"
           data-testid="button-back-to-dashboard"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
+          Back
         </Button>
-        <div className="flex flex-row items-center justify-between gap-4 mb-8 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-messages-title">
-              Messages
-            </h1>
-            <p className="text-muted-foreground mt-1">Send and receive messages with other members.</p>
-          </div>
-          <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-compose">
-                <Plus className="h-4 w-4 mr-2" />
-                New Message
-              </Button>
-            </DialogTrigger>
+        <header className="border-b border-foreground/10 pb-6 mb-8">
+          <div className="flex flex-row items-end justify-between gap-4 flex-wrap">
+            <div className="space-y-2">
+              <Eyebrow>Correspondence</Eyebrow>
+              <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-messages-title">
+                Messages
+              </h1>
+              <p className="text-muted-foreground">A direct line to every member in the chapter.</p>
+            </div>
+            <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-full pressable" data-testid="button-compose">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Compose
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>New Message</DialogTitle>
@@ -203,7 +206,8 @@ export default function Messages() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+          </div>
+        </header>
 
         <Tabs defaultValue="inbox">
           <TabsList data-testid="tabs-messages">
@@ -234,51 +238,53 @@ export default function Messages() {
                 ))}
               </div>
             ) : inboxMessages && inboxMessages.length > 0 ? (
-              <div className="space-y-2">
+              <div className="divide-y divide-foreground/10 border-y border-foreground/10 paper-surface">
                 {inboxMessages.map((msg) => (
-                  <Card
+                  <button
                     key={msg.id}
-                    className="cursor-pointer hover-elevate"
+                    type="button"
+                    className="block w-full text-left p-4 hover:bg-primary/5 transition-colors relative"
                     onClick={() => handleViewMessage(msg)}
                     data-testid={`card-message-inbox-${msg.id}`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="min-w-0 flex-1">
-                          <p
-                            className={`text-sm ${msg.isRead ? "text-muted-foreground" : "font-bold"}`}
-                            data-testid={`text-sender-${msg.id}`}
-                          >
-                            {msg.senderUsername || "Unknown"}
-                          </p>
-                          <p
-                            className={`truncate ${msg.isRead ? "" : "font-semibold"}`}
-                            data-testid={`text-subject-${msg.id}`}
-                          >
-                            {msg.subject}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {!msg.isRead && (
-                            <Badge variant="default" className="text-xs" data-testid={`badge-unread-${msg.id}`}>
-                              New
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-date-${msg.id}`}>
-                            <Clock className="h-3 w-3" />
-                            {formatDate(msg.createdAt)}
-                          </span>
-                        </div>
+                    {!msg.isRead && (
+                      <span className="absolute left-0 top-0 h-full w-[3px] bg-primary" aria-hidden="true" />
+                    )}
+                    <div className="flex items-start justify-between gap-4 flex-wrap pl-3">
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`text-[11px] uppercase tracking-[0.16em] ${msg.isRead ? "text-muted-foreground" : "text-primary font-semibold"}`}
+                          data-testid={`text-sender-${msg.id}`}
+                        >
+                          {msg.senderUsername || "Unknown"}
+                        </p>
+                        <p
+                          className={`font-display text-lg leading-tight truncate mt-1 ${msg.isRead ? "text-muted-foreground" : "font-semibold"}`}
+                          data-testid={`text-subject-${msg.id}`}
+                        >
+                          {msg.subject}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!msg.isRead && (
+                          <Badge className="bg-primary text-primary-foreground text-[10px] uppercase tracking-wider" data-testid={`badge-unread-${msg.id}`}>
+                            New
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 tabular-nums" data-testid={`text-date-${msg.id}`}>
+                          <Clock className="h-3 w-3" />
+                          {formatDate(msg.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
                 ))}
               </div>
             ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground" data-testid="text-inbox-empty">No messages in your inbox.</p>
+              <Card className="shadow-editorial">
+                <CardContent className="p-12 text-center">
+                  <Mail className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" strokeWidth={1.4} />
+                  <p className="font-display text-xl text-muted-foreground" data-testid="text-inbox-empty">Inbox is quiet.</p>
                 </CardContent>
               </Card>
             )}
@@ -296,38 +302,37 @@ export default function Messages() {
                 ))}
               </div>
             ) : sentMessages && sentMessages.length > 0 ? (
-              <div className="space-y-2">
+              <div className="divide-y divide-foreground/10 border-y border-foreground/10 paper-surface">
                 {sentMessages.map((msg) => (
-                  <Card
+                  <button
                     key={msg.id}
-                    className="cursor-pointer hover-elevate"
+                    type="button"
+                    className="block w-full text-left p-4 hover:bg-primary/5 transition-colors"
                     onClick={() => handleViewMessage(msg)}
                     data-testid={`card-message-sent-${msg.id}`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-muted-foreground" data-testid={`text-recipient-${msg.id}`}>
-                            To: {msg.recipientUsername || "Unknown"}
-                          </p>
-                          <p className="truncate" data-testid={`text-sent-subject-${msg.id}`}>
-                            {msg.subject}
-                          </p>
-                        </div>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0" data-testid={`text-sent-date-${msg.id}`}>
-                          <Clock className="h-3 w-3" />
-                          {formatDate(msg.createdAt)}
-                        </span>
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground" data-testid={`text-recipient-${msg.id}`}>
+                          To · {msg.recipientUsername || "Unknown"}
+                        </p>
+                        <p className="font-display text-lg leading-tight truncate mt-1" data-testid={`text-sent-subject-${msg.id}`}>
+                          {msg.subject}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 tabular-nums" data-testid={`text-sent-date-${msg.id}`}>
+                        <Clock className="h-3 w-3" />
+                        {formatDate(msg.createdAt)}
+                      </span>
+                    </div>
+                  </button>
                 ))}
               </div>
             ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground" data-testid="text-sent-empty">No sent messages.</p>
+              <Card className="shadow-editorial">
+                <CardContent className="p-12 text-center">
+                  <Send className="h-10 w-10 text-muted-foreground/60 mx-auto mb-4" strokeWidth={1.4} />
+                  <p className="font-display text-xl text-muted-foreground" data-testid="text-sent-empty">Nothing sent yet.</p>
                 </CardContent>
               </Card>
             )}

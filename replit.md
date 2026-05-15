@@ -10,6 +10,21 @@ Key capabilities include:
 - **Authentication**: Members can sign in three ways: (1) **email magic link** — enter email on file, receive a Resend-delivered one-time link (15-min expiry, single-use), click to log in; (2) **email + password** — enter email + password set via the reset flow; (3) admins use **username + password** via a small "Admin sign-in" link. All three flows use clear feedback when the email isn't on file (no anti-enumeration generic message — chosen for UX in this small private portal) plus an in-memory IP throttle (10 req / 5 min). Password set/reset uses the existing forgot-password → email link → /reset-password page flow.
 - **Admin Panel**: Tabbed interface with Applications management (approve/reject, CSV export, admin-only), Finance dashboard (organizational budget, revenue tracking, pie charts, bar charts, editable expense/revenue tables, campaign progress, pledge status — accessible to admins and board members, with editing restricted to admins), and SMS Invitations (CSV upload, message templating with {{name}}/{{company}} variables, Twilio SMS sending, batch history — admin-only).
 
+## Visual Language (Mobile-First Editorial Redesign — May 2026)
+
+The portal and public site share a single editorial "construction journal" identity:
+
+- **Type pairing**: `Fraunces` (display, optical-sizing 96, slight italic) for headings, `Plus Jakarta Sans` for UI body, `Inter` fallback. All headings use `font-display` automatically; tabular numerals (`font-display-tnum`) are used for stats.
+- **Color**: Existing NAMC gold `#FFD700` (HSL `43 96% 56%`) is the **structural** accent — used for hairlines, rules under section titles, FAB, active-state rails, and stat numerals. Surfaces are warm paper (`bg-background`) with subtle SVG noise via `.paper-surface`. Hero/footer/MoreSheet use `.blueprint-surface` (dark with 32px gold grid + noise overlay).
+- **Shadows**: `shadow-editorial` is layered (gold hairline + soft drop + inset highlight) for cards/sheets; standard shadows still apply elsewhere.
+- **Editorial primitives** in `client/src/components/editorial.tsx`: `<Eyebrow>` (uppercase, 0.18em tracking), `<SectionNumeral>` (oversized Fraunces section number `01 / Why join`), `<Stat>` (large gold tabular numeral), `<Ticker>` (gold-ruled marquee), `<RevealOnScroll>` (IO-driven `data-reveal` fade/translate), `<BlueprintSurface>` (dark surface wrapper).
+- **Custom nav iconography** in `client/src/components/nav-icons.tsx` (line-art SVGs, 1.6 stroke): hard hat → Home, blueprint → Directory, calendar+pennant → Calendar, chat-corner → Messages, stacked dots → More, NAMC monogram → FAB.
+- **Mobile navigation** in `client/src/components/bottom-tab-bar.tsx`: floating pill bottom bar with 5 slots — Home / Directory / **center gold FAB** / Calendar / Messages — and a `<Sheet side="bottom">` MoreSheet (3-col grid of Discussions, Committees, Projects, Equipment, Training, Documents, Newsletters, Fundraising, Notifications, Store, Profile, plus an Admin tile when applicable, and Sign-out). Safe-area inset utilities (`pb-safe`, `pb-bottom-bar`, `h-bottom-bar`) push page content above the bar.
+- **Portal layout** (`portal-layout.tsx`): narrow 224px desktop sidebar with editorial section headings (`font-display` "Community" / "Resources" / "Admin"), gold left-rail on the active item, and a member popover at the bottom (Profile · Main site · Sign out). Mobile gets a slim sticky header (logo + bell only) and the floating tab bar.
+- **Motion**: `RevealOnScroll` fades + 12px-rise; FAB and tab buttons use `.pressable` (97% scale on tap, 92% for the FAB). Marquee ticker, Tailwind `animate-rise-in` / `animate-spring-in` keyframes available. Honors `prefers-reduced-motion`.
+- **Public landing** (`hero` / `why-join` / `membership` / `member-spotlight` / `get-involved` / `footer`): fully redesigned with magazine-style layouts (numbered sections, gold rules, drop-cap on the spotlight narrative, full-bleed `MemberSpotlightCard`).
+- **Coverage note**: Secondary portal pages (admin, tools, profile, courses, calendar, etc.) inherit the new look automatically through the upgraded design tokens, font stack, shadow utilities, Card/Button/Badge/Tabs styling, and the new bottom tab bar — they were not individually rewritten.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

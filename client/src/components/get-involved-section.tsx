@@ -1,25 +1,22 @@
 import { Users, Award, Heart, GraduationCap } from "lucide-react";
-import { SectionNumeral } from "@/components/namc/SectionNumeral";
-import { RevealOnScroll } from "@/components/namc/RevealOnScroll";
+import { Eyebrow, SectionNumeral, RevealOnScroll } from "@/components/editorial";
 
-const areas = [
+const involvementAreas = [
   {
     title: "Network",
     icon: Users,
     items: [
       "Local NAMC membership meetings",
-      "Meet legislators & A/E/C pros at Legislative Day",
-      "Members-only programs",
-      "Use the Directory to find project partners",
-      "Get acquainted at classes and meetings",
-      "Attend National conferences",
+      "Legislative Day with agencies and A/E/C pros",
+      "Members-only programs and Directory access",
+      "Regional and National conferences",
     ],
   },
   {
     title: "Recognize & Promote",
     icon: Award,
     items: [
-      "Use NAMC logos on jobsites and proposals",
+      "Use NAMC marks on job sites and bids",
       "Sponsorship opportunities",
       "Advertise on the Chapter website",
       "Nominate colleagues for Hard Hat Awards",
@@ -29,64 +26,59 @@ const areas = [
     title: "Give Back",
     icon: Heart,
     items: [
-      "Be a mentor",
-      "Share project opportunity info",
-      "Volunteer on a Chapter committee",
-      "Help with a community service build",
-      "Teach a class or serve on a panel",
+      "Mentor a fellow contractor",
+      "Share project opportunities",
+      "Volunteer on a committee or service project",
+      "Teach a class or sit on a panel",
     ],
   },
   {
     title: "Develop Workforce",
     icon: GraduationCap,
     items: [
-      "Speak about construction at local schools",
-      "Sponsor or exhibit at our job fair",
-      "Host student field trips on jobsites",
-      "Support our Student Chapter",
-      "Back NAMC's iConstruction Pre-apprenticeship",
+      "Speak about construction careers at schools",
+      "Exhibit or sponsor our job fair",
+      "Host job-site field trips",
+      "Support iConstruction Pre-apprenticeship",
     ],
   },
 ];
 
 export function GetInvolvedSection() {
   return (
-    <section id="get-involved" className="py-16 sm:py-24 lg:py-28 bg-background">
+    <section id="get-involved" className="py-20 sm:py-28 paper-surface">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 mb-10 lg:mb-14 items-end">
-          <div className="lg:col-span-7">
-            <SectionNumeral number="05" label="Get Involved" />
-            <h2 className="font-display text-display-sm sm:text-display font-semibold leading-[1.05]" data-testid="text-get-involved-title">
-              Membership is a verb.{" "}
-              <span className="italic font-light">Here's where to start.</span>
+        <div className="max-w-3xl mb-14">
+          <RevealOnScroll>
+            <SectionNumeral number="03" label="Ways to get involved" />
+          </RevealOnScroll>
+          <RevealOnScroll delay={80}>
+            <h2 className="font-display text-[clamp(2rem,5vw,3.5rem)] leading-[1.04] tracking-tight mb-5" data-testid="text-get-involved-title">
+              Membership is a verb.
             </h2>
-          </div>
-          <div className="lg:col-span-5">
-            <p className="text-base sm:text-lead text-foreground/70 leading-relaxed">
-              Once your company joins, the depth of services and programs really opens up. Find multiple ways
-              to stay involved — that's how the network compounds.
+          </RevealOnScroll>
+          <RevealOnScroll delay={140}>
+            <p className="text-lead text-foreground/75">
+              The members who get the most out of NAMC NorCal show up — at meetings,
+              on committees, on job sites with peers. Pick a lane and we'll get you started.
             </p>
-          </div>
+          </RevealOnScroll>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-border border border-border rounded-2xl overflow-hidden">
-          {areas.map((area, i) => (
-            <RevealOnScroll
-              key={area.title}
-              delay={(i % 2) * 80}
-              className="bg-background p-6 sm:p-8 lg:p-10"
-            >
-              <div data-testid={`card-involvement-${area.title.toLowerCase().replace(/[\s&]+/g, "-")}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-card-border rounded-2xl overflow-hidden border border-card-border">
+          {involvementAreas.map((area, index) => (
+            <RevealOnScroll key={index} delay={Math.min(index * 60, 200)}>
+              <div className="bg-card p-7 sm:p-9 h-full" data-testid={`card-involvement-${area.title.toLowerCase().replace(/\s+/g, "-")}`}>
                 <div className="flex items-center gap-3 mb-5">
-                  <span className="font-numeral text-primary text-3xl">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="h-px flex-1 bg-border" aria-hidden />
-                  <area.icon className="h-5 w-5 text-foreground/40" />
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
+                    <area.icon className="h-5 w-5 text-primary" />
+                  </span>
+                  <h3 className="font-display text-2xl leading-tight">{area.title}</h3>
                 </div>
-                <h3 className="font-display text-2xl sm:text-3xl font-semibold mb-5">{area.title}</h3>
                 <ul className="space-y-3">
-                  {area.items.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-foreground/75">
-                      <span className="mt-2 h-1 w-3 bg-primary shrink-0" />
+                  {area.items.map((item, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm text-foreground/80">
+                      <span className="mt-2 h-px w-4 bg-primary shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -96,13 +88,17 @@ export function GetInvolvedSection() {
           ))}
         </div>
 
-        <p className="mt-10 text-center text-sm text-muted-foreground">
-          Want to serve on a committee or task force? Email{" "}
-          <a href="mailto:info@namcnorcal.org" className="text-foreground underline underline-offset-4 decoration-primary decoration-2 hover:text-primary">
-            info@namcnorcal.org
-          </a>
-          .
-        </p>
+        <RevealOnScroll>
+          <div className="mt-12 text-center">
+            <Eyebrow className="mb-2">Reach out</Eyebrow>
+            <p className="text-foreground/80">
+              Want to serve on a committee, task force, or board? Email{" "}
+              <a href="mailto:info@namcnorcal.org" className="text-primary font-medium underline-offset-2 hover:underline">
+                info@namcnorcal.org
+              </a>.
+            </p>
+          </div>
+        </RevealOnScroll>
       </div>
     </section>
   );

@@ -2,6 +2,7 @@ import { PortalLayout } from "@/components/portal-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ShoppingBag, Package, Tag, Truck, Star } from "lucide-react";
+import { Eyebrow, SectionNumeral, BlueprintSurface, RevealOnScroll } from "@/components/editorial";
 import productPolo from "@assets/Screenshot_2026-03-02_at_7.41.46_PM_1772509575428.png";
 import productBackpackGold from "@assets/Screenshot_2026-03-02_at_7.41.41_PM_1772509575428.png";
 import productDuffel from "@assets/Screenshot_2026-03-02_at_7.41.22_PM_1772509575429.png";
@@ -91,101 +92,100 @@ const storeProducts = [
 export default function Store() {
   return (
     <PortalLayout>
-      <div className="p-6 sm:p-8 lg:p-10 max-w-5xl mx-auto space-y-8">
-        <div className="relative overflow-hidden rounded-2xl" data-testid="banner-store">
+      <div className="p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto space-y-12">
+        <BlueprintSurface className="relative overflow-hidden rounded-2xl shadow-editorial" data-testid="banner-store">
           <img
             src={storeBanner}
-            alt="NAMC NorCal Store"
-            className="w-full h-48 sm:h-64 lg:h-72 object-cover"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-luminosity"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
-          <div className="absolute inset-0 flex items-center p-6 sm:p-10">
-            <div className="text-white max-w-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-[#E5A830]">
-                  <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
-                </div>
-                <div>
-                  <h1 className="text-xl sm:text-3xl font-bold" data-testid="text-store-title">NAMC NorCal Store</h1>
-                  <p className="text-white/60 text-xs sm:text-sm">Official merchandise and member gear</p>
-                </div>
-              </div>
-              <p className="text-white/80 mb-5 text-xs sm:text-sm leading-relaxed hidden sm:block">
-                Rep your chapter with official NAMC NorCal merchandise. From branded apparel to professional gear,
-                show your commitment to the minority contractor community.
-              </p>
-              <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store">
-                <Button size="lg" className="bg-[#E5A830] text-black font-semibold">
-                  <ExternalLink className="h-5 w-5 mr-2" />
-                  Visit the Store
-                </Button>
-              </a>
-            </div>
+          <div className="relative px-6 py-10 sm:px-12 sm:py-16 max-w-2xl">
+            <Eyebrow className="text-primary">The Shop</Eyebrow>
+            <h1 className="font-display text-4xl sm:text-6xl tracking-tight leading-[0.9] text-white mt-3" data-testid="text-store-title">
+              Wear the<br/><span className="text-primary italic">chapter.</span>
+            </h1>
+            <p className="text-white/75 mt-5 text-sm sm:text-base max-w-md">
+              Official NAMC NorCal merchandise — branded apparel and professional gear, shipped direct.
+            </p>
+            <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store" className="inline-block mt-7">
+              <Button size="lg" className="rounded-full bg-primary text-primary-foreground font-semibold pressable">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Visit the Store
+              </Button>
+            </a>
           </div>
-        </div>
+        </BlueprintSurface>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4" data-testid="text-featured-products">Featured Products</h2>
+        <section>
+          <div className="flex items-end justify-between gap-4 border-b border-foreground/10 pb-3 mb-6">
+            <div className="flex items-baseline gap-4">
+              <SectionNumeral number="01" className="mb-0" />
+              <h2 className="font-display text-2xl sm:text-3xl tracking-tight" data-testid="text-featured-products">Featured</h2>
+            </div>
+            <a href={STORE_URL} target="_blank" rel="noopener noreferrer" className="text-xs uppercase tracking-[0.18em] text-primary font-semibold hover:underline">Browse all →</a>
+          </div>
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {storeProducts.map((product) => (
-              <a
-                key={product.title}
-                href={STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-                data-testid={`link-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <Card className="h-full hover-elevate">
-                  <div className="aspect-square overflow-hidden rounded-t-lg bg-white">
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      className="w-full h-full object-contain p-2"
-                      data-testid={`img-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
-                    />
-                  </div>
-                  <CardContent className="p-3 sm:p-4">
-                    <h3 className="font-semibold text-sm sm:text-base truncate" data-testid={`text-product-title-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.title}</h3>
-                    <p className="text-xs text-muted-foreground" data-testid={`text-product-desc-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.description}</p>
-                    <p className="text-sm font-bold text-[#E5A830] mt-1" data-testid={`text-product-price-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.price}</p>
-                  </CardContent>
-                </Card>
-              </a>
+            {storeProducts.map((product, idx) => (
+              <RevealOnScroll key={product.title} delay={idx * 40}>
+                <a
+                  href={STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group block"
+                  data-testid={`link-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <Card className="h-full shadow-editorial overflow-hidden pressable">
+                    <div className="aspect-square overflow-hidden bg-white border-b border-foreground/10">
+                      <img
+                        src={product.image}
+                        alt={product.title}
+                        className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
+                        data-testid={`img-product-${product.title.toLowerCase().replace(/\s+/g, "-")}`}
+                      />
+                    </div>
+                    <CardContent className="p-3 sm:p-4">
+                      <h3 className="font-display text-base leading-tight truncate" data-testid={`text-product-title-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.title}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate" data-testid={`text-product-desc-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.description}</p>
+                      <p className="font-display font-bold tabular-nums text-primary mt-2" data-testid={`text-product-price-${product.title.toLowerCase().replace(/\s+/g, "-")}`}>{product.price}</p>
+                    </CardContent>
+                  </Card>
+                </a>
+              </RevealOnScroll>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {storeFeatures.map((feature) => (
-            <Card key={feature.title} className="hover-elevate">
-              <CardContent className="p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E5A830]/10 mb-3">
-                  <feature.icon className="h-5 w-5 text-[#E5A830]" />
-                </div>
-                <h3 className="font-semibold mb-1" data-testid={`text-feature-${feature.title.toLowerCase().replace(/\s+/g, "-")}`}>{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <section>
+          <div className="flex items-baseline gap-4 border-b border-foreground/10 pb-3 mb-6">
+            <SectionNumeral number="02" className="mb-0" />
+            <h2 className="font-display text-2xl sm:text-3xl tracking-tight">Why shop here</h2>
+          </div>
+          <div className="grid gap-px bg-foreground/10 sm:grid-cols-2 lg:grid-cols-4 shadow-editorial rounded-xl overflow-hidden">
+            {storeFeatures.map((feature) => (
+              <div key={feature.title} className="bg-card p-6">
+                <feature.icon className="h-6 w-6 text-primary mb-4" strokeWidth={1.5} />
+                <h3 className="font-display text-lg leading-tight mb-1" data-testid={`text-feature-${feature.title.toLowerCase().replace(/\s+/g, "-")}`}>{feature.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <Card className="border-[#E5A830]/20">
-          <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E5A830]/10 shrink-0">
-              <Star className="h-8 w-8 text-[#E5A830]" />
-            </div>
-            <div className="text-center sm:text-left flex-1">
-              <h3 className="text-lg font-semibold mb-1">Support Your Chapter</h3>
-              <p className="text-sm text-muted-foreground">
-                Every purchase from the NAMC NorCal store supports our mission to advocate for minority contractors
-                in the Bay Area. Your support helps fund networking events, training programs, and advocacy efforts.
+        <Card className="shadow-editorial border-primary/30 overflow-hidden">
+          <CardContent className="p-6 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6 relative">
+            <Star className="absolute -top-6 -right-6 h-32 w-32 text-primary/10" strokeWidth={1} />
+            <div className="flex-1 relative">
+              <Eyebrow className="text-primary">Support the chapter</Eyebrow>
+              <h3 className="font-display text-2xl sm:text-3xl tracking-tight mt-2 mb-2">Every order builds the work.</h3>
+              <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                Proceeds fund networking events, training programs, and advocacy for minority contractors across the Bay Area.
               </p>
             </div>
-            <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store-bottom">
-              <Button variant="outline" className="border-[#E5A830] text-[#E5A830] whitespace-nowrap">
+            <a href={STORE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-visit-store-bottom" className="relative">
+              <Button variant="outline" className="rounded-full border-primary text-foreground whitespace-nowrap pressable">
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Shop Now
+                Shop now
               </Button>
             </a>
           </CardContent>
