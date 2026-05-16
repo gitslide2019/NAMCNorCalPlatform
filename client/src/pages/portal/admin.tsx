@@ -116,14 +116,16 @@ export default function Admin() {
   const [selectedApp, setSelectedApp] = useState<MembershipApplication | null>(null);
   const [tab, setTab] = useState<string>(user?.isAdmin ? "applications" : "finance");
 
+  // Mobile-tab options. `testid` mirrors the original desktop TabsTrigger
+  // data-testid so e2e selectors continue to work on small screens.
   const tabOptions = [
-    ...(user?.isAdmin ? [{ value: "applications", label: "Applications" }] : []),
-    ...(user?.isAdmin ? [{ value: "members", label: "Members" }] : []),
-    { value: "finance", label: "Finance" },
-    ...(user?.isAdmin ? [{ value: "renewals", label: "Renewals" }] : []),
-    ...(user?.isAdmin ? [{ value: "email", label: "Email" }] : []),
-    ...(user?.isAdmin ? [{ value: "sms", label: "SMS" }] : []),
-    ...(user?.isAdmin ? [{ value: "committees", label: "Committees" }] : []),
+    ...(user?.isAdmin ? [{ value: "applications", label: "Applications", testid: "tab-applications" }] : []),
+    ...(user?.isAdmin ? [{ value: "members", label: "Members", testid: "tab-members" }] : []),
+    { value: "finance", label: "Finance", testid: "tab-finance" },
+    ...(user?.isAdmin ? [{ value: "renewals", label: "Renewals", testid: "tab-renewals" }] : []),
+    ...(user?.isAdmin ? [{ value: "email", label: "Email", testid: "tab-email-members" }] : []),
+    ...(user?.isAdmin ? [{ value: "sms", label: "SMS", testid: "tab-sms" }] : []),
+    ...(user?.isAdmin ? [{ value: "committees", label: "Committees", testid: "tab-committees" }] : []),
   ];
 
   const { data: applications, isLoading } = useQuery<MembershipApplication[]>({
@@ -177,7 +179,7 @@ export default function Admin() {
               </SelectTrigger>
               <SelectContent>
                 {tabOptions.map(o => (
-                  <SelectItem key={o.value} value={o.value} data-testid={`select-item-tab-${o.value}`}>
+                  <SelectItem key={o.value} value={o.value} data-testid={o.testid}>
                     {o.label}
                   </SelectItem>
                 ))}
@@ -513,7 +515,7 @@ function MembersManagement() {
                         ) : "—"}
                       </td>
                       <td className="p-3 hidden md:table-cell capitalize text-muted-foreground">{member.membershipCategory}</td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center" title="Active">
                         <button
                           onClick={() => toggleMutation.mutate({ id: member.id, field: "isActive", value: !member.isActive })}
                           disabled={toggleMutation.isPending}
@@ -526,7 +528,7 @@ function MembersManagement() {
                           <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isActive ? "translate-x-2" : "-translate-x-2"}`} />
                         </button>
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center" title="Board">
                         <button
                           onClick={() => toggleMutation.mutate({ id: member.id, field: "isBoardMember", value: !member.isBoardMember })}
                           disabled={toggleMutation.isPending}
@@ -539,7 +541,7 @@ function MembersManagement() {
                           <span className={`w-4 h-4 rounded-full bg-white transition-transform ${member.isBoardMember ? "translate-x-2" : "-translate-x-2"}`} />
                         </button>
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center" title="Admin">
                         <button
                           onClick={() => handleAdminToggle(member)}
                           disabled={toggleMutation.isPending}
