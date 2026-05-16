@@ -478,10 +478,10 @@ export default function CommitteeDetail() {
 
         <Tabs defaultValue={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "meetings" ? "meetings" : "about"} className="w-full">
           <TabsList className="grid grid-cols-4 w-full max-w-xl">
-            <TabsTrigger value="about" data-testid="tab-about"><Info className="h-4 w-4 mr-1" />About</TabsTrigger>
-            <TabsTrigger value="members" data-testid="tab-members"><UsersRound className="h-4 w-4 mr-1" />Members</TabsTrigger>
-            <TabsTrigger value="meetings" data-testid="tab-meetings"><CalendarDays className="h-4 w-4 mr-1" />Meetings</TabsTrigger>
-            <TabsTrigger value="tasks" data-testid="tab-tasks"><ListChecks className="h-4 w-4 mr-1" />Tasks</TabsTrigger>
+            <TabsTrigger value="about" data-testid="tab-about" aria-label="About" className="px-1 sm:px-3 text-xs sm:text-sm"><Info className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">About</span></TabsTrigger>
+            <TabsTrigger value="members" data-testid="tab-members" aria-label="Members" className="px-1 sm:px-3 text-xs sm:text-sm"><UsersRound className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Members</span></TabsTrigger>
+            <TabsTrigger value="meetings" data-testid="tab-meetings" aria-label="Meetings" className="px-1 sm:px-3 text-xs sm:text-sm"><CalendarDays className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Meetings</span></TabsTrigger>
+            <TabsTrigger value="tasks" data-testid="tab-tasks" aria-label="Tasks" className="px-1 sm:px-3 text-xs sm:text-sm"><ListChecks className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Tasks</span></TabsTrigger>
           </TabsList>
 
           <TabsContent value="about" className="mt-6">

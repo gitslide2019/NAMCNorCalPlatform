@@ -164,7 +164,7 @@ export default function Dashboard() {
           </div>
 
           {application && (
-            <div className="grid grid-cols-3 gap-x-6 gap-y-2 mt-8 pt-6 border-t border-foreground/10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 sm:gap-y-2 mt-8 pt-6 border-t border-foreground/10">
               <Stat value={unreadCount} label="Unread" data-testid="stat-unread" />
               <Stat value={openProjects.length} label="Open bids" data-testid="stat-open-projects" />
               <Stat value={upcomingEvents.length} label="On the calendar" data-testid="stat-events" />

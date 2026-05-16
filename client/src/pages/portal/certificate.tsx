@@ -87,8 +87,8 @@ export default function CourseCertificate() {
         <div className="my-8">
           <p className="text-lg text-gray-600 mb-4">This certifies that</p>
           <p
-            className="text-3xl font-bold mb-4"
-            style={{ color: NAMC_GOLD, borderBottom: `2px solid ${NAMC_GOLD}`, display: "inline-block", paddingBottom: "8px", minWidth: "300px" }}
+            className="text-2xl sm:text-3xl font-bold mb-4 break-words max-w-full"
+            style={{ color: NAMC_GOLD, borderBottom: `2px solid ${NAMC_GOLD}`, display: "inline-block", paddingBottom: "8px" }}
             data-testid="certificate-recipient"
           >
             {user?.username || "NAMC Member"}
@@ -107,14 +107,14 @@ export default function CourseCertificate() {
           <p className="text-base font-semibold text-gray-700 mt-1" data-testid="certificate-date">{completedDate}</p>
         </div>
 
-        <div className="flex justify-around items-end mt-10 pt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:justify-around items-center sm:items-end gap-6 sm:gap-4 mt-10 pt-6 border-t border-gray-200">
           <div className="text-center">
-            <div className="h-0.5 w-40 bg-gray-400 mb-1 mx-auto" />
+            <div className="h-0.5 w-32 sm:w-40 bg-gray-400 mb-1 mx-auto" />
             <p className="text-xs text-gray-500">Executive Director</p>
             <p className="text-xs font-medium text-gray-700">NAMC NorCal</p>
           </div>
           <div className="text-center">
-            <div className="h-0.5 w-40 bg-gray-400 mb-1 mx-auto" />
+            <div className="h-0.5 w-32 sm:w-40 bg-gray-400 mb-1 mx-auto" />
             <p className="text-xs text-gray-500">Training Director</p>
             <p className="text-xs font-medium text-gray-700">NAMC NorCal</p>
           </div>
