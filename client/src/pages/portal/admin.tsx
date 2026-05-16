@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle,
   XCircle,
@@ -113,6 +114,17 @@ export default function Admin() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedApp, setSelectedApp] = useState<MembershipApplication | null>(null);
+  const [tab, setTab] = useState<string>(user?.isAdmin ? "applications" : "finance");
+
+  const tabOptions = [
+    ...(user?.isAdmin ? [{ value: "applications", label: "Applications" }] : []),
+    ...(user?.isAdmin ? [{ value: "members", label: "Members" }] : []),
+    { value: "finance", label: "Finance" },
+    ...(user?.isAdmin ? [{ value: "renewals", label: "Renewals" }] : []),
+    ...(user?.isAdmin ? [{ value: "email", label: "Email" }] : []),
+    ...(user?.isAdmin ? [{ value: "sms", label: "SMS" }] : []),
+    ...(user?.isAdmin ? [{ value: "committees", label: "Committees" }] : []),
+  ];
 
   const { data: applications, isLoading } = useQuery<MembershipApplication[]>({
     queryKey: ["/api/membership-applications"],
@@ -156,9 +168,25 @@ export default function Admin() {
           <p className="text-muted-foreground max-w-lg text-sm sm:text-base mt-2">{user?.isAdmin ? "Manage membership applications and organizational finances." : "View the organizational financial dashboard."}</p>
         </header>
 
-        <Tabs defaultValue={user?.isAdmin ? "applications" : "finance"} className="space-y-6">
-          <div className="overflow-x-auto">
-            <TabsList className={`grid w-full max-w-5xl min-w-max ${user?.isAdmin ? "grid-cols-7" : "grid-cols-1"}`}>
+        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+          {/* Mobile: dropdown picker (no horizontal scroll). */}
+          <div className="lg:hidden">
+            <Select value={tab} onValueChange={setTab}>
+              <SelectTrigger className="w-full" data-testid="select-admin-tab">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tabOptions.map(o => (
+                  <SelectItem key={o.value} value={o.value} data-testid={`select-item-tab-${o.value}`}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Desktop: traditional tab strip. */}
+          <div className="hidden lg:block">
+            <TabsList className={`grid w-full max-w-5xl ${user?.isAdmin ? "grid-cols-7" : "grid-cols-1"}`}>
               {user?.isAdmin && (
                 <TabsTrigger value="applications" className="text-xs sm:text-sm" data-testid="tab-applications">
                   <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" /><span className="truncate">Applications</span>
@@ -251,7 +279,7 @@ export default function Admin() {
                 <Card>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm" data-testid="table-applications">
+                      <table className="responsive-table w-full text-sm" data-testid="table-applications">
                         <thead>
                           <tr className="border-b bg-muted/50">
                             <th className="text-left p-3 font-medium">Company</th>
@@ -459,7 +487,7 @@ function MembersManagement() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="table-members">
+              <table className="responsive-table w-full text-sm" data-testid="table-members">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left p-3 font-medium">Company</th>
@@ -1002,7 +1030,7 @@ function FinanceDashboard() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="responsive-table w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left p-3 font-medium">Category</th>
@@ -1084,7 +1112,7 @@ function FinanceDashboard() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="responsive-table w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left p-3 font-medium">Source</th>
@@ -1498,7 +1526,7 @@ function SmsInvitations() {
           <Card><CardContent className="p-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30"><XCircle className="h-5 w-5 text-red-600" /></div><div><p className="text-2xl font-bold text-red-600">{sendResults.failed}</p><p className="text-xs text-muted-foreground">Failed</p></div></CardContent></Card>
         </div>
         <div className="border rounded-lg max-h-60 overflow-y-auto">
-          <table className="w-full text-sm">
+          <table className="responsive-table w-full text-sm">
             <thead className="bg-muted/50 sticky top-0"><tr><th className="p-2 text-left">Name</th><th className="p-2 text-left">Contact</th><th className="p-2 text-left">Status</th><th className="p-2 text-left">Error</th></tr></thead>
             <tbody>
               {sendResults.results.map((r: any, idx: number) => (
@@ -1615,7 +1643,7 @@ function SmsInvitations() {
               </div>
 
               <div className="border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="responsive-table w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
                       <th className="p-2 w-10"></th>
@@ -1785,7 +1813,7 @@ function SmsInvitations() {
                       {!batchDetails ? (
                         <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
                       ) : (
-                        <table className="w-full text-sm mt-3">
+                        <table className="responsive-table w-full text-sm mt-3">
                           <thead className="bg-muted/50"><tr><th className="p-2 text-left">Name</th><th className="p-2 text-left">Phone</th><th className="p-2 text-left">Company</th><th className="p-2 text-left">Status</th><th className="p-2 text-left">Sent At</th></tr></thead>
                           <tbody>
                             {batchDetails.map((inv) => (
@@ -1851,7 +1879,7 @@ function RenewalMemberTable({ group, groupKey, actionable, sendingEmails, sendin
   if (group.length === 0) return <p className="text-sm text-muted-foreground py-2">No members in this group.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="responsive-table w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40">
             <th className="text-left p-2 font-medium">Member</th>
