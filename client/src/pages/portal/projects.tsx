@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow, SectionNumeral } from "@/components/editorial";
+import { SectionNumeral, PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -344,17 +344,12 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
         Back to Dashboard
       </Button>
 
-      <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
-          <Eyebrow>The pipeline</Eyebrow>
-          <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-projects-title">
-            Project opportunities
-          </h1>
-          <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
-            Real opportunities sourced from the NAMC NorCal email feed.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
+      <PageHeader
+        eyebrow="The pipeline"
+        title="Project opportunities"
+        titleTestId="text-projects-title"
+        description="Real opportunities sourced from the NAMC NorCal email feed."
+        actions={<>
           <Button
             variant={viewSaved ? "default" : "outline"}
             size="sm"
@@ -456,8 +451,8 @@ function ProjectListView({ onSelectProject }: { onSelectProject: (id: string) =>
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      </header>
+        </>}
+      />
 
       {isLoading ? (
         <div className="space-y-4">

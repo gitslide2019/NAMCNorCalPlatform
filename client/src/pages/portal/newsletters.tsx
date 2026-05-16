@@ -32,7 +32,7 @@ import {
 import { Newspaper, Plus, ArrowLeft, Calendar, Pencil, Trash2, BookOpen, Mail } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { Newsletter } from "@shared/schema";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 
 const ACCENT_BG_COLORS = [
   "bg-primary/10",
@@ -328,19 +328,14 @@ export default function Newsletters() {
           Back to Dashboard
         </Button>
 
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4" data-testid="banner-newsletters">
-          <div className="space-y-2">
-            <Eyebrow>The press</Eyebrow>
-            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-newsletters-heading">
-              Newsletters
-            </h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
-              Stay up to date with NAMC NorCal news and updates.
-            </p>
-          </div>
-          {user?.isAdmin && (
-            <div>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <PageHeader
+          data-testid="banner-newsletters"
+          eyebrow="The press"
+          title="Newsletters"
+          titleTestId="text-newsletters-heading"
+          description="Stay up to date with NAMC NorCal news and updates."
+          actions={user?.isAdmin && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-create-newsletter">
                     <Plus className="h-4 w-4 mr-1" />
@@ -384,9 +379,8 @@ export default function Newsletters() {
                   </form>
                 </DialogContent>
               </Dialog>
-            </div>
           )}
-        </header>
+        />
 
         {listLoading ? (
           <div className="space-y-4">

@@ -156,6 +156,73 @@ export function RevealOnScroll({
   );
 }
 
+/**
+ * Editorial page header — gold-rule underline, eyebrow, Fraunces/Plus Jakarta
+ * display title, optional description, and right-aligned actions slot.
+ *
+ * Title accepts a string (rendered as the standard <h1>) or a ReactNode for
+ * pages that need extras inline with the title (badges, etc.).
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  titleTestId,
+  titleClassName,
+  description,
+  actions,
+  children,
+  className,
+  "data-testid": testId,
+}: {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  titleTestId?: string;
+  titleClassName?: string;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  "data-testid"?: string;
+}) {
+  const hasActions = !!actions;
+  return (
+    <header
+      data-testid={testId}
+      className={cn(
+        "border-b-2 border-foreground/80 pb-6 mb-8",
+        hasActions && "flex flex-wrap items-end justify-between gap-4",
+        className,
+      )}
+    >
+      <div className="space-y-2">
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        {typeof title === "string" ? (
+          <h1
+            className={cn(
+              "font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]",
+              titleClassName,
+            )}
+            data-testid={titleTestId}
+          >
+            {title}
+          </h1>
+        ) : (
+          title
+        )}
+        {description && (
+          <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
+            {description}
+          </p>
+        )}
+      </div>
+      {hasActions && (
+        <div className="flex flex-wrap items-center gap-3">{actions}</div>
+      )}
+      {children}
+    </header>
+  );
+}
+
 /** Dark blueprint surface wrapper. Use as `<BlueprintSurface as="section">…</BlueprintSurface>`. */
 export function BlueprintSurface({
   children,

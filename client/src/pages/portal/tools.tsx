@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -415,13 +415,12 @@ export default function ToolLibrary() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div className="space-y-2">
-            <Eyebrow>The yard</Eyebrow>
-            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-tools-title">Equipment sharing</h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">Browse, request, and share equipment with fellow members.</p>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <PageHeader
+          eyebrow="The yard"
+          title="Equipment sharing"
+          titleTestId="text-tools-title"
+          description="Browse, request, and share equipment with fellow members."
+          actions={<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-tool"><Plus className="h-4 w-4 mr-2" />Share Equipment</Button>
             </DialogTrigger>
@@ -466,8 +465,8 @@ export default function ToolLibrary() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
-        </header>
+          </Dialog>}
+        />
 
         <Tabs defaultValue="catalog" data-testid="tabs-tools">
           <TabsList className="flex-wrap h-auto gap-1">

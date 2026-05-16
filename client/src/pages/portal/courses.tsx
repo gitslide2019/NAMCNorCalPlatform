@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -711,20 +711,12 @@ export default function Courses() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex items-end justify-between gap-4 flex-wrap">
-          <div className="space-y-2">
-            <Eyebrow>The trade school</Eyebrow>
-            <h1
-              className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]"
-              data-testid="text-courses-title"
-            >
-              Training
-            </h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
-              Explore training and development courses.
-            </p>
-          </div>
-          {user?.isAdmin && (
+        <PageHeader
+          eyebrow="The trade school"
+          title="Training"
+          titleTestId="text-courses-title"
+          description="Explore training and development courses."
+          actions={user?.isAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-course">
@@ -764,7 +756,7 @@ export default function Courses() {
               </DialogContent>
             </Dialog>
           )}
-        </header>
+        />
 
         {coursesLoading || enrollmentsLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Plus, Pin, Clock, Filter, ArrowLeft, Send, Pencil, Trash2, Users } from "lucide-react";
 import { useLocation as useWouterLocation } from "wouter";
 import type { DiscussionTopic, DiscussionReply } from "@shared/schema";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import ReactMarkdown from "react-markdown";
 
 type TopicWithCount = DiscussionTopic & { replyCount: number };
@@ -478,17 +478,13 @@ export default function Discussions() {
           Back to Dashboard
         </Button>
 
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-wrap items-end justify-between gap-4" data-testid="banner-discussions">
-          <div className="space-y-2">
-            <Eyebrow>Around the table</Eyebrow>
-            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-discussions-title">
-              Discussion board
-            </h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
-              Connect and share ideas with fellow NAMC members.
-            </p>
-          </div>
-            <div className="shrink-0">
+        <PageHeader
+          data-testid="banner-discussions"
+          eyebrow="Around the table"
+          title="Discussion board"
+          titleTestId="text-discussions-title"
+          description="Connect and share ideas with fellow NAMC members."
+          actions={
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-new-topic">
@@ -544,8 +540,8 @@ export default function Discussions() {
                   </div>
                 </DialogContent>
               </Dialog>
-            </div>
-        </header>
+          }
+        />
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />

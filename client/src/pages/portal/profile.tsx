@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,18 +252,14 @@ export default function Profile() {
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
 
-        <header className="border-b-2 border-foreground/80 pb-6 mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div className="space-y-2">
-            <Eyebrow>The shingle</Eyebrow>
-            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-profile-title">My company profile</h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">
-              Build a complete profile to get found for projects, partnerships, and opportunities.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ProfilePreviewDialog application={application} />
-          </div>
-        </header>
+        <PageHeader
+          className="mb-6"
+          eyebrow="The shingle"
+          title="My company profile"
+          titleTestId="text-profile-title"
+          description="Build a complete profile to get found for projects, partnerships, and opportunities."
+          actions={<ProfilePreviewDialog application={application} />}
+        />
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge variant="secondary" className="capitalize" data-testid="text-membership-category">{application.membershipCategory} Member</Badge>

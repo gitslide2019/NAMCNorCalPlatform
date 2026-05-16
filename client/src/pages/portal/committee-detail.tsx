@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, Link } from "wouter";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -420,15 +420,18 @@ export default function CommitteeDetail() {
           </Button>
         </Link>
 
-        <header className="border-b-2 border-foreground/80 pb-6 mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-2">
-            <Eyebrow>Working group</Eyebrow>
+        <PageHeader
+          className="mb-6 gap-3"
+          eyebrow="Working group"
+          title={
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-committee-name">{committee.name}</h1>
               <Badge variant="outline">{committee.category}</Badge>
               {!committee.isActive && <Badge variant="secondary">Archived</Badge>}
             </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-3">
+          }
+          description={
+            <span className="inline-flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <UsersRound className="h-4 w-4" />
                 {members.length} {members.length === 1 ? "member" : "members"}
@@ -439,9 +442,9 @@ export default function CommitteeDetail() {
                   Chair: {members.find((m) => m.userId === committee.chairId)?.displayName || "—"}
                 </span>
               )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+            </span>
+          }
+          actions={<>
             {data.isMember ? (
               <Button
                 variant="outline"
@@ -470,8 +473,8 @@ export default function CommitteeDetail() {
                 Edit
               </Button>
             )}
-          </div>
-        </header>
+          </>}
+        />
 
         <Tabs defaultValue={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "meetings" ? "meetings" : "about"} className="w-full">
           <TabsList className="grid grid-cols-4 w-full max-w-xl">

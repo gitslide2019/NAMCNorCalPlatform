@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow, SectionNumeral } from "@/components/editorial";
+import { SectionNumeral, PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,21 +156,21 @@ export default function Campaigns() {
           <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)} className="mb-4" data-testid="button-back-campaigns">
             <ArrowLeft className="h-4 w-4 mr-2" />Back to Campaigns
           </Button>
-          <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div className="space-y-2">
-              <Eyebrow>Campaign</Eyebrow>
-              <h1 className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95]" data-testid="text-campaign-title">{campaign.title}</h1>
-              <p className="text-muted-foreground max-w-lg text-sm sm:text-base">{campaign.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
+          <PageHeader
+            eyebrow="Campaign"
+            title={campaign.title}
+            titleTestId="text-campaign-title"
+            titleClassName="text-3xl sm:text-4xl"
+            description={campaign.description}
+            actions={<>
               <Badge className={`text-[10px] uppercase tracking-[0.16em] font-semibold border ${campaign.status === "active" ? "bg-emerald-600/10 text-emerald-700 border-emerald-600/30 dark:text-emerald-400" : "bg-muted text-muted-foreground border-foreground/15"}`}>{campaign.status}</Badge>
               {isAdmin && (
                 <Button variant="outline" size="sm" onClick={() => deleteCampaignMutation.mutate(campaign.id)} data-testid="button-delete-campaign">
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               )}
-            </div>
-          </header>
+            </>}
+          />
 
           <Card className="mb-6 shadow-editorial paper-surface">
             <CardContent className="p-6">
@@ -250,13 +250,12 @@ export default function Campaigns() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div className="space-y-2">
-            <Eyebrow>The capital stack</Eyebrow>
-            <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95]" data-testid="text-campaigns-title">Fundraising campaigns</h1>
-            <p className="text-muted-foreground max-w-lg text-sm sm:text-base">Capital campaigns and fundraising initiatives.</p>
-          </div>
-          {isBoardOrAdmin && (
+        <PageHeader
+          eyebrow="The capital stack"
+          title="Fundraising campaigns"
+          titleTestId="text-campaigns-title"
+          description="Capital campaigns and fundraising initiatives."
+          actions={isBoardOrAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-campaign"><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
@@ -284,7 +283,7 @@ export default function Campaigns() {
               </DialogContent>
             </Dialog>
           )}
-        </header>
+        />
 
         {isLoading ? (
           <div className="space-y-4">{[1,2].map(i => <Skeleton key={i} className="h-40 w-full" />)}</div>

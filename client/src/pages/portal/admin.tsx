@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PortalLayout } from "@/components/portal-layout";
-import { Eyebrow } from "@/components/editorial";
+import { PageHeader } from "@/components/editorial";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -164,13 +164,12 @@ export default function Admin() {
         <Button variant="ghost" size="sm" onClick={() => setLocation("/portal")} className="mb-4" data-testid="button-back-to-dashboard">
           <ArrowLeft className="h-4 w-4 mr-2" />Back to Dashboard
         </Button>
-        <header className="border-b-2 border-foreground/80 pb-6 mb-8">
-          <Eyebrow>The desk</Eyebrow>
-          <h1 className="font-display text-4xl sm:text-5xl tracking-tight leading-[0.95] mt-2" data-testid="text-admin-title">
-            Admin panel
-          </h1>
-          <p className="text-muted-foreground max-w-lg text-sm sm:text-base mt-2">{user?.isAdmin ? "Manage membership applications and organizational finances." : "View the organizational financial dashboard."}</p>
-        </header>
+        <PageHeader
+          eyebrow="The desk"
+          title="Admin panel"
+          titleTestId="text-admin-title"
+          description={user?.isAdmin ? "Manage membership applications and organizational finances." : "View the organizational financial dashboard."}
+        />
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">
           {/* Mobile: dropdown picker (no horizontal scroll). */}
