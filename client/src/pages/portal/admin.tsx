@@ -281,7 +281,7 @@ export default function Admin() {
               ) : (
                 <Card>
                   <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="lg:overflow-x-auto">
                       <table className="responsive-table w-full text-sm" data-testid="table-applications">
                         <thead>
                           <tr className="border-b bg-muted/50">
@@ -489,7 +489,7 @@ function MembersManagement() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="lg:overflow-x-auto">
               <table className="responsive-table w-full text-sm" data-testid="table-members">
                 <thead>
                   <tr className="border-b bg-muted/50">
@@ -1032,7 +1032,7 @@ function FinanceDashboard() {
           <CardDescription>Click the pencil icon to update actual spending amounts</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="lg:overflow-x-auto">
             <table className="responsive-table w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
@@ -1114,7 +1114,7 @@ function FinanceDashboard() {
           <CardDescription>Click the pencil icon to update received amounts</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="lg:overflow-x-auto">
             <table className="responsive-table w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
@@ -1645,7 +1645,7 @@ function SmsInvitations() {
                 <span>Page {page} of {totalPages || 1} ({totalContacts} contacts)</span>
               </div>
 
-              <div className="border rounded-lg overflow-x-auto">
+              <div className="border rounded-lg lg:overflow-x-auto">
                 <table className="responsive-table w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
@@ -1881,7 +1881,7 @@ type RenewalMemberTableProps = {
 function RenewalMemberTable({ group, groupKey, actionable, sendingEmails, sendingGroup, onSend }: RenewalMemberTableProps) {
   if (group.length === 0) return <p className="text-sm text-muted-foreground py-2">No members in this group.</p>;
   return (
-    <div className="overflow-x-auto">
+    <div className="lg:overflow-x-auto">
       <table className="responsive-table w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40">
