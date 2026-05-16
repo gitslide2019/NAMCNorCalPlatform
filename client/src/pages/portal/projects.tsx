@@ -55,7 +55,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#E5A830"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
+import { NAMC_GOLD } from "@/lib/brand";
+
+const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${NAMC_GOLD}"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
 
 const openMarkerIcon = new L.Icon({
   iconUrl: `data:image/svg+xml,${goldMarkerSvg}`,

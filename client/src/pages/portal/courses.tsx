@@ -311,12 +311,14 @@ export default function Courses() {
           </Button>
 
           <div className="mb-6">
+            <Eyebrow>Lesson</Eyebrow>
             <h1
-              className="text-2xl font-bold mb-2"
+              className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95] mt-2"
               data-testid="text-lesson-title"
             >
               {selectedLesson.title}
             </h1>
+            <div className="mt-3 h-[2px] w-16 bg-primary" />
           </div>
 
           <Card data-testid="card-lesson-content">
@@ -388,12 +390,14 @@ export default function Courses() {
             <>
               <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
                 <div>
+                  <Eyebrow>Course</Eyebrow>
                   <h1
-                    className="text-2xl font-bold mb-2"
+                    className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95] mt-2 mb-3"
                     data-testid="text-course-title"
                   >
                     {courseDetail.title}
                   </h1>
+                  <div className="h-[2px] w-16 bg-primary mb-4" />
                   <p
                     className="text-muted-foreground"
                     data-testid="text-course-description"

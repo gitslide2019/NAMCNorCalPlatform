@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Building2, MapPin, Phone, Mail, Globe, Users, ArrowLeft, Crown, List, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Stat } from "@/components/editorial";
+import { NAMC_GOLD } from "@/lib/brand";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -24,7 +25,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#E5A830"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
+const goldMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${NAMC_GOLD}"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
 const blueMarkerSvg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#3b82f6"/><circle cx="12.5" cy="12.5" r="6" fill="white"/></svg>`);
 
 const corporateMarkerIcon = new L.Icon({
@@ -401,7 +402,7 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
                       {member.profileImageUrl ? (
                         <img src={member.profileImageUrl} alt={member.companyName} className="w-8 h-8 rounded-full object-cover border" />
                       ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${member.membershipCategory === "large" ? "bg-[#E5A830]/10 text-[#E5A830]" : "bg-muted text-muted-foreground"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${member.membershipCategory === "large" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                           {member.companyName.charAt(0)}
                         </div>
                       )}
@@ -411,7 +412,7 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
                       </div>
                     </div>
                     {member.membershipCategory === "large" && (
-                      <span className="inline-block text-xs bg-[#E5A830] text-white rounded px-1.5 py-0.5 mb-1">Corporate Partner</span>
+                      <span className="inline-block text-xs bg-primary text-primary-foreground rounded px-1.5 py-0.5 mb-1">Corporate Partner</span>
                     )}
                     {member.isBoardMember && (
                       <span className="inline-block text-xs bg-amber-500 text-white rounded px-1.5 py-0.5 mb-1 ml-1">Board</span>
@@ -443,7 +444,7 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
           <span>Members</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#E5A830]" />
+          <div className="w-3 h-3 rounded-full bg-primary" />
           <span>Corporate Partners</span>
         </div>
         {unmappable.length > 0 && (
@@ -469,11 +470,11 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
             <img
               src={member.profileImageUrl}
               alt={member.companyName}
-              className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-[#E5A830]" : "border-muted"}`}
+              className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-primary" : "border-muted"}`}
               data-testid={`img-member-${member.id}`}
             />
           ) : (
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-[#E5A830]/10 text-[#E5A830] border border-[#E5A830]/30" : "bg-muted text-muted-foreground"}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-primary/10 text-primary border border-primary/30" : "bg-muted text-muted-foreground"}`}>
               {member.companyName.charAt(0)}
             </div>
           )}
@@ -486,7 +487,7 @@ function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocat
           </div>
           <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
             {isCorporate && (
-              <Badge className="text-xs bg-[#E5A830] hover:bg-[#d4982a] text-white" data-testid={`badge-corporate-${member.id}`}>
+              <Badge className="text-xs bg-primary text-primary-foreground hover:bg-primary/90" data-testid={`badge-corporate-${member.id}`}>
                 <Crown className="h-3 w-3 mr-1" />Corporate Partner
               </Badge>
             )}

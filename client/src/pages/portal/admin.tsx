@@ -64,11 +64,13 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
+import { NAMC_GOLD } from "@/lib/brand";
+
 const EXPENSE_COLORS = [
-  "#E5A830", "#2563eb", "#16a34a", "#dc2626", "#9333ea",
+  NAMC_GOLD, "#2563eb", "#16a34a", "#dc2626", "#9333ea",
   "#0891b2", "#ea580c", "#4f46e5", "#be185d", "#78716c",
 ];
-const REVENUE_COLORS = ["#16a34a", "#2563eb", "#9333ea", "#E5A830", "#0891b2", "#ea580c"];
+const REVENUE_COLORS = ["#16a34a", "#2563eb", "#9333ea", NAMC_GOLD, "#0891b2", "#ea580c"];
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -597,7 +599,7 @@ function EmailMembers() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-[#E5A830]" />
+            <Mail className="h-5 w-5 text-primary" />
             Compose Email to All Members
           </CardTitle>
           <CardDescription>
@@ -637,7 +639,7 @@ function EmailMembers() {
               <Button
                 type="submit"
                 disabled={sendMutation.isPending || !subject.trim() || !message.trim()}
-                className="bg-[#E5A830] hover:bg-[#d4961f] text-black"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 data-testid="button-send-member-email"
               >
                 {sendMutation.isPending ? (
@@ -927,7 +929,7 @@ function FinanceDashboard() {
               <Tooltip content={<BarTooltip />} />
               <Legend verticalAlign="top" height={36} />
               <Bar dataKey="Budgeted" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Actual" fill="#E5A830" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Actual" fill={NAMC_GOLD} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -964,7 +966,7 @@ function FinanceDashboard() {
               <PieChart>
                 <Pie data={pledgePieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={false} labelLine={false}>
                   <Cell fill="#16a34a" />
-                  <Cell fill="#E5A830" />
+                  <Cell fill={NAMC_GOLD} />
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
@@ -1966,7 +1968,7 @@ function RenewalGroupCard({ title, icon, group, groupKey, colorClass, descriptio
               {actionable && validEmails.length > 0 && (
                 <Button
                   size="sm"
-                  className="bg-[#E5A830] hover:bg-[#d4961f] text-black text-xs"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
                   disabled={sendingGroup === groupKey || sendingEmails.size > 0}
                   onClick={() => onSend(validEmails, groupKey)}
                   data-testid={`button-email-all-${groupKey}`}
@@ -2045,7 +2047,7 @@ function RenewalReminders() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-[#E5A830]" />
+            <CalendarClock className="h-5 w-5 text-primary" />
             Membership Dues Renewals
           </h2>
           <p className="text-sm text-muted-foreground">

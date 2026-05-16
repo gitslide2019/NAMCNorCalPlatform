@@ -23,6 +23,7 @@ import {
   User, Crown, Calendar, Users, DollarSign, Shield, FileText, Download,
   ExternalLink, Wrench, ThumbsUp, Trash2, Star, Plus
 } from "lucide-react";
+import { Eyebrow } from "@/components/editorial";
 
 interface MemberProject {
   id: string;
@@ -171,9 +172,11 @@ function CorporateProfile({ member, onSendMessage }: { member: MemberDetail; onS
               </div>
             )}
             <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-corporate-company">{member.companyName}</h1>
+              <Eyebrow>Corporate partner</Eyebrow>
+              <div className="flex flex-wrap items-center gap-2 mt-2 mb-1">
+                <h1 className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95]" data-testid="text-corporate-company">{member.companyName}</h1>
               </div>
+              <div className="h-[2px] w-16 bg-primary mb-3" />
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <Badge className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="badge-corporate-partner">
                   <Crown className="h-3 w-3 mr-1" />Corporate Partner
@@ -422,8 +425,10 @@ function StandardProfile({ member, onSendMessage }: { member: MemberDetail; onSe
                 </div>
               )}
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-member-company">{member.companyName}</h1>
-                <p className="text-muted-foreground mt-1" data-testid="text-member-contact">
+                <Eyebrow>Member</Eyebrow>
+                <h1 className="font-display text-3xl sm:text-4xl tracking-tight leading-[0.95] mt-2" data-testid="text-member-company">{member.companyName}</h1>
+                <div className="h-[2px] w-16 bg-primary mt-2" />
+                <p className="text-muted-foreground mt-2" data-testid="text-member-contact">
                   {member.contactName} — {member.title}
                 </p>
                 {member.bio && (

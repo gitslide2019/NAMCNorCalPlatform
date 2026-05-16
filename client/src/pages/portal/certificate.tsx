@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
+import { NAMC_GOLD } from "@/lib/brand";
 
 interface CourseCertData {
   id: string;
@@ -66,14 +67,14 @@ export default function CourseCertificate() {
       <div
         className="certificate-page bg-white shadow-xl rounded-lg w-full max-w-3xl p-12 text-center relative"
         data-testid="certificate-container"
-        style={{ border: "8px solid #E5A830", fontFamily: "Georgia, serif" }}
+        style={{ border: `8px solid ${NAMC_GOLD}`, fontFamily: "Georgia, serif" }}
       >
         <div className="absolute inset-2 border-2 border-amber-200 rounded pointer-events-none" />
 
         <div className="mb-6">
           <div
             className="inline-block px-4 py-1 mb-4 text-xs font-semibold uppercase tracking-widest rounded"
-            style={{ backgroundColor: "#E5A830", color: "#fff" }}
+            style={{ backgroundColor: NAMC_GOLD, color: "#fff" }}
           >
             Certificate of Completion
           </div>
@@ -87,7 +88,7 @@ export default function CourseCertificate() {
           <p className="text-lg text-gray-600 mb-4">This certifies that</p>
           <p
             className="text-3xl font-bold mb-4"
-            style={{ color: "#E5A830", borderBottom: "2px solid #E5A830", display: "inline-block", paddingBottom: "8px", minWidth: "300px" }}
+            style={{ color: NAMC_GOLD, borderBottom: `2px solid ${NAMC_GOLD}`, display: "inline-block", paddingBottom: "8px", minWidth: "300px" }}
             data-testid="certificate-recipient"
           >
             {user?.username || "NAMC Member"}
