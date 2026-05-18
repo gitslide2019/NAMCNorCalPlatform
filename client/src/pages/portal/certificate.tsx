@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
-import { NAMC_GOLD } from "@/lib/brand";
 
 interface CourseCertData {
   id: string;
@@ -22,7 +21,6 @@ export default function CourseCertificate() {
     queryKey: ["/api/portal/courses", id],
   });
 
-  // Auto-trigger print dialog once the certificate is ready
   useEffect(() => {
     if (course && course.enrollment && course.enrollment.progress >= 100) {
       const timer = setTimeout(() => window.print(), 500);
@@ -55,7 +53,7 @@ export default function CourseCertificate() {
     : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-start py-12 px-4">
+    <div className="certificate-screen min-h-screen bg-neutral-100 flex flex-col items-center justify-start py-12 px-4">
       <div className="no-print mb-6 flex gap-3">
         <Button onClick={() => window.print()} data-testid="button-print-certificate">
           <Download className="h-4 w-4 mr-2" />
@@ -64,68 +62,229 @@ export default function CourseCertificate() {
         <Button variant="outline" onClick={() => window.close()}>Close</Button>
       </div>
 
-      <div
-        className="certificate-page bg-white shadow-xl rounded-lg w-full max-w-3xl p-12 text-center relative"
+      <article
+        className="certificate-page"
         data-testid="certificate-container"
-        style={{ border: `8px solid ${NAMC_GOLD}`, fontFamily: "Georgia, serif" }}
       >
-        <div className="absolute inset-2 border-2 border-amber-200 rounded pointer-events-none" />
+        <div className="certificate-inner-border" aria-hidden />
 
-        <div className="mb-6">
-          <div
-            className="inline-block px-4 py-1 mb-4 text-xs font-semibold uppercase tracking-widest rounded"
-            style={{ backgroundColor: NAMC_GOLD, color: "#fff" }}
-          >
-            Certificate of Completion
-          </div>
-          <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a" }}>
-            NAMC NorCal
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">National Association of Minority Contractors — Northern California Chapter</p>
-        </div>
+        <header className="certificate-header">
+          <div className="certificate-eyebrow">Certificate of Completion</div>
+          <div className="certificate-numeral">№ 01</div>
+          <h1 className="certificate-org font-display">NAMC NorCal</h1>
+          <p className="certificate-org-sub">National Association of Minority Contractors — Northern California Chapter</p>
+        </header>
 
-        <div className="my-8">
-          <p className="text-lg text-gray-600 mb-4">This certifies that</p>
-          <p
-            className="text-2xl sm:text-3xl font-bold mb-4 break-words max-w-full"
-            style={{ color: NAMC_GOLD, borderBottom: `2px solid ${NAMC_GOLD}`, display: "inline-block", paddingBottom: "8px" }}
-            data-testid="certificate-recipient"
-          >
+        <section className="certificate-body">
+          <p className="certificate-label">This certifies that</p>
+          <p className="certificate-recipient font-display" data-testid="certificate-recipient">
             {user?.username || "NAMC Member"}
           </p>
-          <p className="text-lg text-gray-600 mt-4 mb-2">has successfully completed</p>
-          <h2 className="text-2xl font-bold text-gray-900 my-2" data-testid="certificate-course-title">
+          <p className="certificate-label">has successfully completed</p>
+          <h2 className="certificate-course font-display" data-testid="certificate-course-title">
             {course.title}
           </h2>
           {course.description && (
-            <p className="text-sm text-gray-500 mt-1 max-w-xl mx-auto">{course.description}</p>
+            <p className="certificate-description">{course.description}</p>
           )}
-        </div>
+        </section>
 
-        <div className="mt-10 mb-4">
-          <p className="text-sm text-gray-500">Awarded on</p>
-          <p className="text-base font-semibold text-gray-700 mt-1" data-testid="certificate-date">{completedDate}</p>
-        </div>
+        <section className="certificate-awarded">
+          <p className="certificate-label">Awarded on</p>
+          <p className="certificate-date font-numeral" data-testid="certificate-date">{completedDate}</p>
+        </section>
 
-        <div className="flex flex-col sm:flex-row sm:justify-around items-center sm:items-end gap-6 sm:gap-4 mt-10 pt-6 border-t border-gray-200">
-          <div className="text-center">
-            <div className="h-0.5 w-32 sm:w-40 bg-gray-400 mb-1 mx-auto" />
-            <p className="text-xs text-gray-500">Executive Director</p>
-            <p className="text-xs font-medium text-gray-700">NAMC NorCal</p>
+        <footer className="certificate-signatures">
+          <div className="certificate-signature">
+            <div className="certificate-signature-line" />
+            <p className="certificate-signature-role">Executive Director</p>
+            <p className="certificate-signature-org">NAMC NorCal</p>
           </div>
-          <div className="text-center">
-            <div className="h-0.5 w-32 sm:w-40 bg-gray-400 mb-1 mx-auto" />
-            <p className="text-xs text-gray-500">Training Director</p>
-            <p className="text-xs font-medium text-gray-700">NAMC NorCal</p>
+          <div className="certificate-signature">
+            <div className="certificate-signature-line" />
+            <p className="certificate-signature-role">Training Director</p>
+            <p className="certificate-signature-org">NAMC NorCal</p>
           </div>
-        </div>
-      </div>
+        </footer>
+      </article>
 
       <style>{`
+        .certificate-page {
+          background: #ffffff;
+          color: #1a1a1a;
+          width: 100%;
+          max-width: 60rem;
+          aspect-ratio: 11 / 8.5;
+          padding: 3.5rem 3.5rem 2.75rem;
+          position: relative;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+          border: 10px solid #FFD700;
+          font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+          display: flex;
+          flex-direction: column;
+          text-align: center;
+        }
+        .certificate-inner-border {
+          position: absolute;
+          inset: 10px;
+          border: 1.5px solid rgba(255, 215, 0, 0.45);
+          pointer-events: none;
+        }
+        .certificate-header { margin-bottom: 1.25rem; position: relative; }
+        .certificate-eyebrow {
+          display: inline-block;
+          font-size: 0.7rem;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          font-weight: 700;
+          color: #1a1a1a;
+          padding: 0.35rem 0.85rem;
+          background: #FFD700;
+          margin-bottom: 1rem;
+        }
+        .certificate-numeral {
+          font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+          font-weight: 800;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: -0.04em;
+          font-size: 0.85rem;
+          color: #FFD700;
+          margin-bottom: 0.5rem;
+        }
+        .certificate-org {
+          font-size: 2.25rem;
+          font-weight: 700;
+          letter-spacing: -0.025em;
+          line-height: 1.1;
+          color: #1a1a1a;
+        }
+        .certificate-org-sub {
+          font-size: 0.85rem;
+          color: #555;
+          margin-top: 0.35rem;
+        }
+        .certificate-body {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 0.75rem;
+        }
+        .certificate-label {
+          font-size: 0.95rem;
+          color: #555;
+          font-weight: 500;
+        }
+        .certificate-recipient {
+          font-size: 2.5rem;
+          font-weight: 700;
+          letter-spacing: -0.025em;
+          color: #1a1a1a;
+          display: inline-block;
+          padding: 0.25rem 0 0.6rem;
+          margin: 0 auto;
+          border-bottom: 2px solid #FFD700;
+          max-width: 90%;
+          word-break: break-word;
+        }
+        .certificate-course {
+          font-size: 1.75rem;
+          font-weight: 700;
+          letter-spacing: -0.025em;
+          color: #1a1a1a;
+          margin-top: 0.25rem;
+        }
+        .certificate-description {
+          font-size: 0.875rem;
+          color: #666;
+          max-width: 36rem;
+          margin: 0.25rem auto 0;
+          line-height: 1.5;
+        }
+        .certificate-awarded { margin-top: 1.5rem; }
+        .certificate-date {
+          font-size: 1.05rem;
+          color: #1a1a1a;
+          margin-top: 0.2rem;
+        }
+        .certificate-signatures {
+          margin-top: 2rem;
+          padding-top: 1.25rem;
+          border-top: 1px solid #e5e5e5;
+          display: flex;
+          justify-content: space-around;
+          align-items: flex-end;
+          gap: 1rem;
+        }
+        .certificate-signature { text-align: center; }
+        .certificate-signature-line {
+          height: 1.5px;
+          width: 11rem;
+          background: #999;
+          margin: 0 auto 0.35rem;
+        }
+        .certificate-signature-role {
+          font-size: 0.75rem;
+          color: #555;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+        .certificate-signature-org {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #1a1a1a;
+          margin-top: 0.1rem;
+        }
+
+        @media (max-width: 640px) {
+          .certificate-page {
+            aspect-ratio: auto;
+            padding: 2rem 1.5rem;
+          }
+          .certificate-org { font-size: 1.75rem; }
+          .certificate-recipient { font-size: 1.75rem; }
+          .certificate-course { font-size: 1.35rem; }
+          .certificate-signatures {
+            flex-direction: column;
+            gap: 1.25rem;
+            align-items: center;
+          }
+        }
+
+        @page {
+          size: letter landscape;
+          margin: 0.4in;
+        }
+
         @media print {
+          html, body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           .no-print { display: none !important; }
-          body { background: white !important; }
-          .certificate-page { box-shadow: none !important; page-break-inside: avoid; }
+          .certificate-screen {
+            background: #ffffff !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+          .certificate-page {
+            box-shadow: none !important;
+            max-width: none !important;
+            width: 100% !important;
+            height: 100vh;
+            aspect-ratio: auto !important;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin: 0 !important;
+          }
+          .certificate-signatures {
+            flex-direction: row !important;
+          }
         }
       `}</style>
     </div>
