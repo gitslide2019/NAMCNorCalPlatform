@@ -61,10 +61,10 @@ export function MembershipTiersSection() {
           </RevealOnScroll>
           <RevealOnScroll delay={80}>
             <h2
-              className="font-display text-[clamp(2rem,5vw,3.5rem)] leading-[1.04] tracking-tight mb-5"
+              className="font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.0] tracking-[-0.04em] font-extrabold mb-5"
               data-testid="text-membership-title"
             >
-              Pick the tier that fits the firm.
+              Pick the tier <span className="font-light italic">that fits the firm.</span>
             </h2>
           </RevealOnScroll>
           <RevealOnScroll delay={140}>
@@ -97,11 +97,11 @@ export function MembershipTiersSection() {
                     <tier.icon className="h-6 w-6 text-primary" />
                   </div>
                   <Eyebrow className="mb-1">{tier.revenue}</Eyebrow>
-                  <h3 className="font-display text-2xl leading-tight">{tier.name}</h3>
+                  <h3 className="font-display text-2xl leading-tight font-extrabold tracking-[-0.025em]">{tier.name}</h3>
                 </div>
 
                 <div className="flex items-baseline gap-1 mb-5">
-                  <span className="font-display font-display-tnum text-5xl text-foreground leading-none">
+                  <span className="font-numeral text-5xl text-foreground leading-[0.85]">
                     {tier.price}
                   </span>
                   <span className="text-sm text-muted-foreground">/yr</span>

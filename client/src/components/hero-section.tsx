@@ -35,18 +35,18 @@ export function HeroSection() {
 
               <RevealOnScroll delay={80}>
                 <h1
-                  className="font-display text-[clamp(2.5rem,8vw,5.75rem)] leading-[0.96] tracking-[-0.03em] text-white"
+                  className="font-display text-[clamp(2.75rem,9vw,6.5rem)] leading-[0.9] tracking-[-0.045em] text-white font-semibold"
                   data-testid="text-hero-title"
                 >
                   Build the Bay,
                   <br />
-                  <span className="font-extrabold text-white/95">together.</span>
+                  <span className="font-black italic tracking-[-0.05em] text-white">together.</span>
                 </h1>
               </RevealOnScroll>
 
               <RevealOnScroll delay={160}>
                 <p
-                  className="mt-6 max-w-xl text-base sm:text-lg text-white/75 leading-relaxed"
+                  className="mt-7 max-w-xl text-lg sm:text-xl text-white/75 leading-[1.55] font-light"
                   data-testid="text-hero-subtitle"
                 >
                   The National Association of Minority Contractors, Northern California

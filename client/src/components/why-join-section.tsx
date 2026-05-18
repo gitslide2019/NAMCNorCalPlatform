@@ -35,11 +35,11 @@ export function WhyJoinSection() {
           </RevealOnScroll>
           <RevealOnScroll delay={80}>
             <h2
-              className="font-display text-[clamp(2rem,5vw,3.5rem)] leading-[1.04] tracking-tight mb-5"
+              className="font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.0] tracking-[-0.04em] font-extrabold mb-5"
               data-testid="text-why-join-title"
             >
               Founded in <span className="gold-mark">Oakland, 1969</span>.<br className="hidden sm:block" />
-              Still building the bench.
+              <span className="font-light italic tracking-[-0.025em]">Still building the bench.</span>
             </h2>
           </RevealOnScroll>
           <RevealOnScroll delay={140}>
@@ -61,7 +61,7 @@ export function WhyJoinSection() {
                 <span className="absolute top-0 left-0 h-[2px] w-8 bg-primary transition-all duration-300 group-hover:w-16" />
                 <div className="flex items-start gap-3 mb-2">
                   <benefit.icon className="h-5 w-5 text-primary mt-1 shrink-0" />
-                  <h3 className="font-display text-xl leading-tight">{benefit.title}</h3>
+                  <h3 className="font-display text-xl leading-tight font-bold tracking-[-0.02em]">{benefit.title}</h3>
                 </div>
                 <p className="text-sm text-foreground/70 leading-relaxed pl-8">
                   {benefit.description}
@@ -73,8 +73,8 @@ export function WhyJoinSection() {
 
         <RevealOnScroll>
           <div className="mt-20 rounded-2xl border border-gold-hairline bg-card p-8 sm:p-12 shadow-editorial">
-            <Eyebrow className="mb-3">Our mission</Eyebrow>
-            <p className="font-display text-2xl sm:text-3xl leading-snug max-w-4xl" data-testid="text-mission">
+            <Eyebrow className="mb-4">Our mission</Eyebrow>
+            <p className="pull-quote text-2xl sm:text-3xl max-w-4xl text-foreground/85" data-testid="text-mission">
               NAMC-NC sets new standards of leadership, collaboration, and business excellence
               to advocate the issues of an ethnically and gender-diverse constituency — increasing
               construction capacity and economic inclusion across Northern California.

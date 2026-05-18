@@ -204,6 +204,40 @@
     font-feature-settings: "tnum";
   }
 
+  /* Pull-quote: light italic with a left gold rule. Carries the editorial
+     "quoted voice" feel now that the serif display face is gone — relies on
+     italic + light weight contrast instead of a different family. */
+  .pull-quote {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: -0.015em;
+    line-height: 1.32;
+    border-left: 2px solid hsl(var(--primary));
+    padding-left: 1.25rem;
+  }
+  .pull-quote em, .pull-quote strong { font-style: normal; font-weight: 600; }
+
+  /* Drop-cap: deliberate magazine-style first letter — black weight + tight
+     tracking + gold color so it reads as a display element, not just a bigger
+     character. Applied via `.drop-cap` on the paragraph. */
+  .drop-cap::first-letter {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 5.25rem;
+    line-height: 0.82;
+    letter-spacing: -0.05em;
+    float: left;
+    margin: 0.35rem 0.55rem -0.1rem 0;
+    color: hsl(var(--primary));
+  }
+  @media (min-width: 640px) {
+    .drop-cap::first-letter {
+      font-size: 6.75rem;
+      margin: 0.4rem 0.7rem -0.15rem 0;
+    }
+  }
+
   /* Responsive-table: below `lg` the table collapses to a stacked card list
      (each row becomes a vertical block) so admin tables stop forcing
      horizontal scroll on phones. Headers are hidden — each row carries its

@@ -44,8 +44,8 @@ export function MemberSpotlightSection() {
             <SectionNumeral number="04" label="Member spotlight" />
           </RevealOnScroll>
           <RevealOnScroll delay={80}>
-            <h2 className="font-display text-[clamp(2rem,5vw,3.5rem)] leading-[1.04] tracking-tight mb-5" data-testid="text-spotlight-title">
-              The people building the Bay.
+            <h2 className="font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.0] tracking-[-0.04em] font-extrabold mb-5" data-testid="text-spotlight-title">
+              The people <span className="font-light italic">building the Bay.</span>
             </h2>
           </RevealOnScroll>
           <RevealOnScroll delay={140}>
@@ -76,7 +76,7 @@ export function MemberSpotlightSection() {
 
               <RevealOnScroll delay={120} className="lg:col-span-7 pt-2">
                 <Eyebrow className="text-primary mb-3">{member.title} · {member.company}</Eyebrow>
-                <h3 className="font-display text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.02] tracking-tight mb-2" data-testid={`text-spotlight-name-${member.id}`}>
+                <h3 className="font-display text-[clamp(2.5rem,5.5vw,4rem)] leading-[0.96] tracking-[-0.045em] font-extrabold mb-2" data-testid={`text-spotlight-name-${member.id}`}>
                   {member.name}
                 </h3>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-foreground/70 mb-6">
@@ -96,7 +96,7 @@ export function MemberSpotlightSection() {
                   {member.narrative.map((p, i) => (
                     <p
                       key={i}
-                      className={`text-foreground/80 leading-relaxed ${i === 0 ? "first-letter:font-display first-letter:text-6xl first-letter:font-extrabold first-letter:float-left first-letter:mr-3 first-letter:leading-[0.85] first-letter:text-primary" : ""}`}
+                      className={`text-foreground/80 leading-relaxed ${i === 0 ? "drop-cap text-lg" : ""}`}
                       data-testid={`text-spotlight-narrative-${member.id}-${i}`}
                     >
                       {p}

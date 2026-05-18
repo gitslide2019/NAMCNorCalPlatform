@@ -13,7 +13,7 @@ export function Footer() {
                 <img src={namcLogo} alt="NAMC NorCal Logo" className="h-full w-full object-contain" data-testid="img-footer-logo" />
               </div>
               <div className="flex flex-col leading-tight">
-                <span className="font-display text-lg" data-testid="text-footer-brand">NAMC NorCal</span>
+                <span className="font-display text-xl font-extrabold tracking-[-0.03em]" data-testid="text-footer-brand">NAMC NorCal</span>
                 <span className="eyebrow text-white/55">Est. 1969</span>
               </div>
             </div>

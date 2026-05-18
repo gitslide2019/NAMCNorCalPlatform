@@ -53,8 +53,8 @@ export function GetInvolvedSection() {
             <SectionNumeral number="03" label="Ways to get involved" />
           </RevealOnScroll>
           <RevealOnScroll delay={80}>
-            <h2 className="font-display text-[clamp(2rem,5vw,3.5rem)] leading-[1.04] tracking-tight mb-5" data-testid="text-get-involved-title">
-              Membership is a verb.
+            <h2 className="font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.0] tracking-[-0.04em] font-extrabold mb-5" data-testid="text-get-involved-title">
+              Membership <span className="font-light italic">is a verb.</span>
             </h2>
           </RevealOnScroll>
           <RevealOnScroll delay={140}>
@@ -73,7 +73,7 @@ export function GetInvolvedSection() {
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
                     <area.icon className="h-5 w-5 text-primary" />
                   </span>
-                  <h3 className="font-display text-2xl leading-tight">{area.title}</h3>
+                  <h3 className="font-display text-2xl leading-tight font-extrabold tracking-[-0.025em]">{area.title}</h3>
                 </div>
                 <ul className="space-y-3">
                   {area.items.map((item, i) => (

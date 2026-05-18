@@ -31,15 +31,18 @@ export function SectionNumeral({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-baseline gap-3 mb-4", className)}>
+    <div className={cn("flex items-baseline gap-3 mb-5", className)}>
       <span
-        className="font-display font-display-tnum text-5xl sm:text-6xl text-primary leading-none"
+        className="font-numeral text-5xl sm:text-7xl text-primary leading-[0.85]"
         aria-hidden="true"
       >
-        {number}
+        №{number}
       </span>
       {label && (
-        <span className="eyebrow text-foreground/80">/&nbsp;{label}</span>
+        <>
+          <span className="h-px w-6 bg-primary/60 shrink-0 self-center" aria-hidden="true" />
+          <span className="eyebrow text-foreground/80">{label}</span>
+        </>
       )}
     </div>
   );
@@ -68,10 +71,10 @@ export function Stat({
       )}
       data-testid={testId}
     >
-      <span className="font-display font-display-tnum text-4xl sm:text-5xl lg:text-6xl text-primary leading-none">
+      <span className="font-numeral text-4xl sm:text-5xl lg:text-6xl text-primary leading-[0.85]">
         {value}
       </span>
-      <span className="eyebrow">{label}</span>
+      <span className="eyebrow mt-1">{label}</span>
     </div>
   );
 }
