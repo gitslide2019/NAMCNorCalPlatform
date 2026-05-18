@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eyebrow, SectionNumeral, RevealOnScroll } from "@/components/editorial";
 import {
   Form,
   FormControl,
@@ -104,7 +105,14 @@ export function ApplicationFormSection() {
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
               <CheckCircle className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-4" data-testid="text-success-title">Application Submitted Successfully!</h2>
+            <Eyebrow className="mb-3">Application received</Eyebrow>
+            <h2
+              className="font-display text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.05] tracking-[-0.035em] font-extrabold mb-4"
+              data-testid="text-success-title"
+            >
+              Application submitted{" "}
+              <span className="font-light italic tracking-[-0.025em]">successfully.</span>
+            </h2>
             <p className="text-muted-foreground mb-8">
               Thank you for your interest in joining NAMC Northern California. 
               Our team will review your application and contact you within 3-5 business days.
@@ -125,18 +133,29 @@ export function ApplicationFormSection() {
   return (
     <section id="apply" className="py-20 sm:py-28 bg-muted/30">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" data-testid="text-application-title">
-            Membership Application
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Complete the form below to apply for membership. All fields marked with * are required.
-          </p>
-        </div>
+        <RevealOnScroll>
+          <div className="text-center mb-12">
+            <div className="flex justify-center mb-6">
+              <SectionNumeral number="05" label="Apply" />
+            </div>
+            <h2
+              className="font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.0] tracking-[-0.04em] font-extrabold mb-5"
+              data-testid="text-application-title"
+            >
+              Membership{" "}
+              <span className="font-light italic tracking-[-0.025em]">application.</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Complete the form below to apply for membership. All fields marked with * are required.
+            </p>
+          </div>
+        </RevealOnScroll>
 
         <Card>
           <CardHeader>
-            <CardTitle>Application Form</CardTitle>
+            <CardTitle className="font-display text-2xl font-extrabold tracking-[-0.025em]">
+              Application form
+            </CardTitle>
             <CardDescription>
               Join NAMC Northern California and start building your future today.
             </CardDescription>
@@ -170,9 +189,9 @@ export function ApplicationFormSection() {
                 />
 
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="font-display text-xl leading-tight font-extrabold tracking-[-0.025em] flex items-center gap-2">
                     <Building className="h-5 w-5 text-primary" />
-                    Company Information
+                    Company information
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,9 +281,9 @@ export function ApplicationFormSection() {
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="font-display text-xl leading-tight font-extrabold tracking-[-0.025em] flex items-center gap-2">
                     <User className="h-5 w-5 text-primary" />
-                    Contact Information
+                    Contact information
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -327,9 +346,9 @@ export function ApplicationFormSection() {
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="font-display text-xl leading-tight font-extrabold tracking-[-0.025em] flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-primary" />
-                    Business Details
+                    Business details
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
