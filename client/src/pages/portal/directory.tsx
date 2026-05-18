@@ -397,26 +397,13 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
                 icon={member.membershipCategory === "large" ? corporateMarkerIcon : standardMarkerIcon}
               >
                 <Popup>
-                  <div className="min-w-[200px]" data-testid={`popup-member-${member.id}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {member.profileImageUrl ? (
-                        <img src={member.profileImageUrl} alt={member.companyName} className="w-8 h-8 rounded-full object-cover border" />
-                      ) : (
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${member.membershipCategory === "large" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                          {member.companyName.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-sm leading-tight">{member.companyName}</p>
-                        <p className="text-xs text-muted-foreground">{member.contactName}</p>
-                      </div>
+                  <div className="min-w-[220px]" data-testid={`popup-member-${member.id}`}>
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-primary font-semibold mb-1">
+                      {member.membershipCategory === "large" ? "Corporate partner" : member.isBoardMember ? "Board member" : (member.membershipTier || "Member")}
                     </div>
-                    {member.membershipCategory === "large" && (
-                      <span className="inline-block text-xs bg-primary text-primary-foreground rounded px-1.5 py-0.5 mb-1">Corporate Partner</span>
-                    )}
-                    {member.isBoardMember && (
-                      <span className="inline-block text-xs bg-amber-500 text-white rounded px-1.5 py-0.5 mb-1 ml-1">Board</span>
-                    )}
+                    <h4 className="font-display text-lg leading-tight tracking-tight mb-1">{member.companyName}</h4>
+                    <div className="h-px w-8 mb-2 bg-primary" />
+                    <p className="text-xs text-muted-foreground mb-1">{member.contactName}</p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                       <MapPin className="h-3 w-3" />{member.city}, {member.state}
                     </p>
@@ -457,53 +444,71 @@ function DirectoryMap({ members, setLocation }: { members: DirectoryMember[]; se
 
 function MemberCard({ member, setLocation }: { member: DirectoryMember; setLocation: (path: string) => void }) {
   const isCorporate = member.membershipCategory === "large";
+  const eyebrowLabel = member.tagline
+    ? member.tagline
+    : isCorporate
+      ? "Corporate partner"
+      : member.membershipCategory === "government"
+        ? "Government"
+        : member.membershipCategory === "medium"
+          ? "Medium business"
+          : member.membershipCategory === "small"
+            ? "Small business"
+            : "Member";
 
   return (
     <Card
-      className={`shadow-editorial cursor-pointer transition-all pressable ${isCorporate ? "border-l-[3px] border-l-primary" : ""}`}
+      className={`shadow-editorial cursor-pointer transition-all pressable relative overflow-hidden ${isCorporate ? "border-t-[3px] border-t-primary" : ""}`}
       data-testid={`card-directory-${member.id}`}
       onClick={() => setLocation(`/portal/directory/${member.id}`)}
     >
       <CardContent className="p-6">
-        <div className="flex items-start gap-3 mb-3">
-          {member.profileImageUrl ? (
-            <img
-              src={member.profileImageUrl}
-              alt={member.companyName}
-              className={`w-10 h-10 rounded-full object-cover border flex-shrink-0 ${isCorporate ? "border-primary" : "border-muted"}`}
-              data-testid={`img-member-${member.id}`}
-            />
-          ) : (
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${isCorporate ? "bg-primary/10 text-primary border border-primary/30" : "bg-muted text-muted-foreground"}`}>
-              {member.companyName.charAt(0)}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display text-xl leading-tight tracking-tight">{member.companyName}</h3>
-            {member.tagline && (
-              <p className="text-[11px] uppercase tracking-[0.14em] text-primary font-semibold truncate mt-0.5" data-testid={`text-tagline-${member.id}`}>{member.tagline}</p>
-            )}
-            <p className="text-sm text-muted-foreground mt-1">{member.contactName} · {member.title}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0 ml-2">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] text-primary font-semibold truncate"
+            data-testid={`text-tagline-${member.id}`}
+          >
+            {eyebrowLabel}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             {isCorporate && (
-              <Badge className="text-xs bg-primary text-primary-foreground hover:bg-primary/90" data-testid={`badge-corporate-${member.id}`}>
-                <Crown className="h-3 w-3 mr-1" />Corporate Partner
+              <Badge className="text-[10px] uppercase tracking-[0.14em] bg-primary text-primary-foreground hover:bg-primary/90" data-testid={`badge-corporate-${member.id}`}>
+                <Crown className="h-3 w-3 mr-1" />Corporate
               </Badge>
             )}
             {member.isBoardMember && (
-              <Badge className="text-xs bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board Member</Badge>
+              <Badge className="text-[10px] uppercase tracking-[0.14em] bg-amber-500 hover:bg-amber-600 text-white" data-testid={`badge-board-member-${member.id}`}>Board</Badge>
             )}
             {!isCorporate && (
-              <Badge variant="secondary" className="text-xs" data-testid={`badge-tier-${member.id}`}>
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-[0.14em]" data-testid={`badge-tier-${member.id}`}>
                 {member.membershipTier || member.membershipCategory}
               </Badge>
             )}
           </div>
         </div>
 
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-2xl leading-[1.05] tracking-tight">{member.companyName}</h3>
+            <div className={`mt-2 h-px bg-primary ${isCorporate ? "w-16" : "w-10"}`} />
+            <p className="text-sm text-muted-foreground mt-2">{member.contactName} · {member.title}</p>
+          </div>
+          {member.profileImageUrl ? (
+            <img
+              src={member.profileImageUrl}
+              alt={member.companyName}
+              className={`w-12 h-12 rounded-full object-cover flex-shrink-0 border ${isCorporate ? "border-primary" : "border-muted"}`}
+              data-testid={`img-member-${member.id}`}
+            />
+          ) : (
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 font-display text-lg ${isCorporate ? "bg-primary/10 text-primary border border-primary/30" : "bg-muted text-muted-foreground border border-foreground/10"}`}>
+              {member.companyName.charAt(0)}
+            </div>
+          )}
+        </div>
+
         {member.bio && (
-          <p className="text-sm text-muted-foreground mb-2 italic" data-testid={`text-member-bio-${member.id}`}>{member.bio}</p>
+          <p className="text-sm text-muted-foreground mb-2 italic border-l-2 border-primary/60 pl-3" data-testid={`text-member-bio-${member.id}`}>{member.bio}</p>
         )}
         {member.servicesDescription ? (
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2" data-testid={`text-services-desc-${member.id}`}>{member.servicesDescription}</p>
